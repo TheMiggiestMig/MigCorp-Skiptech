@@ -1,0 +1,16 @@
+/[Oo]bj/
+ExportedObj/
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+Source/.idea/
+Source/.vs/
+Source/packages/
+/Source/Source/obj
+
+deploy_to_local.bat
+deploy.log
