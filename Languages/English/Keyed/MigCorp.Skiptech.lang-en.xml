@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+	<MigCorp.Skiptech.Settings>MigCorp - Skiptech</MigCorp.Skiptech.Settings>
+	<MigCorp.Skiptech.Settings.Allowed>Skipdoor Access Mode:</MigCorp.Skiptech.Settings.Allowed>
+
+	<MigCorp.Skiptech.Settings.Allowed.Everyone>Everyone</MigCorp.Skiptech.Settings.Allowed.Everyone>
+	<MigCorp.Skiptech.Settings.Allowed.Everyone.Tip>Anyone can use skipdoors</MigCorp.Skiptech.Settings.Allowed.Everyone.Tip>
+	<MigCorp.Skiptech.Settings.Allowed.NonHostile>Non-Hostile</MigCorp.Skiptech.Settings.Allowed.NonHostile>
+	<MigCorp.Skiptech.Settings.Allowed.NonHostile.Tip>Only pawns not hostile to your colonists can use skipdoors</MigCorp.Skiptech.Settings.Allowed.NonHostile.Tip>
+	<MigCorp.Skiptech.Settings.Allowed.Colonists>Colonists</MigCorp.Skiptech.Settings.Allowed.Colonists>
+	<MigCorp.Skiptech.Settings.Allowed.Colonists.Tip>Only your colonists can use skipdoors</MigCorp.Skiptech.Settings.Allowed.Colonists.Tip>
+
+	<MigCorp.Skiptech.Settings.Allowed.Animals>Allow Animals</MigCorp.Skiptech.Settings.Allowed.Animals>
+	<MigCorp.Skiptech.Settings.Allowed.Animals.Tip>Animals can use skipdoors</MigCorp.Skiptech.Settings.Allowed.Animals.Tip>
+
+	<MigCorp.Skiptech.Settings.Debug>DEBUG</MigCorp.Skiptech.Settings.Debug>
+	<MigCorp.Skiptech.Settings.Debug.Enable>Enable Dev Mode to access debug settings.</MigCorp.Skiptech.Settings.Debug.Enable>
+	<MigCorp.Skiptech.Settings.Debug.Verbose>Verbose Logging</MigCorp.Skiptech.Settings.Debug.Verbose>
+
+</LanguageData>

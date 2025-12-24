@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef Name="SkipdoorBuildingBase" ParentName="BuildingBase" Abstract="True">
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <selectable>true</selectable>
+    <rotatable>false</rotatable>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>Standable</passability>
+    <pathCost>20</pathCost>
+    <fillPercent>0.1</fillPercent>
+    <building>
+      <ai_neverTrashThis>true</ai_neverTrashThis> <!-- We want hostiles to be able to use this if enabled -->
+    </building>
+    <statBases>
+      <MaxHitPoints>120</MaxHitPoints>
+      <Flammability>0</Flammability>
+      <Mass>15</Mass>
+    </statBases>
+    <tickerType>Normal</tickerType>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <placeWorkers>
+      <li>MigCorp.Skiptech.PlaceWorker_SkipdoorMinSpacing</li>
+    </placeWorkers>
+    <comps>
+      <li Class="MigCorp.Skiptech.Comps.CompProperties_Skipdoor" />
+    </comps>
+  </ThingDef>
+
+  <ThingDef ParentName="SkipdoorBuildingBase">
+    <defName>MigcorpSkipdoor</defName>
+    <label>migcorp skipdoor</label>
+    <description>A stationary skip generator that can grant access to the local SkipNet. While it can run with its internal power cell, an external supply of power removes delay and prevents skip-shock.</description>
+    <size>(1,1)</size>
+    <tickerType>Normal</tickerType>
+    <graphicData>
+      <texPath>Things/Building/Misc/migcorp_MigcorpSkipdoor</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1.1,1.1)</drawSize>
+    </graphicData>
+    <uiIconPath>Things/Building/Misc/migcorp_MigcorpSkipdoor</uiIconPath>
+    <costList>
+      <Uranium>50</Uranium>
+      <Plasteel>100</Plasteel>
+      <ComponentSpacer>1</ComponentSpacer>
+      <ComponentIndustrial>5</ComponentIndustrial>
+    </costList>
+    <statBases>
+      <WorkToBuild>10000</WorkToBuild>
+    </statBases>
+    <designationCategory>Misc</designationCategory>
+    <thingCategories>
+      <li>BuildingsMisc</li>
+    </thingCategories>
+    <comps>
+      <li Class="CompProperties_Breakdownable" />
+      <li Class="CompProperties_Forbiddable" />
+      <li Class="CompProperties_Power">
+        <compClass>RimWorld.CompPowerTrader</compClass>
+        <basePowerConsumption>300</basePowerConsumption>
+        <shortCircuitInRain>false</shortCircuitInRain>
+      </li>
+      <li Class="MigCorp.Skiptech.Comps.CompProperties_Skipdoor_Powered">
+        <delayTicks>120</delayTicks>
+      </li>
+    </comps>
+    <researchPrerequisites>
+      <li>MultiAnalyzer</li>
+    </researchPrerequisites>
+  </ThingDef>
+
+  <ThingDef ParentName="SkipdoorBuildingBase">
+    <defName>ArchotechSkipdoor</defName>
+    <label>archotech skipdoor</label>
+    <description>An ancient archotech device that allows instant access to the SkipNet without any side-effects.</description>
+    <size>(1,1)</size>
+    <tickerType>Normal</tickerType>
+    <graphicData>
+      <texPath>Things/Building/Misc/migcorp_ArchotechSkipdoor</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1.1,1.1)</drawSize>
+    </graphicData>
+    <uiIconPath>Things/Building/Misc/migcorp_ArchotechSkipdoor</uiIconPath>
+    <statBases>
+      <MarketValue>1200</MarketValue>
+      <MaxHitPoints>360</MaxHitPoints>
+      <WorkToBuild>10000</WorkToBuild>
+    </statBases>
+    <thingCategories>
+      <li>BuildingsMisc</li>
+    </thingCategories>
+    <comps>
+      <li Class="CompProperties_Forbiddable" />
+      <li Class="CompProperties_Glower">
+        <glowRadius>3</glowRadius>
+        <glowColor>(227,233,168,0)</glowColor>
+      </li>
+    </comps>
+    <thingSetMakerTags>
+      <li>RewardStandardCore</li>
+    </thingSetMakerTags>
+    <tradeTags>
+      <li>ExoticBuilding</li>
+    </tradeTags>
+    <tradeability>Sellable</tradeability>
+  </ThingDef>
+</Defs>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Patch>
+    <Operation Class="PatchOperationFindMod">
+        <mods>
+            <li>Vanilla Psycasts Expanded</li>
+        </mods>
+
+        <match Class="PatchOperationSequence">
+            <operations>
+                <li Class="PatchOperationConditional">
+                    <xpath>Defs/ThingDef[defName="VPE_Skipdoor"]/comps</xpath>
+                    <nomatch Class="PatchOperationAdd">
+                        <xpath>Defs/ThingDef[defName="VPE_Skipdoor"]</xpath>
+                        <value>
+                            <comps />
+                        </value>
+                    </nomatch>
+                </li>
+
+                <li Class="PatchOperationAdd">
+                    <xpath>Defs/ThingDef[defName="VPE_Skipdoor"]/comps</xpath>
+                    <value>
+                        <li Class="MigCorp.Skiptech.Comps.CompProperties_Skipdoor" />
+                    </value>
+                </li>
+
+            </operations>
+        </match>
+    </Operation>
+</Patch>
