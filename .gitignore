@@ -10,7 +10,7 @@ ExportedObj/
 Source/.idea/
 Source/.vs/
 Source/packages/
-/Source/Source/obj
+Source/obj/
 
 deploy_to_local.bat
 deploy.log
