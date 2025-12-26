@@ -370,23 +370,32 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
             // Check if our skipplan is shorter than direct travel by region.
             int skipPlanG = bestEntryG + bestExitG;
-            if (skipPlanG >= estimateTotalG)
+            if (skipPlanG > estimateTotalG)
             {
-                // Same diff, except comparing octile heuristics (in case of tie break).
-                if (skipPlanG == estimateTotalG)
-                {
-                    int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
-                    int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
-                    int exitH = SkipNetUtils.OctileDistance(bestExit.Position, dest.Cell);
-
-                    if (directH <= entryH) { return false; }
-                }
                 MigcorpSkiptechMod.Message($"{pawn.Label} found direct path faster than skipNet. " +
                     $"entry={bestEntryG} {bestEntry}, " +
                     $"exit={bestExitG} {bestExit}, " +
                     $"actual={estimateTotalG}",
                     MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
+            }
+
+            // Same diff, except comparing octile heuristics (in case of tie break).
+            if (skipPlanG == estimateTotalG)
+            {
+                int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
+                int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
+                int exitH = SkipNetUtils.OctileDistance(bestExit.Position, dest.Cell);
+
+                if (directH <= entryH)
+                {
+                    MigcorpSkiptechMod.Message($"{pawn.Label} found direct path faster than skipNet (just). " +
+                        $"entry={bestEntryG} {bestEntry}, " +
+                        $"exit={bestExitG} {bestExit}, " +
+                        $"actual={estimateTotalG}",
+                        MigcorpSkiptechMod.LogLevel.Verbose);
+                    return false;
+                }
             }
 
             plan = new SkipNetPlan(skipNet, pawn, bestEntry, bestExit, originalDest, peMode);
