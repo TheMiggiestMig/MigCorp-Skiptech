@@ -4,6 +4,7 @@ using Verse;
 using Verse.AI;
 using UnityEngine;
 using RimWorld;
+using System;
 
 namespace MigCorp.Skiptech.Systems.SkipNet
 {
@@ -116,10 +117,30 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
         public void Notify_SkipNetPlanFailedOrCancelled()
         {
-            MigcorpSkiptechMod.Message($"{pawn.Label}'s skipnet plan failed.", MigcorpSkiptechMod.LogLevel.Verbose);
-            pawn.stances.CancelBusyStanceSoft();
-            pawn.pather.StartPath(originalDest, originalPeMode);
-            Dispose();
+            try
+            {
+                if (pawn?.Map == null || pawn.pather == null)
+                {
+                    MigcorpSkiptechMod.Error($"Not sure how we got here, but skipnet plan failed because pawn't.");
+                }
+                else
+                {
+                    MigcorpSkiptechMod.Message($"{pawn.Label}'s skipnet plan failed.", MigcorpSkiptechMod.LogLevel.Verbose);
+                    pawn.stances.CancelBusyStanceSoft();
+
+                    // Check if all the conditions needed to path are in place.
+                    if (originalDest.IsValid && originalPeMode != PathEndMode.None)
+                        pawn.pather.StartPath(originalDest, originalPeMode);
+                }
+            }
+            catch (NullReferenceException ex)
+            {
+                MigcorpSkiptechMod.Error($"Hmm... I missed something in the Notify_SkipNetPlanFailedOrCancelled checks:\n{ex.Message}\n{ex.StackTrace}");
+            }
+            finally
+            {
+                Dispose();
+            }
         }
 
         public void Dispose()

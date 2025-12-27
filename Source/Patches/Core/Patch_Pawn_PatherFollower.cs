@@ -27,7 +27,12 @@ namespace MigCorp.Skiptech.Comps
         {
             // Intercept the original StartPath request, and try to generate a SkipNetPlan if none exists for this pawn.
             // Otherwise, carry on.
-            MapComponent_SkipNet skipNet = ___pawn.Map.GetComponent<MapComponent_SkipNet>();
+            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            if(skipNet == null) { return; }
+
+            // Not sure why someone would call StartPath to "Invalid" specifically, but here we are.
+            if(!dest.IsValid || peMode == PathEndMode.None) { return; }
+
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
                 if (plan.originalDest == dest && plan.originalPeMode == peMode)
@@ -100,8 +105,8 @@ namespace MigCorp.Skiptech.Comps
         [HarmonyPatch(typeof(Pawn_PathFollower), "PatherFailed")]
         static bool PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
         {
-            MapComponent_SkipNet skipNet = ___pawn.Map.GetComponent<MapComponent_SkipNet>();
-            if (!skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return true; }
+            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            if (skipNet == null || !skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return true; }
 
             LocalTargetInfo dest = plan.originalDest;
             PathEndMode peMode = plan.originalPeMode;
