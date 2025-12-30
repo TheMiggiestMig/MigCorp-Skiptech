@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LanguageData>
 	<MigCorp.Skiptech.Settings>MigCorp - Skiptech</MigCorp.Skiptech.Settings>
+	<!-- Gameplay Settings -->
 	<MigCorp.Skiptech.Settings.Allowed>Skipdoor Access Mode:</MigCorp.Skiptech.Settings.Allowed>
 
 	<MigCorp.Skiptech.Settings.Allowed.Everyone>Everyone</MigCorp.Skiptech.Settings.Allowed.Everyone>
@@ -10,9 +11,16 @@
 	<MigCorp.Skiptech.Settings.Allowed.Colonists>Colonists</MigCorp.Skiptech.Settings.Allowed.Colonists>
 	<MigCorp.Skiptech.Settings.Allowed.Colonists.Tip>Only your colonists can use skipdoors</MigCorp.Skiptech.Settings.Allowed.Colonists.Tip>
 
+	<MigCorp.Skiptech.Settings.Allowed.Animals.Title>Skipdoor Access Mode (animals):</MigCorp.Skiptech.Settings.Allowed.Animals.Title>
 	<MigCorp.Skiptech.Settings.Allowed.Animals>Allow Animals</MigCorp.Skiptech.Settings.Allowed.Animals>
 	<MigCorp.Skiptech.Settings.Allowed.Animals.Tip>Animals can use skipdoors</MigCorp.Skiptech.Settings.Allowed.Animals.Tip>
 
+	<!-- Accessibility Settings -->
+	<MigCorp.Skiptech.Settings.Accessibility.Title>Accessibility Settings</MigCorp.Skiptech.Settings.Accessibility.Title>
+	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect>Disable teleport visuals</MigCorp.Skiptech.Settings.Accessibility.FlashEffect>
+	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>Turns off the teleporting flash visual effects</MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>
+
+	<!-- Debug Settings -->
 	<MigCorp.Skiptech.Settings.Debug>DEBUG</MigCorp.Skiptech.Settings.Debug>
 	<MigCorp.Skiptech.Settings.Debug.Enable>Enable Dev Mode to access debug settings.</MigCorp.Skiptech.Settings.Debug.Enable>
 	<MigCorp.Skiptech.Settings.Debug.Verbose>Verbose Logging</MigCorp.Skiptech.Settings.Debug.Verbose>

@@ -16,7 +16,7 @@ namespace MigCorp.Skiptech.Utils
             }
             catch { }
 
-            if (def != null)
+            if (def != null && !MigcorpSkiptechMod.Settings.disableTeleportFlashEffect)
             {
                 var eff = def.Spawn();
                 var tgt = new TargetInfo(cell, map);

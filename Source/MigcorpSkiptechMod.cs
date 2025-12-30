@@ -15,12 +15,16 @@ namespace MigCorp.Skiptech
 
         public bool debugVerboseLogging = false;
 
+        public bool disableTeleportFlashEffect = false;
+
         public override void ExposeData()
         {
             Scribe_Values.Look(ref accessMode, "accessMode", AccessMode.Everyone);
             Scribe_Values.Look(ref animalsCanUse, "animalsCanUse", true);
 
             Scribe_Values.Look(ref debugVerboseLogging, "debugVerboseLogging", false);
+
+            Scribe_Values.Look(ref disableTeleportFlashEffect, "disableTeleportFlashEffect", false);
         }
     }
 
@@ -43,6 +47,7 @@ namespace MigCorp.Skiptech
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
+            // Gameplay Settings
             var ls = new Listing_Standard();
             ls.Begin(inRect);
 
@@ -53,10 +58,19 @@ namespace MigCorp.Skiptech
                 AccessMode_RadioButton(ls, accessMode);
 
             ls.Gap();
+            ls.Label("MigCorp.Skiptech.Settings.Allowed.Animals.Title".Translate());
             ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Allowed.Animals".Translate(),
                 ref Settings.animalsCanUse,
                 "MigCorp.Skiptech.Settings.Allowed.Animals.Tip".Translate());
 
+            // Accessibility Settings
+            ls.GapLine();
+            ls.Label("MigCorp.Skiptech.Settings.Accessibility.Title".Translate());
+            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Accessibility.FlashEffect".Translate(),
+                ref Settings.disableTeleportFlashEffect,
+                "MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip".Translate());
+
+            // Dev Settings
             ls.GapLine();
             if (Prefs.DevMode)
             {
