@@ -50,7 +50,6 @@ namespace MigCorp.Skiptech
             // Gameplay Settings
             var ls = new Listing_Standard();
             ls.Begin(inRect);
-
             ls.GapLine();
             ls.Label("MigCorp.Skiptech.Settings.Allowed".Translate());
 
@@ -58,14 +57,12 @@ namespace MigCorp.Skiptech
                 AccessMode_RadioButton(ls, accessMode);
 
             ls.Gap();
-            ls.Label("MigCorp.Skiptech.Settings.Allowed.Animals.Title".Translate());
             ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Allowed.Animals".Translate(),
                 ref Settings.animalsCanUse,
                 "MigCorp.Skiptech.Settings.Allowed.Animals.Tip".Translate());
 
             // Accessibility Settings
             ls.GapLine();
-            ls.Label("MigCorp.Skiptech.Settings.Accessibility.Title".Translate());
             ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Accessibility.FlashEffect".Translate(),
                 ref Settings.disableTeleportFlashEffect,
                 "MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip".Translate());
