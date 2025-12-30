@@ -158,8 +158,12 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             
             if(dest.HasThing)
             {
+                // Make sure it hasn't been destroyed (shakes fist at despawning filth)
+                if (dest.Thing == null || dest.Thing.Destroyed)
+                    return false;
+
                 // Check if the thing is not spawned and has no owner (not being held or in a container).
-                if(!dest.Thing.Spawned && dest.Thing.holdingOwner == null) { return false; }
+                if (!dest.Thing.Spawned && dest.Thing.holdingOwner == null) { return false; }
 
                 proxyDest = dest.Thing.PositionHeld;
                 return true;

@@ -85,7 +85,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 $"entryWaitTicks={entryWaitTicks}, " +
                 $"exitWaitTicks={exitWaitTicks}", MigcorpSkiptechMod.LogLevel.Verbose);
                 nextResolveTick = GenTicks.TicksGame + waitTicks;
-                pawn.stances.SetStance(new Stance_Cooldown());
+                pawn.stances.SetStance(new Stance_Cooldown(waitTicks, pawn, null));
                 return;
             }
 
@@ -126,6 +126,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 else
                 {
                     MigcorpSkiptechMod.Message($"{pawn.Label}'s skipnet plan failed.", MigcorpSkiptechMod.LogLevel.Verbose);
+                    pawn.pather.StopDead();
                     pawn.stances.CancelBusyStanceSoft();
 
                     // Check if all the conditions needed to path are in place.
