@@ -111,6 +111,8 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         }
         public void Notify_SkipNetPlanExitReached()
         {
+            entry.Notify_PawnTeleported(pawn, this, SkipdoorType.Entry);
+            exit.Notify_PawnTeleported(pawn, this, SkipdoorType.Exit);
             pawn.stances.CancelBusyStanceSoft();
             Dispose();
         }

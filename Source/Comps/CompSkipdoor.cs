@@ -134,5 +134,14 @@ namespace MigCorp.Skiptech.Comps
                 comp.Notify_PawnArrived(pawn, skipNetPlan, type);
             }
         }
+
+        public void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
+        {
+            foreach (ISkipdoorAccessible comp in accessibilityComps)
+            {
+                if (comp == this) continue;
+                comp.Notify_PawnTeleported(pawn, skipNetPlan, type);
+            }
+        }
     }
 }

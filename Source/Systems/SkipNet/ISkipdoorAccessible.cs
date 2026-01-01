@@ -40,5 +40,12 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         /// <param name="pawn"></param>
         /// <param name="skipNetPlan"></param>
         void Notify_PawnArrived(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type = SkipdoorType.Entry);
+
+        /// <summary>
+        /// Notifies the skipdoor that a pawn has teleported.
+        /// </summary>
+        /// <param name="pawn"></param>
+        /// <param name="skipNetPlan"></param>
+        void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type = SkipdoorType.Entry);
     }
 }

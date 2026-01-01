@@ -17,6 +17,7 @@ namespace MigCorp.Skiptech.Comps
         public abstract bool CanEnter(Pawn pawn);
         public abstract bool CanExit(Pawn pawn);
         public abstract void Notify_PawnArrived(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type = SkipdoorType.Entry);
+        public abstract void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type = SkipdoorType.Entry);
         public abstract int TicksUntilEnterable(Pawn pawn);
         public abstract int TicksUntilExitable(Pawn pawn);
     }
