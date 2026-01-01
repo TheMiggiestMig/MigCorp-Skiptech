@@ -12,15 +12,18 @@ namespace MigCorp.Skiptech
     {
         public AccessMode accessMode = AccessMode.Everyone;
         public bool animalsCanUse = true;
+        public bool disableSkipShock = false;
 
-        public bool debugVerboseLogging = false;
 
         public bool disableTeleportFlashEffect = false;
+
+        public bool debugVerboseLogging = false;
 
         public override void ExposeData()
         {
             Scribe_Values.Look(ref accessMode, "accessMode", AccessMode.Everyone);
             Scribe_Values.Look(ref animalsCanUse, "animalsCanUse", true);
+            Scribe_Values.Look(ref disableSkipShock, "disableSkipShock", false);
 
             Scribe_Values.Look(ref debugVerboseLogging, "debugVerboseLogging", false);
 
@@ -56,10 +59,14 @@ namespace MigCorp.Skiptech
             foreach (AccessMode accessMode in Enum.GetValues(typeof(AccessMode)))
                 AccessMode_RadioButton(ls, accessMode);
 
-            ls.Gap();
             ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Allowed.Animals".Translate(),
                 ref Settings.animalsCanUse,
                 "MigCorp.Skiptech.Settings.Allowed.Animals.Tip".Translate());
+
+            ls.Gap();
+            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Features.Skipshock".Translate(),
+                ref Settings.disableSkipShock,
+                "MigCorp.Skiptech.Settings.Features.Skipshock.Tip".Translate());
 
             // Accessibility Settings
             ls.GapLine();

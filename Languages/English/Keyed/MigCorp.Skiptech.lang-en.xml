@@ -14,6 +14,9 @@
 	<MigCorp.Skiptech.Settings.Allowed.Animals>Allow Animals</MigCorp.Skiptech.Settings.Allowed.Animals>
 	<MigCorp.Skiptech.Settings.Allowed.Animals.Tip>Animals can use skipdoors</MigCorp.Skiptech.Settings.Allowed.Animals.Tip>
 
+	<MigCorp.Skiptech.Settings.Features.Skipshock>Disable Skip-Shock</MigCorp.Skiptech.Settings.Features.Skipshock>
+	<MigCorp.Skiptech.Settings.Features.Skipshock.Tip>Prevents pawns from getting skip-shock when using unpowered skipdoors</MigCorp.Skiptech.Settings.Features.Skipshock.Tip>
+	
 	<!-- Accessibility Settings -->
 	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect>Disable teleport visuals</MigCorp.Skiptech.Settings.Accessibility.FlashEffect>
 	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>Turns off the teleport-flash visual effect</MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>
@@ -22,5 +25,9 @@
 	<MigCorp.Skiptech.Settings.Debug>DEBUG</MigCorp.Skiptech.Settings.Debug>
 	<MigCorp.Skiptech.Settings.Debug.Enable>Enable Dev Mode to access debug settings.</MigCorp.Skiptech.Settings.Debug.Enable>
 	<MigCorp.Skiptech.Settings.Debug.Verbose>Verbose Logging</MigCorp.Skiptech.Settings.Debug.Verbose>
+
+	<!-- General Text-->
+	<MigCorp.Skiptech.Text.Skipshock>Skip-shock</MigCorp.Skiptech.Text.Skipshock>
+	 
 
 </LanguageData>

@@ -8,8 +8,7 @@ namespace MigCorp.Skiptech.Comps
 {
     public class CompProperties_Skipdoor_Powered : CompProperties_Skipdoor_Delayed
     {
-        public float IdlePercent { get; set; } = 0.5f;
-        public float DesiredIdlePercent { get; set; } = 0f;
+        public float unpoweredSkipshockChance { get; set; } = 0.4f;
 
         public CompProperties_Skipdoor_Powered() => this.compClass = typeof(CompSkipdoor_Powered);
     }
@@ -17,7 +16,7 @@ namespace MigCorp.Skiptech.Comps
     {
 
         public CompPowerTrader powerTrader;
-        public override CompProperties_Skipdoor_Delayed Props => (CompProperties_Skipdoor_Delayed)props;
+        public new CompProperties_Skipdoor_Powered Props => (CompProperties_Skipdoor_Powered)props;
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
@@ -41,7 +40,7 @@ namespace MigCorp.Skiptech.Comps
             // If the skipdoor is not powered and it should be, they'll have a 40% chance of getting sick (for each unpowered skipdoor in the jump, so ~64% chance if both are unpowered).
             if (powerTrader.Off)
             {
-                if (ShouldApplySkipShock(pawn) && Rand.Chance(0.40f))
+                if (ShouldApplySkipShock(pawn) && Rand.Chance(Props.unpoweredSkipshockChance))
                     ApplySkipShock(pawn);
             }
             return;
@@ -56,10 +55,12 @@ namespace MigCorp.Skiptech.Comps
             if (pawn?.health == null) return;
 
             // Add if not there, otherwise reset.
+            bool skipShockAdded = false;
             if (skipShock == null)
             {
                 skipShock = HediffMaker.MakeHediff(skipShockDef, pawn);
                 pawn.health.AddHediff(skipShock);
+                skipShockAdded = true;
             }
             else
             {
@@ -69,16 +70,18 @@ namespace MigCorp.Skiptech.Comps
             HediffComp_Disappears disappearsComp = skipShock.TryGetComp<HediffComp_Disappears>();
             if (disappearsComp != null)
             {
+                if (skipShockAdded || disappearsComp.ticksToDisappear != disappearsComp.Props.disappearsAfterTicks.max)
+                {
+                    DoSkipshockTextMote(pawn);
+                }
                 disappearsComp.ticksToDisappear = disappearsComp.Props.disappearsAfterTicks.max;
             }
-
-            // If the pawn doesn't eat or have a stomach, it doesn't make sense to vomit.
-
         }
 
         // We don't want skipshock to hit mechanoids or anomalies.
         private static bool ShouldApplySkipShock(Pawn pawn)
         {
+            if (MigcorpSkiptechMod.Settings.disableSkipShock) { return false; }
             if (pawn?.RaceProps == null) return false;
             if (pawn.RaceProps.IsMechanoid) return false;
             if (pawn.RaceProps.IsAnomalyEntity) return false;
@@ -90,6 +93,11 @@ namespace MigCorp.Skiptech.Comps
             if (pawn.Dead) return false;
 
             return true;
+        }
+
+        private static void DoSkipshockTextMote(Pawn pawn)
+        {
+            MoteMaker.ThrowText(pawn.PositionHeld.ToVector3Shifted(), text: ((string)"MigCorp.Skiptech.Text.Skipshock".Translate()), map: pawn.Map, color: Color.yellow);
         }
     }
 }

@@ -8,10 +8,10 @@
     <isBad>false</isBad>
     <!--tendable>false</tendable-->
     <initialSeverity>1</initialSeverity>
-    <description>Your insides are still "inside". But as a result of an unstable skip, for the moment they're just a little... out of place.</description>
+    <description>Your insides are still "inside". But as a result of an unstable skip, for the moment... they're not quite where they should be.</description>
     <stages>
       <li>
-        <vomitMtbDays>0.03</vomitMtbDays>
+        <vomitMtbDays>0.02</vomitMtbDays>
         <painOffset>0.2</painOffset>
         <capMods>
           <li>
