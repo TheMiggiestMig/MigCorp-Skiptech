@@ -6,7 +6,7 @@
     <defaultLabelColor>(0.9, 1.0, 0.35)</defaultLabelColor>
     <hediffClass>HediffWithComps</hediffClass>
     <isBad>false</isBad>
-    <!--tendable>false</tendable-->
+    <tendable>false</tendable>
     <initialSeverity>1</initialSeverity>
     <description>Your insides are still "inside". But as a result of an unstable skip, for the moment... they're not quite where they should be.</description>
     <stages>

@@ -60,6 +60,7 @@
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
     <Compile Include="Comps\CompSkipdoor_Delayed.cs" />
+    <Compile Include="Comps\CompSkipdoor_IndicatorOverlay.cs" />
     <Compile Include="Comps\CompSkipdoor_Powered.cs" />
     <Compile Include="Comps\CompSkipdoor_RestrictedBase.cs" />
     <Compile Include="Systems\SkipNet\Building_SkipdoorBase.cs" />

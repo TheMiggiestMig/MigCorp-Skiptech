@@ -14,5 +14,4 @@ Source/obj/
 
 deploy_to_local.bat
 deploy.log
-/Source/obj/Debug/MigCorp-Skiptech.dll
-/Source/obj/Debug/MigCorp-Skiptech.pdb
+/Source/obj/Debug/MigCorp-Skiptech.csproj.CoreCompileInputs.cache

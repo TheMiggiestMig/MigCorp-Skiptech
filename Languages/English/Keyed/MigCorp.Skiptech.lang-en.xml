@@ -25,7 +25,7 @@
 	<MigCorp.Skiptech.Settings.Debug>DEBUG</MigCorp.Skiptech.Settings.Debug>
 	<MigCorp.Skiptech.Settings.Debug.Enable>Enable Dev Mode to access debug settings.</MigCorp.Skiptech.Settings.Debug.Enable>
 	<MigCorp.Skiptech.Settings.Debug.Verbose>Verbose Logging</MigCorp.Skiptech.Settings.Debug.Verbose>
-
+	
 	<!-- General Text-->
 	<MigCorp.Skiptech.Text.Skipshock>Skip-shock</MigCorp.Skiptech.Text.Skipshock>
 	 

@@ -33,18 +33,34 @@ namespace MigCorp.Skiptech.Comps
         public override void CompTick()
         {
             base.CompTick();
-            if(!opening && !open && curDelayTick > 0) { curDelayTick--;  }
-            if (opening && !open) { curDelayTick++; }
-            if (curDelayTick >= Props.delayTicks && !open)
-            { 
-                open = true;
-                opening = false;
+            if (!open)
+            {
+                //if (!opening && curDelayTick > 0) { curDelayTick--; return; }
+                if (opening)
+                {
+                    if (curDelayTick == 0)
+                    {
+                        parent.BroadcastCompSignal("SkipdoorOpening");
+                    }
+                    curDelayTick++;
+
+                    if (curDelayTick >= Props.delayTicks)
+                    {
+                        open = true;
+                        opening = false;
+                        curDelayTick = 0;
+                        parent.BroadcastCompSignal("SkipdoorOpened");
+                    }
+                    return;
+                }
             }
+
             if (curRemainOpenTick < Props.remainOpenTicks && open) { curRemainOpenTick++; }
             if (curRemainOpenTick >= Props.remainOpenTicks)
             {
                 open = false;
                 curRemainOpenTick = 0;
+                parent.BroadcastCompSignal("SkipdoorClosed");
             }
         }
         public override bool CanEnter(Pawn pawn)

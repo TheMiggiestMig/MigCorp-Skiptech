@@ -1,22 +1,18 @@
 using UnityEngine;
 using Verse;
 using MigCorp.Skiptech.Utils;
-using Verse.AI;
 using System;
-using System.Reflection.Emit;
-using static HarmonyLib.Code;
+using RimWorld;
 
 namespace MigCorp.Skiptech
 {
+    // Mod Settings
     public class MigcorpSkiptechSettings : ModSettings
     {
         public AccessMode accessMode = AccessMode.Everyone;
         public bool animalsCanUse = true;
         public bool disableSkipShock = false;
-
-
         public bool disableTeleportFlashEffect = false;
-
         public bool debugVerboseLogging = false;
 
         public override void ExposeData()
@@ -24,13 +20,12 @@ namespace MigCorp.Skiptech
             Scribe_Values.Look(ref accessMode, "accessMode", AccessMode.Everyone);
             Scribe_Values.Look(ref animalsCanUse, "animalsCanUse", true);
             Scribe_Values.Look(ref disableSkipShock, "disableSkipShock", false);
-
-            Scribe_Values.Look(ref debugVerboseLogging, "debugVerboseLogging", false);
-
             Scribe_Values.Look(ref disableTeleportFlashEffect, "disableTeleportFlashEffect", false);
+            Scribe_Values.Look(ref debugVerboseLogging, "debugVerboseLogging", false);
         }
     }
 
+    // Mod Options and helper functions
     public class MigcorpSkiptechMod : Mod
     {
         public static MigcorpSkiptechSettings Settings;
