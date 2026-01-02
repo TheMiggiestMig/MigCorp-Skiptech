@@ -22,6 +22,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         public Pawn pawn;
         public MapComponent_SkipNet skipNet;
         public CompSkipdoor entry, exit;
+        public int tickCreated;
 
         public LocalTargetInfo originalDest;
         public IntVec3 originalDestPostition;
@@ -41,6 +42,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             this.pawn = pawn;
             this.skipNet = skipNet;
             State = SkipNetPlanState.ExecutingEntry;
+            tickCreated = GenTicks.TicksGame;
             skipNet.RegisterPlan(pawn, this);
         }
 
@@ -130,6 +132,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                     MigcorpSkiptechMod.Message($"{pawn.Label}'s skipnet plan failed.", MigcorpSkiptechMod.LogLevel.Verbose);
                     pawn.pather.StopDead();
                     pawn.stances.CancelBusyStanceSoft();
+                    State = SkipNetPlanState.Disposed;
 
                     // Check if all the conditions needed to path are in place.
                     if (originalDest.IsValid && originalPeMode != PathEndMode.None)

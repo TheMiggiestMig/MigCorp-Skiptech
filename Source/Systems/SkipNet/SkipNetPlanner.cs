@@ -61,8 +61,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             pawnReg = null;
             destRegs = new List<Region>();
 
-            // MigcorpSkiptechMod.Message($"{pawn?.Label} looking: peMode={peMode} + dest.HasThing={dest.HasThing} + dest.Thing.InteractionCell={dest.Thing.InteractionCell} + dest.Cell={dest.Cell}", MigcorpSkiptechMod.LogLevel.Verbose);
-
             // No pawn? No dest? No plan.
             if (pawn?.Map == null || pawn.Map != skipNet.map || dest == null || !dest.IsValid)
             {
@@ -70,12 +68,21 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                     MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
+
+            // Make sure the pawn is actually within the map borders.
             if(!pawn.Position.InBounds(skipNet.map))
             {
                 MigcorpSkiptechMod.Warning($"{pawn?.Label} is not in bounds on the map.",
                     MigcorpSkiptechMod.LogLevel.Verbose);
             }
-            pawnReg = map.regionGrid.GetValidRegionAt_NoRebuild(pawn.Position);
+
+            // I don't care how advanced the science is: If the pawn can't crawl to their destination, they can't crawl to a skipdoor neither.
+            if (pawn.Downed && !pawn.health.CanCrawl)
+            {
+                MigcorpSkiptechMod.Warning($"StartPath will also flag this, but {pawn?.Label} is down for the count and shouldn't be pathing.");
+                return false;
+            }
+                pawnReg = map.regionGrid.GetValidRegionAt_NoRebuild(pawn.Position);
 
             // Are they on the same map?
             if (dest.HasThing && dest.Thing.MapHeld != pawn.Map)
