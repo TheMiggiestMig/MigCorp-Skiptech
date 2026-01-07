@@ -21,8 +21,10 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         // SkipNetPlans
         public SkipNetPlanner planner;
         public Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans;
+        private readonly List<KeyValuePair<Pawn, SkipNetPlan>> _tempPawnSkipNetPlans = new List<KeyValuePair<Pawn, SkipNetPlan>>(); // Snapshot for the pawnSkipNetPlans to prevent mutating the table mid loop.
+
         public List<Pawn> disposedPawnSkipNetPlans;
-        public List<Pawn> invalidPawnSkipNetPlans;
+        public List<Pawn> badPawnSkipNetPlans;
         public int lastSkipNetPlanDeepCleanTick;
         private int ticksBetweenSkipNetPlanDeepClean = 180;
 
@@ -37,7 +39,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
             pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
             disposedPawnSkipNetPlans = new List<Pawn>();
-            invalidPawnSkipNetPlans = new List<Pawn>();
+            badPawnSkipNetPlans = new List<Pawn>();
 
             tmpEnterableSkipdoors = new List<CompSkipdoor>();
             tmpExitableSkipdoors = new List<CompSkipdoor>();
@@ -149,17 +151,21 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
         public void ResolveActivePlans()
         {
-            foreach ((Pawn pawn, SkipNetPlan skipNetPlan) in pawnSkipNetPlans)
+            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
+            SkipNetPlan plan;
+
+            for(int i = 0; i < activeSkipnetPlans.Count; i++)
             {
-                if (skipNetPlan.State != SkipNetPlanState.Disposed && skipNetPlan.arrived)
-                    skipNetPlan.Resolve();
+                plan = activeSkipnetPlans[i].Value;
+
+                if (plan.State != SkipNetPlanState.Disposed && plan.arrived)
+                    plan.Resolve();
             }
         }
 
         public void Cleanup()
         {
-            CleanupInvalid();
-            AttemptRepathOnInvalidSkipNetPlans();
+            CleanupInvalidAndBadPlans();
 
             if (GenTicks.TicksGame > lastSkipNetPlanDeepCleanTick + ticksBetweenSkipNetPlanDeepClean)
             {
@@ -168,38 +174,34 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             }
             RemoveDisposedSkipNetPlans();
 
-            invalidPawnSkipNetPlans.Clear();
+            badPawnSkipNetPlans.Clear();
             disposedPawnSkipNetPlans.Clear();
         }
 
-        public void CleanupInvalid()
+        public void CleanupInvalidAndBadPlans()
         {
-            foreach ((Pawn pawn, SkipNetPlan plan) in pawnSkipNetPlans)
+            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
+            Pawn pawn;
+            SkipNetPlan plan;
+
+            for (int i = 0; i < activeSkipnetPlans.Count; i++)
             {
+                pawn = activeSkipnetPlans[i].Key;
+                plan = activeSkipnetPlans[i].Value;
+
                 if (plan.State == SkipNetPlanState.Invalid)
                 {
                     plan.Dispose();
                     continue;
                 }
 
+                // Check if the skipdoors are still useable.
                 if (plan.State != SkipNetPlanState.Disposed &&
                 !plan.CheckIsStillAccessible())
                 {
                     plan.Dispose();
-                    invalidPawnSkipNetPlans.Add(pawn);
+                    badPawnSkipNetPlans.AddDistinct(pawn);
                 };
-            }
-        }
-
-        public void AttemptRepathOnInvalidSkipNetPlans()
-        {
-            foreach (Pawn pawn in invalidPawnSkipNetPlans)
-            {
-                if (pawn != null && pawn.Spawned && pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan) &&
-                    plan?.originalDest != null && plan.originalPeMode != PathEndMode.None)
-                {
-                    pawn.pather.StartPath(plan.originalDest, plan.originalPeMode);
-                }
             }
         }
 
@@ -218,15 +220,38 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
         public void DeepCleanup()
         {
-            foreach ((Pawn pawn, SkipNetPlan plan) in pawnSkipNetPlans)
+            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
+            Pawn pawn;
+            SkipNetPlan plan;
+
+            for (int i = 0; i < activeSkipnetPlans.Count; i++)
             {
+                pawn = activeSkipnetPlans[i].Key;
+                plan = activeSkipnetPlans[i].Value;
+
                 if (pawn?.Map != map ||
                     plan.State == SkipNetPlanState.Disposed
                     )
                 {
-                    disposedPawnSkipNetPlans.Add(pawn);
+                    disposedPawnSkipNetPlans.AddDistinct(pawn);
                 }
+
+                // Check if the paths are still valid.
+                if (plan.State != SkipNetPlanState.Disposed &&
+                !plan.CheckIsStillPathable(map, TraverseParms.For(pawn, mode: TraverseMode.ByPawn)))
+                {
+                    plan.Dispose();
+                    badPawnSkipNetPlans.AddDistinct(pawn);
+                };
             }
+        }
+
+        private List<KeyValuePair<Pawn, SkipNetPlan>> SnapshotPawnSkipNetPlans()
+        {
+            _tempPawnSkipNetPlans.Clear();
+            _tempPawnSkipNetPlans.AddRange(pawnSkipNetPlans);
+
+            return _tempPawnSkipNetPlans;
         }
     }
 }
