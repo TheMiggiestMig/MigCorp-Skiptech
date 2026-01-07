@@ -42,16 +42,25 @@ namespace MigCorp.Skiptech.Comps
                         // Mofo keeps trying to overwrite my plan. Force it back!
                         dest = plan.entry.Position;
                         peMode = PathEndMode.OnCell;
-                    }
 
-                    MigcorpSkiptechMod.Message($"{___pawn.Label} already has a skipNet plan for this scenario." +
-                        $"entryPos={plan.entry.Position}, " +
-                        $"exitPos={plan.exit.Position}, " +
-                        $"originalDest={plan.originalDest}, " +
-                        $"dest={dest}, " +
-                        $"state={plan.State}",
-                        MigcorpSkiptechMod.LogLevel.Verbose);
-                    return;
+                        MigcorpSkiptechMod.Message($"{___pawn.Label} already has a skipNet plan for this scenario. {plan.State}" +
+                            $"entryPos={plan.entry.Position}, " +
+                            $"exitPos={plan.exit.Position}, " +
+                            $"originalDest={plan.originalDest}, " +
+                            $"dest={dest}, " +
+                            $"state={plan.State}",
+                            MigcorpSkiptechMod.LogLevel.Verbose);
+                        return;
+
+                    }
+                    else
+                    {
+                        // This shouldn't happen. It means that StartPath was called while the plan was in an Invalid or ExecutingExit state.
+                        // Invalid only happens if a plan failed to generate to begin with, and ExecutingExit disposes the plan immediately once it hits that state.
+                        MigcorpSkiptechMod.Warning($"{___pawn.Label} already had a skipNet plan for this scenario, but it was not in an ExecutingEntry state. Disposing plan.");
+                        plan.ResetPawnMoveState();
+                        plan.Dispose();
+                    }
                 }
                 else
                 {
@@ -87,13 +96,19 @@ namespace MigCorp.Skiptech.Comps
             MapComponent_SkipNet skipNet = ___pawn.Map.GetComponent<MapComponent_SkipNet>();
             if (!skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return true; }
 
-            if (plan.State == SkipNetPlanState.ExecutingEntry && ___pawn.Position == plan.entry.Position)
+            if (plan.State == SkipNetPlanState.ExecutingEntry && ___pawn.CanReachImmediate(new LocalTargetInfo(plan.entry.parent), PathEndMode.OnCell))
             {
                 plan.Notify_SkipNetPlanEntryReached();
                 return false;
             }
-            else if (plan.State == SkipNetPlanState.ExecutingExit || ___pawn.Position == plan.originalDest)
+            else if (___pawn.CanReachImmediate(plan.originalDest, plan.originalPeMode))
             {
+                plan.Notify_SkipNetPlanExitReached();
+                return true;
+            }
+            else if(plan.State == SkipNetPlanState.ExecutingExit)
+            {
+                MigcorpSkiptechMod.Warning($"{___pawn.Label} notified PatherArrived while in ExecutingExit state. This shouldn't happen.");
                 plan.Notify_SkipNetPlanExitReached();
                 return true;
             }
@@ -106,12 +121,13 @@ namespace MigCorp.Skiptech.Comps
         static bool PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
         {
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            if (skipNet == null || !skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return true; }
+            
+            // If we weren't running on a plan, let the PatherFailed notification pass.
+            if (skipNet == null || !skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.State == SkipNetPlanState.Invalid) { return true; }
 
-            LocalTargetInfo dest = plan.originalDest;
-            PathEndMode peMode = plan.originalPeMode;
+            // We had a plan and it failed. Let it try again or reset pathing rather than failing the original task.
             plan.Notify_SkipNetPlanFailedOrCancelled();
-            return false; // handled
+            return false;
         }
 
         // Special accessors to dig into a given Pawn_PathFollower's private fields.

@@ -94,11 +94,14 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             // We're green to go.
             State = SkipNetPlanState.ExecutingExit;
             SkipNetUtils.TeleportPawn(pawn, exit.Position);
+            Notify_SkipNetPlanExitReached();
+            pawn.pather.StartPath(originalDest, originalPeMode);
+        }
+
+        public void ResetPawnMoveState()
+        {
             pawn.pather.StopDead();
             pawn.stances.CancelBusyStanceSoft();
-            pawn.pather.StartPath(originalDest, originalPeMode);
-
-            Notify_SkipNetPlanExitReached();
         }
         public void Notify_SkipNetPlanEntryReached()
         {
@@ -113,9 +116,9 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         }
         public void Notify_SkipNetPlanExitReached()
         {
+            ResetPawnMoveState();
             entry.Notify_PawnTeleported(pawn, this, SkipdoorType.Entry);
             exit.Notify_PawnTeleported(pawn, this, SkipdoorType.Exit);
-            pawn.stances.CancelBusyStanceSoft();
             Dispose();
         }
 
@@ -130,8 +133,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 else
                 {
                     MigcorpSkiptechMod.Message($"{pawn.Label}'s skipnet plan failed.", MigcorpSkiptechMod.LogLevel.Verbose);
-                    pawn.pather.StopDead();
-                    pawn.stances.CancelBusyStanceSoft();
+                    ResetPawnMoveState();
                     State = SkipNetPlanState.Disposed;
 
                     // Check if all the conditions needed to path are in place.
