@@ -4,12 +4,6 @@ using HarmonyLib;
 using Verse.AI;
 using System;
 using MigCorp.Skiptech.Systems.SkipNet;
-using static MigCorp.Skiptech.Systems.SkipNet.MapComponent_SkipNet;
-using Verse.Noise;
-using MigCorp.Skiptech.Utils;
-using System.Security.Cryptography;
-using static UnityEngine.Scripting.GarbageCollector;
-using static RimWorld.ColonistBar;
 
 namespace MigCorp.Skiptech.Comps
 {
@@ -147,15 +141,18 @@ namespace MigCorp.Skiptech.Comps
         {
             Map map = ___pawn.Map;
             MapComponent_SkipNet skipNet = map.GetComponent<MapComponent_SkipNet>();
-            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
+
+            ref LocalTargetInfo dest = ref _patherDestRef(___pawn.pather);
+            ref PathEndMode peMode = ref _patherPeModeRef(___pawn.pather);
+
+            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) && plan.State != SkipNetPlanState.Invalid)
             {
                 TraverseParms tp = TraverseParms.For(___pawn, mode: TraverseMode.ByPawn);
 
-
                 if (plan.State == SkipNetPlanState.ExecutingEntry)
                 {
-                    ref LocalTargetInfo dest = ref _patherDestRef(___pawn.pather);
-                    ref PathEndMode peMode = ref _patherPeModeRef(___pawn.pather);
+                    MigcorpSkiptechMod.Message($"{___pawn.Label} is calling TryFindEligibleSkipNetPlan from GenerateNewPathRequest_Prefix. plan.state={plan?.State}.",
+                        MigcorpSkiptechMod.LogLevel.Verbose);
 
                     if (!plan.CheckIsStillAccessible() ||
                         !plan.CheckIsStillPathable(map, tp))
@@ -196,7 +193,13 @@ namespace MigCorp.Skiptech.Comps
             // Try one first.
             else if(!skipNet.TryGetSkipNetPlan(___pawn, out plan, true) || plan.State != SkipNetPlanState.Invalid)
             {
-                skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan);
+                MigcorpSkiptechMod.Message($"{___pawn.Label} is calling TryFindEligibleSkipNetPlan from GenerateNewPathRequest_Prefix. plan.state={plan?.State}.",
+                        MigcorpSkiptechMod.LogLevel.Verbose);
+                if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
+                {
+                    dest = plan.entry.Position;
+                    peMode = PathEndMode.OnCell;
+                }
             }
 
             // Fall-through: plan is still fine; allow vanilla to create a new request
