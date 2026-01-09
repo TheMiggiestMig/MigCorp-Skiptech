@@ -191,7 +191,7 @@ namespace MigCorp.Skiptech.Comps
             // Check if we've tried a skipnet plan this tick, if not, try that instead.
             // If there is a disposed of plan, then we may have already tried. If not,
             // Try one first.
-            else if(!skipNet.TryGetSkipNetPlan(___pawn, out plan, true) || plan.State != SkipNetPlanState.Invalid)
+            else if(!skipNet.TryGetSkipNetPlan(___pawn, out plan, true) || !plan.IsInvalid)
             {
                 MigcorpSkiptechMod.Message($"{___pawn.Label} is calling TryFindEligibleSkipNetPlan from GenerateNewPathRequest_Prefix. plan.state={plan?.State}.",
                         MigcorpSkiptechMod.LogLevel.Verbose);
@@ -207,7 +207,6 @@ namespace MigCorp.Skiptech.Comps
         }
         
         // Make sure the save data holds the original destination and peMode, not the SkipNetPlan replacement.
-
         public struct SwappedSaveState
         {
             public bool swapped;

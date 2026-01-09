@@ -15,8 +15,8 @@ namespace MigCorp.Skiptech.Comps
     {
         public CompProperties_Skipdoor Props => (CompProperties_Skipdoor)props;
         public IntVec3 Position => parent.Position;
-
         public List<ISkipdoorAccessible> accessibilityComps = new List<ISkipdoorAccessible>();
+        public MapComponent_SkipNet SkipNet => parent.Map?.GetComponent<MapComponent_SkipNet>();
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
@@ -28,7 +28,7 @@ namespace MigCorp.Skiptech.Comps
                 if (thingComp is ISkipdoorAccessible accessible) { accessibilityComps.Add(accessible); }
             }
 
-            GetSkipNetwork().RegisterSkipdoor(this);
+            SkipNet.RegisterSkipdoor(this);
         }
 
         public override void PostDeSpawn(Map map, DestroyMode dMode)
@@ -37,7 +37,6 @@ namespace MigCorp.Skiptech.Comps
             base.PostDeSpawn(map, dMode);
         }
 
-        public MapComponent_SkipNet GetSkipNetwork() => parent.Map?.GetComponent<MapComponent_SkipNet>();
 
         /// <summary>
         /// Aggregate check if a pawn can exit this skipdoor by checking the comps that define access rules.
@@ -102,7 +101,7 @@ namespace MigCorp.Skiptech.Comps
             bool allowed = true;
 
             // Check if it is forbidden (if it even has that comp)
-            allowed = (parent.GetComp<CompForbiddable>()?.Forbidden ?? false) ? false : allowed;
+            allowed = (!pawn.IsColonist || (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
 
             // Check if it is broken (if it even has that comp)
             allowed = (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false) ? false : allowed;
@@ -115,7 +114,7 @@ namespace MigCorp.Skiptech.Comps
             bool allowed = true;
 
             // Check if it is forbidden (if it even has that comp)
-            allowed = (parent.GetComp<CompForbiddable>()?.Forbidden ?? false) ? false : allowed;
+            allowed = (!pawn.IsColonist || (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
 
             // Check if it is broken (if it even has that comp)
             allowed = (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false) ? false : allowed;

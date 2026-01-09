@@ -30,8 +30,14 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
         private SkipNetPlanState state = SkipNetPlanState.None;
         public SkipNetPlanState State { get { return state; } set { state = value; } }
-        public bool arrived = false;
+        private bool arrived = false;
         private int nextResolveTick;
+
+        public bool IsInvalid { get { return state == SkipNetPlanState.Invalid; } }
+        public bool IsDisposed { get { return state == SkipNetPlanState.Disposed; } }
+        public bool IsDisposedOrInvalid {  get { return IsDisposed || IsInvalid; } }
+        public bool Arrived { get { return arrived; } }
+
         public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, CompSkipdoor entry, CompSkipdoor exit, LocalTargetInfo dest, PathEndMode peMode)
         {
             originalDest = dest;
@@ -66,15 +72,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             Map map = pawn.Map;
             TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
 
-            // If we can't access the required skipdoors, or their path's would be invalid, bail.
-            if (!CheckIsStillAccessible() || !CheckIsStillPathable(map, tp))
-            {
-                MigcorpSkiptechMod.Message($"{pawn.Label} cannot reach exit or destination from exit. Cancelling plan.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
-                Notify_SkipNetPlanFailedOrCancelled();
-                return;
-            }
-
             // We are allowed to enter at this point, but the skipdoors may not be ready yet.
             // Check if we're waiting on anything.
             entry.IsEnterableNowBy(pawn, out int entryWaitTicks);
@@ -88,6 +85,15 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 $"exitWaitTicks={exitWaitTicks}", MigcorpSkiptechMod.LogLevel.Verbose);
                 nextResolveTick = GenTicks.TicksGame + waitTicks;
                 pawn.stances.SetStance(new Stance_Cooldown(waitTicks, pawn, null));
+                return;
+            }
+
+            // Last check for accessibility.
+            if (!CheckIsStillAccessible() || !CheckIsStillPathable(map, tp))
+            {
+                MigcorpSkiptechMod.Message($"{pawn.Label} cannot reach exit or destination from exit. Cancelling plan.",
+                    MigcorpSkiptechMod.LogLevel.Verbose);
+                Notify_SkipNetPlanFailedOrCancelled();
                 return;
             }
 
@@ -111,7 +117,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             // This lets them start events and change states if necessary.
             entry.Notify_PawnArrived(pawn, this, SkipdoorType.Entry);
             exit.Notify_PawnArrived(pawn, this, SkipdoorType.Exit);
-
             Resolve();
         }
         public void Notify_SkipNetPlanExitReached()
@@ -126,7 +131,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         {
             try
             {
-                if (pawn?.Map == null || pawn.pather == null)
+                if (pawn?.Map == null || !pawn.Spawned || pawn.pather == null)
                 {
                     MigcorpSkiptechMod.Error($"Not sure how we got here, but skipnet plan failed because pawn't.");
                 }
@@ -168,11 +173,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         /// <returns></returns>
         public bool CheckIsStillAccessible()
         {
-            if (!entry.IsEnterableBy(pawn) || !exit.IsExitableBy(pawn))
-            {
-                return false;
-            }
-            return true;
+            return entry.IsEnterableBy(pawn) && exit.IsExitableBy(pawn);
         }
 
         public bool CheckIsStillPathable(Map map, TraverseParms tp)

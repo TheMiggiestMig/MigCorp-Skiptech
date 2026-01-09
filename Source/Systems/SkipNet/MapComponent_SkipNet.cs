@@ -24,7 +24,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         private readonly List<KeyValuePair<Pawn, SkipNetPlan>> _tempPawnSkipNetPlans = new List<KeyValuePair<Pawn, SkipNetPlan>>(); // Snapshot for the pawnSkipNetPlans to prevent mutating the table mid loop.
 
         public List<Pawn> disposedPawnSkipNetPlans;
-        public List<Pawn> badPawnSkipNetPlans;
         public int lastSkipNetPlanDeepCleanTick;
         private int ticksBetweenSkipNetPlanDeepClean = 180;
 
@@ -39,7 +38,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
             pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
             disposedPawnSkipNetPlans = new List<Pawn>();
-            badPawnSkipNetPlans = new List<Pawn>();
 
             tmpEnterableSkipdoors = new List<CompSkipdoor>();
             tmpExitableSkipdoors = new List<CompSkipdoor>();
@@ -135,7 +133,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         {
             if (pawn == null ||
                 !pawnSkipNetPlans.TryGetValue(pawn, out plan) ||
-                (!force && plan.State == SkipNetPlanState.Disposed)
+                (!force && plan.IsDisposed)
                 )
             {
                 plan = default;
@@ -158,7 +156,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             {
                 plan = activeSkipnetPlans[i].Value;
 
-                if (plan.State != SkipNetPlanState.Disposed && plan.arrived)
+                if (!plan.IsDisposedOrInvalid && plan.Arrived)
                     plan.Resolve();
             }
         }
@@ -172,9 +170,8 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 DeepCleanup();
                 lastSkipNetPlanDeepCleanTick = GenTicks.TicksGame;
             }
-            RemoveDisposedSkipNetPlans();
 
-            badPawnSkipNetPlans.Clear();
+            RemoveDisposedSkipNetPlans();
             disposedPawnSkipNetPlans.Clear();
         }
 
@@ -189,19 +186,18 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 pawn = activeSkipnetPlans[i].Key;
                 plan = activeSkipnetPlans[i].Value;
 
-                if (plan.State == SkipNetPlanState.Invalid)
+                if (plan.IsInvalid)
                 {
                     plan.Dispose();
                     continue;
                 }
 
                 // Check if the skipdoors are still useable.
-                if (plan.State != SkipNetPlanState.Disposed &&
+                if (!plan.IsDisposedOrInvalid &&
                 !plan.CheckIsStillAccessible())
                 {
-                    plan.Dispose();
-                    badPawnSkipNetPlans.AddDistinct(pawn);
-                };
+                    plan.Notify_SkipNetPlanFailedOrCancelled();
+                }
             }
         }
 
@@ -210,7 +206,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             foreach (Pawn pawn in disposedPawnSkipNetPlans)
             {
                 if (pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan) &&
-                    plan.State == SkipNetPlanState.Disposed
+                    plan.IsDisposed
                     )
                 {
                     pawnSkipNetPlans.Remove(pawn);
@@ -229,19 +225,16 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 pawn = activeSkipnetPlans[i].Key;
                 plan = activeSkipnetPlans[i].Value;
 
-                if (pawn?.Map != map ||
-                    plan.State == SkipNetPlanState.Disposed
-                    )
+                if (pawn?.Map != map || !pawn.Spawned || plan.IsDisposed)
                 {
                     disposedPawnSkipNetPlans.AddDistinct(pawn);
                 }
 
                 // Check if the paths are still valid.
-                if (plan.State != SkipNetPlanState.Disposed &&
+                if (!plan.IsDisposedOrInvalid &&
                 !plan.CheckIsStillPathable(map, TraverseParms.For(pawn, mode: TraverseMode.ByPawn)))
                 {
-                    plan.Dispose();
-                    badPawnSkipNetPlans.AddDistinct(pawn);
+                    plan.Notify_SkipNetPlanFailedOrCancelled();
                 };
             }
         }
