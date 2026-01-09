@@ -82,7 +82,14 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 MigcorpSkiptechMod.Warning($"StartPath will also flag this, but {pawn?.Label} is down for the count and shouldn't be pathing.");
                 return false;
             }
-                pawnReg = map.regionGrid.GetValidRegionAt_NoRebuild(pawn.Position);
+
+            // Make sure the pawn is actually in a valid region.
+            pawnReg = map.regionGrid.GetValidRegionAt_NoRebuild(pawn.Position);
+            if (pawnReg == null)
+            {
+                MigcorpSkiptechMod.Warning($"{pawn?.Label} is somehow on the map, but not in a valid region. Are they embedded in a wall somewhere?");
+                return false;
+            }
 
             // Are they on the same map?
             if (dest.HasThing && dest.Thing.MapHeld != pawn.Map)
@@ -134,6 +141,9 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                     MigcorpSkiptechMod.LogLevel.Verbose);
                 TouchPathEndModeUtility.AddAllowedAdjacentRegions(normalizedDest, tp, map, destRegs);
             }
+
+            // Clean up any null regions from AddAllowedAdjacentRegions (just in case it hadn't finished rebuilding).
+            destRegs.RemoveAll(r => r == null || !r.valid || !r.Allows(tp, isDestination:false));
 
             if (destRegs.Count == 0)
             {
