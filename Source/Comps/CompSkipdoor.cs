@@ -101,7 +101,7 @@ namespace MigCorp.Skiptech.Comps
             bool allowed = true;
 
             // Check if it is forbidden (if it even has that comp)
-            allowed = (!pawn.IsColonist || (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
+            allowed = (pawn.IsColonist && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
 
             // Check if it is broken (if it even has that comp)
             allowed = (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false) ? false : allowed;
@@ -114,7 +114,7 @@ namespace MigCorp.Skiptech.Comps
             bool allowed = true;
 
             // Check if it is forbidden (if it even has that comp)
-            allowed = (!pawn.IsColonist || (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
+            allowed = (pawn.IsColonist && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
 
             // Check if it is broken (if it even has that comp)
             allowed = (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false) ? false : allowed;

@@ -71,6 +71,18 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         public void UnregisterSkipdoor(CompSkipdoor skipdoor)
         {
             skipdoors.Remove(skipdoor);
+
+            // Notify all plans using this skipdoor to cancel
+            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
+            SkipNetPlan plan;
+
+            for (int i = 0; i < activeSkipnetPlans.Count; i++)
+            {
+                plan = activeSkipnetPlans[i].Value;
+
+                if (plan.entry == skipdoor || plan.exit == skipdoor)
+                    plan.Notify_SkipNetPlanFailedOrCancelled();
+            }
         }
 
         //
