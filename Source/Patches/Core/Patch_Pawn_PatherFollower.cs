@@ -141,8 +141,14 @@ namespace MigCorp.Skiptech.Comps
             ref LocalTargetInfo dest = ref _patherDestRef(___pawn.pather);
             ref PathEndMode peMode = ref _patherPeModeRef(___pawn.pather);
 
-            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) && plan.State != SkipNetPlanState.None)
+            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
+                if(plan.tickCreated == GenTicks.TicksGame)
+                {
+                    // This path request is for a plan that was just created. Don't bother doing the checks, it's good... trust.
+                    return true;
+                }
+
                 TraverseParms tp = TraverseParms.For(___pawn, mode: TraverseMode.ByPawn);
 
                 if (plan.State == SkipNetPlanState.ExecutingEntry)
