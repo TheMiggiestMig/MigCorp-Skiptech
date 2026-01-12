@@ -419,7 +419,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 }
             }
 
-            plan = new SkipNetPlan(skipNet, pawn, bestEntry, bestExit, originalDest, peMode);
+            plan.Initialize(bestEntry, bestExit, originalDest, peMode);
             MigcorpSkiptechMod.Message($"{pawn.Label} created a SkipNetPlan using {bestEntry} and {bestExit}.",
                 MigcorpSkiptechMod.LogLevel.Verbose);
             return true;

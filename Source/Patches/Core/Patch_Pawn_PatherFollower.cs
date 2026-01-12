@@ -10,6 +10,12 @@ namespace MigCorp.Skiptech.Comps
     [HarmonyPatch(typeof(Pawn_PathFollower))]
     static class Pawn_PathFollower_Patch
     {
+        // Special accessors to dig into a given Pawn_PathFollower's private fields.
+        static readonly AccessTools.FieldRef<Pawn_PathFollower, LocalTargetInfo>
+        _patherDestRef = AccessTools.FieldRefAccess<Pawn_PathFollower, LocalTargetInfo>("destination");
+        static readonly AccessTools.FieldRef<Pawn_PathFollower, PathEndMode>
+        _patherPeModeRef = AccessTools.FieldRefAccess<Pawn_PathFollower, PathEndMode>("peMode");
+
         [HarmonyPrefix]
         [HarmonyPatch(nameof(Pawn_PathFollower.StartPath))]
         static void StartPath_Prefix(
@@ -29,12 +35,14 @@ namespace MigCorp.Skiptech.Comps
 
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
-                if (plan.originalDest == dest && plan.originalPeMode == peMode)
+                bool matchesOriginalDest =  dest == plan.originalDest && peMode == plan.originalPeMode;
+
+                if (plan.State == SkipNetPlanState.ExecutingEntry)
                 {
-                    if(plan.State == SkipNetPlanState.ExecutingEntry)
+                    // For some reason, start path was called again to the same destination. Just keep using the current plan.
+                    if (matchesOriginalDest)
                     {
-                        // Mofo keeps trying to overwrite my plan. Force it back!
-                        dest = plan.entry.Position;
+                        dest = plan.entry.parent;
                         peMode = PathEndMode.OnCell;
 
                         MigcorpSkiptechMod.Message($"{___pawn.Label} already has a skipNet plan for this scenario. {plan.State}" +
@@ -45,28 +53,34 @@ namespace MigCorp.Skiptech.Comps
                             $"state={plan.State}",
                             MigcorpSkiptechMod.LogLevel.Verbose);
                         return;
-
                     }
                     else
                     {
-                        // This shouldn't happen. It means that StartPath was called while the plan was in an Invalid or ExecutingExit state.
-                        // Invalid only happens if a plan failed to generate to begin with, and ExecutingExit disposes the plan immediately once it hits that state.
-                        MigcorpSkiptechMod.Warning($"{___pawn.Label} already had a skipNet plan for this scenario, but it was not in an ExecutingEntry state. Disposing plan.");
-                        plan.ResetPawnMoveState();
                         plan.Dispose();
                     }
                 }
+                else if (plan.State == SkipNetPlanState.None)
+                {
+                    // We've already tried and failed this tick. Let vanilla handle it.
+                    return;
+                }
                 else
                 {
+                    // This shouldn't happen. It means that StartPath was called while the plan was in an ExecutingExit state.
+                    // ExecutingExit disposes the plan immediately once it hits that state, so it should never live long enough to live to this state.
+                    MigcorpSkiptechMod.Warning($"{___pawn.Label} already had a skipNet plan for this scenario, but it was not in an ExecutingEntry state. Disposing plan.");
+                    plan.ResetPawnMoveState();
                     plan.Dispose();
+                    return;
                 }
             }
 
+            // There isn't an existing plan, try generating one.
             if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, dest, peMode, out plan))
             {
                 MigcorpSkiptechMod.Message($"{___pawn.Label} created a plan and hijacked the pathfinding.",
                     MigcorpSkiptechMod.LogLevel.Verbose);
-                dest = plan.entry.parent.Position;
+                dest = plan.entry.parent;
                 peMode = PathEndMode.OnCell;
             }
             else
@@ -87,8 +101,10 @@ namespace MigCorp.Skiptech.Comps
             Pawn ___pawn
             )
         {
-            MapComponent_SkipNet skipNet = ___pawn.Map.GetComponent<MapComponent_SkipNet>();
-            if (!skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return true; }
+            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            if (skipNet == null) { return true; }
+
+            if (!skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
 
             if (plan.State == SkipNetPlanState.ExecutingEntry && ___pawn.CanReachImmediate(new LocalTargetInfo(plan.entry.parent), PathEndMode.OnCell))
             {
@@ -115,20 +131,15 @@ namespace MigCorp.Skiptech.Comps
         static bool PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
         {
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            
+            if (skipNet == null) { return true; }
+
             // If we weren't running on a plan, let the PatherFailed notification pass.
-            if (skipNet == null || !skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.State == SkipNetPlanState.Invalid) { return true; }
+            if (!skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
 
             // We had a plan and it failed. Let it try again or reset pathing rather than failing the original task.
             plan.Notify_SkipNetPlanFailedOrCancelled();
             return false;
         }
-
-        // Special accessors to dig into a given Pawn_PathFollower's private fields.
-        static readonly AccessTools.FieldRef<Pawn_PathFollower, LocalTargetInfo>
-        _patherDestRef = AccessTools.FieldRefAccess<Pawn_PathFollower, LocalTargetInfo>("destination");
-        static readonly AccessTools.FieldRef<Pawn_PathFollower, PathEndMode>
-        _patherPeModeRef = AccessTools.FieldRefAccess<Pawn_PathFollower, PathEndMode>("peMode");
 
         [HarmonyPrefix]
         [HarmonyPatch("GenerateNewPathRequest")]
@@ -140,12 +151,13 @@ namespace MigCorp.Skiptech.Comps
             PathEndMode ___peMode)
         {
             Map map = ___pawn.Map;
-            MapComponent_SkipNet skipNet = map.GetComponent<MapComponent_SkipNet>();
+            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            if (skipNet == null) { return true; }
 
             ref LocalTargetInfo dest = ref _patherDestRef(___pawn.pather);
             ref PathEndMode peMode = ref _patherPeModeRef(___pawn.pather);
 
-            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) && plan.State != SkipNetPlanState.Invalid)
+            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) && plan.State != SkipNetPlanState.None)
             {
                 TraverseParms tp = TraverseParms.For(___pawn, mode: TraverseMode.ByPawn);
 
@@ -173,14 +185,14 @@ namespace MigCorp.Skiptech.Comps
                         // Try finding a new route.
                         if(skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
                         {
-                            dest = plan.entry.Position;
+                            dest = plan.entry.parent;
                             peMode = PathEndMode.OnCell;
                         };
                         return true;
                     }
 
                     // Re-apply the hijack.
-                    dest = plan.entry.Position;
+                    dest = plan.entry.parent;
                     peMode = PathEndMode.OnCell;
 
                     MigcorpSkiptechMod.Message($"{___pawn.Label} reusing existing skipNet plan; re-hijacking StartPath to entry at {plan.entry.Position}.",
@@ -197,7 +209,7 @@ namespace MigCorp.Skiptech.Comps
                         MigcorpSkiptechMod.LogLevel.Verbose);
                 if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
                 {
-                    dest = plan.entry.Position;
+                    dest = plan.entry.parent;
                     peMode = PathEndMode.OnCell;
                 }
             }
@@ -235,7 +247,9 @@ namespace MigCorp.Skiptech.Comps
             if (Scribe.mode != LoadSaveMode.Saving) { return; }
 
             Map map = ___pawn.Map;
-            MapComponent_SkipNet skipNet = map.GetComponent<MapComponent_SkipNet>();
+
+            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            if (skipNet == null) { return; }
 
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {

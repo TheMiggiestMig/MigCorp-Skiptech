@@ -13,7 +13,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         None,
         ExecutingEntry,
         ExecutingExit,
-        Invalid,
         Disposed
     }
     
@@ -33,33 +32,27 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         private bool arrived = false;
         private int nextResolveTick;
 
-        public bool IsInvalid { get { return state == SkipNetPlanState.Invalid; } }
+        public bool IsInvalid { get { return state == SkipNetPlanState.None; } }
         public bool IsDisposed { get { return state == SkipNetPlanState.Disposed; } }
         public bool IsDisposedOrInvalid {  get { return IsDisposed || IsInvalid; } }
         public bool Arrived { get { return arrived; } }
 
-        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, CompSkipdoor entry, CompSkipdoor exit, LocalTargetInfo dest, PathEndMode peMode)
+        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn)
+        {
+            this.pawn = pawn;
+            this.skipNet = skipNet;
+            tickCreated = GenTicks.TicksGame;
+            skipNet.RegisterPlan(pawn, this);
+        }
+
+        public void Initialize(CompSkipdoor entry, CompSkipdoor exit, LocalTargetInfo dest, PathEndMode peMode)
         {
             originalDest = dest;
             originalDestPostition = dest.Cell != default ? dest.Cell : (IntVec3)dest;
             originalPeMode = peMode;
             this.entry = entry;
             this.exit = exit;
-            this.pawn = pawn;
-            this.skipNet = skipNet;
             State = SkipNetPlanState.ExecutingEntry;
-            tickCreated = GenTicks.TicksGame;
-            skipNet.RegisterPlan(pawn, this);
-        }
-
-        // Register a dummy SkipNetPlan.
-        // This should be cleaned up by the SkipNet next tick.
-        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn)
-        {
-            this.pawn = pawn;
-            this.skipNet = skipNet;
-            State = SkipNetPlanState.Invalid;
-            skipNet.RegisterPlan(pawn, this);
         }
         public void Resolve()
         {
