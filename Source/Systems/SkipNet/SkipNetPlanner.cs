@@ -127,10 +127,10 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             else if(normalizedPeMode ==  PathEndMode.Touch)
             {
                 TouchPathEndModeUtility.AddAllowedAdjacentRegions(normalizedDest, tp, map, destRegs);
-            }
 
-            // Clean up any null regions from AddAllowedAdjacentRegions (just in case it hadn't finished rebuilding).
-            destRegs.RemoveAll(r => r == null || !r.valid || !r.Allows(tp, isDestination:false));
+                // Clean up any null regions from AddAllowedAdjacentRegions (just in case it hadn't finished rebuilding).
+                destRegs.RemoveAll(r => r == null || !r.valid || !r.Allows(tp, isDestination: false));
+            }
 
             if (destRegs.Count == 0)
             {
@@ -147,13 +147,13 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             return true;
         }
 
-        public bool TryExtractIntVec3Dest(LocalTargetInfo dest, out IntVec3 proxyDest)
+        public bool TryExtractIntVec3Dest(LocalTargetInfo dest, out IntVec3 destCell)
         {
-            proxyDest = IntVec3.Invalid;
+            destCell = IntVec3.Invalid;
 
             if (dest.Cell.IsValid)
             {
-                proxyDest = dest.Cell;
+                destCell = dest.Cell;
                 return true;
             }
             
@@ -166,7 +166,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 // Check if the thing is not spawned and has no owner (not being held or in a container).
                 if (!dest.Thing.Spawned && dest.Thing.holdingOwner == null) { return false; }
 
-                proxyDest = dest.Thing.PositionHeld;
+                destCell = dest.Thing.PositionHeld;
                 return true;
             }
 
@@ -205,20 +205,20 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             if (!TryInitializePlanner(pawn, dest, peMode, tp, out Region regPawn, out List<Region> regDests)) { return false; }
             LocalTargetInfo originalDest = dest;
 
-            if(!TryExtractIntVec3Dest(originalDest, out IntVec3 proxyDest)) { return false; }
-            dest = proxyDest;
+            if(!TryExtractIntVec3Dest(originalDest, out IntVec3 destCell)) { return false; }
+            dest = destCell;
 
             // Prepare the search from both ends (pawn / dest).
             int entrySkipdoorRange = -1;
             int exitSkipdoorRange = -1;
-            int bestEntryG = int.MaxValue;
-            int bestExitG = int.MaxValue;
-            int estimateTotalG = 0;
+            int entryRegionCost = int.MaxValue;
+            int exitRegionCost = int.MaxValue;
+            int estimateDirectRegionCost = 0;
             int linkCost;
             CompSkipdoor bestEntry = null;
             CompSkipdoor bestExit = null;
-            int bestEntryH = int.MaxValue;
-            int bestExitH = int.MaxValue;
+            int bestEntryHeuristicCost = int.MaxValue;
+            int bestExitHeuristicCost = int.MaxValue;
             bool pawnSideReachedDest = false;
 
             openPawnRegions.AddLast(regPawn); closedPawnRegions[regPawn] = 0;
@@ -229,53 +229,54 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             }
 
             // Helper function: Scan's a given region for skipdoors the pawn can enter.
-            bool TryScanForEntry(Region region, int gCost)
+            bool TryScanForEntry(Region region, int regionCost)
             {
-                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> set)) return false;
-                if (!skipNet.TryGetEnterableSkipdoors(pawn, out List<CompSkipdoor> enterable, skipdoorListToFilter: new List<CompSkipdoor>(set))) return false;
+                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> candidateSkipDoors)) return false;
+                if (!skipNet.TryGetEnterableSkipdoors(pawn, out List<CompSkipdoor> enterable, skipdoorListToFilter: candidateSkipDoors)) return false;
                 foreach (CompSkipdoor skipdoor in enterable)
                 {
-                    int h = SkipNetUtils.OctileDistance(pawn.Position, skipdoor.Position);
-                    if (h < bestEntryH && map.reachability.CanReach(pawn.Position, skipdoor.parent, PathEndMode.OnCell, tp))
+                    int heuristicCost = SkipNetUtils.OctileDistance(pawn.Position, skipdoor.Position);
+                    if (heuristicCost < bestEntryHeuristicCost && map.reachability.CanReach(pawn.Position, skipdoor.parent, PathEndMode.OnCell, tp))
                     {
-                        bestEntryH = h; bestEntry = skipdoor; bestEntryG = gCost;
+                        bestEntryHeuristicCost = heuristicCost; bestEntry = skipdoor; entryRegionCost = regionCost;
                     }
                 }
                 return true;
             }
 
             // Helper function: Scan's a given region for skipdoors the pawn can exit.
-            bool TryScanForExit(Region region, int gCost)
+            bool TryScanForExit(Region region, int regionCost)
             {
-                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> set)) return false;
-                if (!skipNet.TryGetExitableSkipdoors(pawn, out List<CompSkipdoor> exitable, skipdoorListToFilter: new List<CompSkipdoor>(set))) return false;
+                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> candidateSkipdoors)) return false;
+                if (!skipNet.TryGetExitableSkipdoors(pawn, out List<CompSkipdoor> exitable, skipdoorListToFilter: candidateSkipdoors)) return false;
                 foreach (CompSkipdoor skipdoor in exitable)
                 {
-                    int h = SkipNetUtils.OctileDistance(skipdoor.Position, dest.Cell);
-                    if (h < bestExitH && map.reachability.CanReach(region.AnyCell, skipdoor.parent, PathEndMode.OnCell, tp))
+                    int heuristicCost = SkipNetUtils.OctileDistance(skipdoor.Position, dest.Cell);
+                    if (heuristicCost < bestExitHeuristicCost && map.reachability.CanReach(region.AnyCell, skipdoor.parent, PathEndMode.OnCell, tp))
                     {
-                        bestExitH = h; bestExit = skipdoor; bestExitG = gCost;
+                        bestExitHeuristicCost = heuristicCost; bestExit = skipdoor; exitRegionCost = regionCost;
                     }
                 }
                 return true;
             }
 
-            // The actual BFS search.
+            // We're gonna do 2 BFS searches at the same time; one from the pawn for the entry, and one from the destination for the exit.
+            // Early exit conditions: entry + exit found before both searches overlap, or both searches overlap before entry + exit is found.
             while ((openPawnRegions.Count > 0 || openDestRegions.Count > 0))
             {
                 // Expand pawn search
                 if (openPawnRegions.Count > 0)
                 {
                     Region region = openPawnRegions.PopFirst();
-                    int g = closedPawnRegions[region];
+                    int regionCost = closedPawnRegions[region];
 
                     // Search for an entry skipdoor if we either haven't discovered one,
                     // or are still within the search range for them.
-                    if (entrySkipdoorRange == -1 || g <= entrySkipdoorRange)
+                    if (entrySkipdoorRange == -1 || regionCost <= entrySkipdoorRange)
                     {
-                        if (TryScanForEntry(region, g) && entrySkipdoorRange == -1)
+                        if (TryScanForEntry(region, regionCost) && entrySkipdoorRange == -1)
                         {
-                            entrySkipdoorRange = Math.Max(g + 1, 2);
+                            entrySkipdoorRange = Math.Max(regionCost + 1, 2);
                         }
                     }
 
@@ -284,7 +285,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                     {
                         // We have a direct path, which is a prerequisite for a SkipNetPlan.
                         pawnSideReachedDest = true;
-                        estimateTotalG = closedDestRegions[region] + g;
+                        estimateDirectRegionCost = closedDestRegions[region] + regionCost;
                     }
 
                     // Add the linked regions to the pawn search.
@@ -298,49 +299,46 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
                         // If we've already established a direct path,
                         // only add regions within our skipdoor search range.
-                        if (pawnSideReachedDest && entrySkipdoorRange != -1 && g > entrySkipdoorRange) continue;
+                        if (pawnSideReachedDest && entrySkipdoorRange != -1 && regionCost > entrySkipdoorRange) continue;
 
-                        closedPawnRegions[nextRegion] = g + linkCost;
+                        closedPawnRegions[nextRegion] = regionCost + linkCost;
                         if (linkCost == 0) { openPawnRegions.AddFirst(nextRegion); }
                         else { openPawnRegions.AddLast(nextRegion); }
                     }
                 }
 
                 // Expand destination search (same thing as the pawn search)
-                for (int i = 0; i < regDests.Count; i++)
+                if (openDestRegions.Count > 0)
                 {
-                    if (openDestRegions.Count > 0)
+                    Region region = openDestRegions.PopFirst();
+                    int regionCost = closedDestRegions[region];
+
+                    if (exitSkipdoorRange == -1 || regionCost <= exitSkipdoorRange)
                     {
-                        Region region = openDestRegions.PopFirst();
-                        int g = closedDestRegions[region];
-
-                        if (exitSkipdoorRange == -1 || g <= exitSkipdoorRange)
+                        if (TryScanForExit(region, regionCost) && exitSkipdoorRange == -1)
                         {
-                            if (TryScanForExit(region, g) && exitSkipdoorRange == -1)
-                            {
-                                exitSkipdoorRange = Math.Max(g + 1, 2);
-                            }
+                            exitSkipdoorRange = Math.Max(regionCost + 1, 2);
                         }
+                    }
 
-                        if (!pawnSideReachedDest && (region == regPawn || closedPawnRegions.ContainsKey(region)))
-                        {
-                            pawnSideReachedDest = true;
-                            estimateTotalG = closedPawnRegions[region] + g;
-                        }
+                    if (!pawnSideReachedDest && (region == regPawn || closedPawnRegions.ContainsKey(region)))
+                    {
+                        pawnSideReachedDest = true;
+                        estimateDirectRegionCost = closedPawnRegions[region] + regionCost;
+                    }
 
-                        foreach (RegionLink link in region.links)
-                        {
-                            Region nextRegion = link.GetOtherRegion(region);
-                            if (nextRegion == null || !nextRegion.valid || closedDestRegions.ContainsKey(nextRegion) || !nextRegion.Allows(tp, false)) continue;
+                    foreach (RegionLink link in region.links)
+                    {
+                        Region nextRegion = link.GetOtherRegion(region);
+                        if (nextRegion == null || !nextRegion.valid || closedDestRegions.ContainsKey(nextRegion) || !nextRegion.Allows(tp, false)) continue;
 
-                            linkCost = ((nextRegion.IsDoorway) ? 0 : 1);
+                        linkCost = ((nextRegion.IsDoorway) ? 0 : 1);
 
-                            if (pawnSideReachedDest && exitSkipdoorRange != -1 && g > exitSkipdoorRange) continue;
+                        if (pawnSideReachedDest && exitSkipdoorRange != -1 && regionCost > exitSkipdoorRange) continue;
 
-                            closedDestRegions[nextRegion] = g + linkCost;
-                            if (linkCost == 0) { openDestRegions.AddFirst(nextRegion); }
-                            else { openDestRegions.AddLast(nextRegion); }
-                        }
+                        closedDestRegions[nextRegion] = regionCost + linkCost;
+                        if (linkCost == 0) { openDestRegions.AddFirst(nextRegion); }
+                        else { openDestRegions.AddLast(nextRegion); }
                     }
                 }
             }
@@ -356,14 +354,14 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             }
 
             // Check if our skipplan is shorter than direct travel by region.
-            int skipPlanG = bestEntryG + bestExitG;
-            if (skipPlanG > estimateTotalG)
+            int skipplanTotalCost = entryRegionCost + exitRegionCost;
+            if (skipplanTotalCost > estimateDirectRegionCost)
             {
                 return false;
             }
 
             // Same diff, except comparing octile heuristics (in case of tie break).
-            if (skipPlanG == estimateTotalG)
+            if (skipplanTotalCost == estimateDirectRegionCost)
             {
                 int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
                 int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
