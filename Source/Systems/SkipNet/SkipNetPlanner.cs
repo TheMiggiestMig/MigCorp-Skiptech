@@ -64,46 +64,30 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             // No pawn? No dest? No plan.
             if (pawn?.Map == null || pawn.Map != skipNet.map || dest == null || !dest.IsValid)
             {
-                MigcorpSkiptechMod.Warning($"{pawn?.Label} is not on the map, or dest({dest}) is not valid.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
-            }
-
-            // Make sure the pawn is actually within the map borders.
-            if(!pawn.Position.InBounds(skipNet.map))
-            {
-                MigcorpSkiptechMod.Warning($"{pawn?.Label} is not in bounds on the map.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
             }
 
             // I don't care how advanced the science is: If the pawn can't crawl to their destination, they can't crawl to a skipdoor neither.
             if (pawn.Downed && !pawn.health.CanCrawl)
             {
-                MigcorpSkiptechMod.Warning($"StartPath will also flag this, but {pawn?.Label} is down for the count and shouldn't be pathing.");
                 return false;
             }
 
             // Make sure the pawn is actually in a valid region.
-            pawnReg = map.regionGrid.GetValidRegionAt_NoRebuild(pawn.Position);
+            pawnReg = pawn.GetRegion();
             if (pawnReg == null)
             {
-                MigcorpSkiptechMod.Warning($"{pawn?.Label} is somehow on the map, but not in a valid region. Are they embedded in a wall somewhere?");
                 return false;
             }
 
             // Are they on the same map?
             if (dest.HasThing && dest.Thing.MapHeld != pawn.Map)
             {
-                // The thing might be in a container. If not, it's not valid.
-                MigcorpSkiptechMod.Warning($"{pawn?.Label} and dest({dest}) are not on the same map.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
 
             if (!dest.Cell.InBounds(pawn.Map))
             {
-                MigcorpSkiptechMod.Warning($"{pawn?.Label}'s plan shows dest({dest}) is out of bounds.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
 
@@ -112,9 +96,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             // can't be arsed fighting CanReach in future >.>
             if (!skipNet.map.reachability.CanReach(pawn.Position, dest, peMode, tp))
             {
-
-                MigcorpSkiptechMod.Message($"{pawn?.Label} cannot reach the destination on foot.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
 
@@ -122,12 +103,8 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             PathEndMode normalizedPeMode = peMode;
             LocalTargetInfo normalizedDest = (LocalTargetInfo)GenPath.ResolvePathMode(pawn, dest.ToTargetInfo(map), ref normalizedPeMode);
 
-            MigcorpSkiptechMod.Message($"{pawn?.Label}'s plan has normalized PeMode={normalizedPeMode}, dest={dest}, normalizedDest={normalizedDest}.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
             if (normalizedPeMode == PathEndMode.OnCell)
             {
-                MigcorpSkiptechMod.Message($"{pawn?.Label}'s plan involves PathEndMode.OnCell at {normalizedDest}).",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 Region region = map.regionGrid.GetValidRegionAt_NoRebuild(normalizedDest.Cell);
                 if (region != null && region.Allows(tp, isDestination: true))
                 {
@@ -137,8 +114,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             // This should fix it for mining, shuttle loading, and pit gates.
             else if(normalizedPeMode ==  PathEndMode.Touch)
             {
-                MigcorpSkiptechMod.Message($"{pawn?.Label}'s plan involves PathEndMode.Touch at {normalizedDest}).",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 TouchPathEndModeUtility.AddAllowedAdjacentRegions(normalizedDest, tp, map, destRegs);
             }
 
@@ -147,8 +122,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
             if (destRegs.Count == 0)
             {
-                MigcorpSkiptechMod.Warning($"{pawn?.Label}'s plan could not find a valid region for dest({dest}).",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
 
@@ -244,10 +217,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 openDestRegions.AddLast(regDest); closedDestRegions[regDest] = 0;
             }
 
-            // We're good to go.
-            MigcorpSkiptechMod.Message($"{pawn.Label} is trying to find a skipNet path. (position={pawn.PositionHeld}, dest={dest.Cell}, pawnRegion={regPawn}, destRegions={regDests.ToStringSafeEnumerable()})",
-                MigcorpSkiptechMod.LogLevel.Verbose);
-
             // Helper function: Scan's a given region for skipdoors the pawn can enter.
             bool TryScanForEntry(Region region, int gCost)
             {
@@ -255,14 +224,11 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 if (!skipNet.TryGetEnterableSkipdoors(pawn, out List<CompSkipdoor> enterable, skipdoorListToFilter: new List<CompSkipdoor>(set))) return false;
                 foreach (CompSkipdoor skipdoor in enterable)
                 {
-                    string DEBUG_VERBOSE = $"Considering entry={skipdoor}, g={gCost}, maxG={entrySkipdoorRange}";
                     int h = SkipNetUtils.OctileDistance(pawn.Position, skipdoor.Position);
                     if (h < bestEntryH && map.reachability.CanReach(pawn.Position, skipdoor.parent, PathEndMode.OnCell, tp))
                     {
                         bestEntryH = h; bestEntry = skipdoor; bestEntryG = gCost;
-                        DEBUG_VERBOSE += ", best so far!";
                     }
-                    MigcorpSkiptechMod.Message(DEBUG_VERBOSE, MigcorpSkiptechMod.LogLevel.Verbose);
                 }
                 return true;
             }
@@ -274,14 +240,11 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 if (!skipNet.TryGetExitableSkipdoors(pawn, out List<CompSkipdoor> exitable, skipdoorListToFilter: new List<CompSkipdoor>(set))) return false;
                 foreach (CompSkipdoor skipdoor in exitable)
                 {
-                    string DEBUG_VERBOSE = $"Considering exit={skipdoor}, g={gCost}, maxG={exitSkipdoorRange}";
                     int h = SkipNetUtils.OctileDistance(skipdoor.Position, dest.Cell);
                     if (h < bestExitH && map.reachability.CanReach(region.AnyCell, skipdoor.parent, PathEndMode.OnCell, tp))
                     {
                         bestExitH = h; bestExit = skipdoor; bestExitG = gCost;
-                        DEBUG_VERBOSE += ", best so far!";
                     }
-                    MigcorpSkiptechMod.Message(DEBUG_VERBOSE, MigcorpSkiptechMod.LogLevel.Verbose);
                 }
                 return true;
             }
@@ -302,8 +265,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                         if (TryScanForEntry(region, g) && entrySkipdoorRange == -1)
                         {
                             entrySkipdoorRange = Math.Max(g + 1, 2);
-                            MigcorpSkiptechMod.Message($"Setting entrySkipdoorRange={entrySkipdoorRange}",
-                                MigcorpSkiptechMod.LogLevel.Verbose);
                         }
                     }
 
@@ -347,8 +308,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                             if (TryScanForExit(region, g) && exitSkipdoorRange == -1)
                             {
                                 exitSkipdoorRange = Math.Max(g + 1, 2);
-                                MigcorpSkiptechMod.Message($"Setting exitSkipdoorRange={exitSkipdoorRange}",
-                                    MigcorpSkiptechMod.LogLevel.Verbose);
                             }
                         }
 
@@ -377,15 +336,11 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
             if (bestEntry == null || bestExit == null)
             {
-                MigcorpSkiptechMod.Message($"{pawn.Label} couldn't find a valid pair of skipdoors.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
 
             if (bestEntry == bestExit)
             {
-                MigcorpSkiptechMod.Message($"{pawn.Label} best pair was the same skipdoor ({bestEntry}); skipping skipNet plan.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
 
@@ -393,11 +348,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             int skipPlanG = bestEntryG + bestExitG;
             if (skipPlanG > estimateTotalG)
             {
-                MigcorpSkiptechMod.Message($"{pawn.Label} found direct path faster than skipNet. " +
-                    $"entry={bestEntryG} {bestEntry}, " +
-                    $"exit={bestExitG} {bestExit}, " +
-                    $"actual={estimateTotalG}",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 return false;
             }
 
@@ -410,18 +360,11 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
                 if (directH <= entryH)
                 {
-                    MigcorpSkiptechMod.Message($"{pawn.Label} found direct path faster than skipNet (just). " +
-                        $"entry={bestEntryG} {bestEntry}, " +
-                        $"exit={bestExitG} {bestExit}, " +
-                        $"actual={estimateTotalG}",
-                        MigcorpSkiptechMod.LogLevel.Verbose);
                     return false;
                 }
             }
 
             plan.Initialize(bestEntry, bestExit, originalDest, peMode);
-            MigcorpSkiptechMod.Message($"{pawn.Label} created a SkipNetPlan using {bestEntry} and {bestExit}.",
-                MigcorpSkiptechMod.LogLevel.Verbose);
             return true;
         }
     }

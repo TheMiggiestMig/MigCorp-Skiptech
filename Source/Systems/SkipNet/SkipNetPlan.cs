@@ -73,9 +73,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             
             if (waitTicks > 0)
             {
-                MigcorpSkiptechMod.Message($"{pawn.Label} is waiting for the skipdoors to be ready. waitTicks={waitTicks}, " +
-                $"entryWaitTicks={entryWaitTicks}, " +
-                $"exitWaitTicks={exitWaitTicks}", MigcorpSkiptechMod.LogLevel.Verbose);
                 nextResolveTick = GenTicks.TicksGame + waitTicks;
                 pawn.stances.SetStance(new Stance_Cooldown(waitTicks, pawn, null));
                 return;
@@ -84,8 +81,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             // Last check for accessibility.
             if (!CheckIsStillAccessible() || !CheckIsStillPathable(map, tp))
             {
-                MigcorpSkiptechMod.Message($"{pawn.Label} cannot reach exit or destination from exit. Cancelling plan.",
-                    MigcorpSkiptechMod.LogLevel.Verbose);
                 Notify_SkipNetPlanFailedOrCancelled();
                 return;
             }
@@ -130,7 +125,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 }
                 else
                 {
-                    MigcorpSkiptechMod.Message($"{pawn.Label}'s skipnet plan failed.", MigcorpSkiptechMod.LogLevel.Verbose);
                     ResetPawnMoveState();
                     State = SkipNetPlanState.Disposed;
 
@@ -151,7 +145,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
         public void Dispose()
         {
-            MigcorpSkiptechMod.Message($"{pawn.Label}'s skipnet plan was disposed.", MigcorpSkiptechMod.LogLevel.Verbose);
             State = SkipNetPlanState.Disposed;
             skipNet.disposedPawnSkipNetPlans.AddDistinct(pawn);
         }
