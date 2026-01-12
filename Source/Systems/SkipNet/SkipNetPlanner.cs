@@ -20,7 +20,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         private Dictionary<Region, int> closedDestRegions = new Dictionary<Region, int>();
         private Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
         private HashSet<(IntVec3 dest, Region region)> proxyDestinations = new HashSet<(IntVec3 dest, Region region)>();
-        int lastRegionDoorIndexRebuildTick;
 
         public List<CompSkipdoor> skipdoors { get { return skipNet.skipdoors; } }
         public Map map { get { return skipNet.map; } }
@@ -28,27 +27,39 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         public SkipNetPlanner(MapComponent_SkipNet skipNet)
         {
             this.skipNet = skipNet;
+
+            map.events.RegionsRoomsChanged += RebuildRegionDoorIndex;
         }
 
-        void RebuildRegionDoorIndex(bool force = false)
+        public void RebuildRegionDoorIndex()
         {
-            int curGameTicks = GenTicks.TicksGame;
-            if (lastRegionDoorIndexRebuildTick == curGameTicks && !force) { return; }
-
-            lastRegionDoorIndexRebuildTick = curGameTicks;
+            MigcorpSkiptechMod.Message("RegionDoorIndex rebuilt.");
             regionSkipdoors.Clear();
 
             foreach (CompSkipdoor skipdoor in skipdoors)
             {
-                if (skipdoor == null || skipdoor.parent?.Map != skipNet.map) continue;
+                if (skipdoor == null || !skipdoor.parent.Spawned)
+                {
+                    continue;
+                }
 
-                Region region = skipdoor.Position.GetRegion(skipNet.map);
-                if (region == null || !region.valid) continue;
+                if (skipdoor.parent?.Map != skipNet.map || !skipdoor.Position.InBounds(map))
+                {
+                    continue;
+                }
 
-                if (!regionSkipdoors.TryGetValue(region, out var set))
-                    regionSkipdoors[region] = set = new List<CompSkipdoor>();
+                Region region = map.regionGrid.GetValidRegionAt_NoRebuild(skipdoor.Position);
+                if (region == null || !region.valid || region.type == RegionType.None)
+                {
+                    continue;
+                }
 
-                set.Add(skipdoor);
+                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> skipdoorsInRegion))
+                {
+                    regionSkipdoors[region] = skipdoorsInRegion = new List<CompSkipdoor>();
+                }
+
+                skipdoorsInRegion.Add(skipdoor);
             }
         }
 
@@ -74,6 +85,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             }
 
             // Make sure the pawn is actually in a valid region.
+            //Thing.Spawned and Map.InBounds(Thing) are both covered by this.
             pawnReg = pawn.GetRegion();
             if (pawnReg == null)
             {
@@ -126,7 +138,6 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             }
 
             // Looks good, clear the buffers before searching.
-            RebuildRegionDoorIndex();
             openPawnRegions.Clear();
             openDestRegions.Clear();
             closedPawnRegions.Clear();
