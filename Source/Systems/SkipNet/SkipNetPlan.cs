@@ -130,7 +130,12 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
                     // Check if all the conditions needed to path are in place.
                     if (originalDest.IsValid && originalPeMode != PathEndMode.None)
-                        pawn.pather.StartPath(originalDest, originalPeMode);
+                    {
+                        if (!originalDest.ThingDestroyed)
+                        {
+                            pawn.pather.StartPath(originalDest, originalPeMode);
+                        }
+                    }
                 }
             }
             catch (NullReferenceException ex)
@@ -164,13 +169,10 @@ namespace MigCorp.Skiptech.Systems.SkipNet
 
         public bool CheckIsStillPathable(Map map, TraverseParms tp)
         {
-            if (!map.reachability.CanReach(pawn.Position, entry.Position, PathEndMode.OnCell, tp) ||
-                !map.reachability.CanReach(exit.Position, originalDest, originalPeMode, tp) ||
-                !map.reachability.CanReach(pawn.Position, originalDest, originalPeMode, tp))
-            {
-                return false;
-            }
-            return true;
+            bool reachable = arrived || map.reachability.CanReach(pawn.Position, entry.Position, PathEndMode.OnCell, tp);
+            return reachable &&
+                map.reachability.CanReach(exit.Position, originalDest, originalPeMode, tp) &&
+                map.reachability.CanReach(entry.Position, originalDest, originalPeMode, tp);
         }
     }
 }

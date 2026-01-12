@@ -160,7 +160,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             if(dest.HasThing)
             {
                 // Make sure it hasn't been destroyed (shakes fist at despawning filth)
-                if (dest.Thing == null || dest.Thing.Destroyed)
+                if (dest.ThingDestroyed)
                     return false;
 
                 // Check if the thing is not spawned and has no owner (not being held or in a container).
