@@ -200,7 +200,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 // Check if the skipdoors are still useable.
                 if (!plan.IsDisposedOrInvalid)
                 {
-                    if (!plan.CheckIsStillAccessible())
+                    if (!plan.IsStillAccessible())
                     {
                         plan.Notify_SkipNetPlanFailedOrCancelled();
                     }
@@ -233,8 +233,10 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             }
 
             // Check if the paths are still valid.
+            TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
+
             if (!plan.IsDisposedOrInvalid &&
-            !plan.CheckIsStillPathable(map, TraverseParms.For(pawn, mode: TraverseMode.ByPawn)))
+            (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp)))
             {
                 plan.Notify_SkipNetPlanFailedOrCancelled();
             };

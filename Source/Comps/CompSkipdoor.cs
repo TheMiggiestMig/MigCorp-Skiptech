@@ -101,23 +101,29 @@ namespace MigCorp.Skiptech.Comps
             bool allowed = true;
 
             // Check if it is forbidden (if it even has that comp)
-            allowed = (pawn.IsColonist && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
+            allowed = (pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
 
             // Check if it is broken (if it even has that comp)
             allowed = (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false) ? false : allowed;
 
+            // Check if it flicked on (if it even has that comp)
+            allowed = (!parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false) ? false : allowed;
+
             return allowed;
         }
-         
+
         public bool CanExit(Pawn pawn)
         {
             bool allowed = true;
 
             // Check if it is forbidden (if it even has that comp)
-            allowed = (pawn.IsColonist && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
+            allowed = (pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false)) ? false : allowed;
 
             // Check if it is broken (if it even has that comp)
             allowed = (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false) ? false : allowed;
+
+            // Check if it flicked on (if it even has that comp)
+            allowed = (!parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false) ? false : allowed;
 
             return allowed;
         }

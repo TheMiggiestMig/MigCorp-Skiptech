@@ -52,7 +52,7 @@ namespace MigCorp.Skiptech.Comps
                         plan.Dispose();
                     }
                 }
-                else if (plan.State == SkipNetPlanState.None)
+                else if (plan.IsInvalid && matchesOriginalDest)
                 {
                     // We've already tried and failed this tick. Let vanilla handle it.
                     return;
@@ -154,8 +154,8 @@ namespace MigCorp.Skiptech.Comps
                 if (plan.State == SkipNetPlanState.ExecutingEntry)
                 {
 
-                    if (!plan.CheckIsStillAccessible() ||
-                        !plan.CheckIsStillPathable(map, tp))
+                    if (!plan.IsStillAccessible() ||
+                        !plan.IsStillPathableFromEntryToExit(map, tp))
                     {
 
                         dest = plan.originalDestPostition;

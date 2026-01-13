@@ -195,7 +195,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         public bool TryFindEligibleSkipNetPlan(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, out SkipNetPlan plan)
         {
             // A blank plan lets us know we at least attempted one.
-            plan = new SkipNetPlan(skipNet, pawn);
+            plan = new SkipNetPlan(skipNet, pawn, dest, peMode);
 
             if(!TryFilterSettings(pawn)) { return false; }
 
@@ -373,7 +373,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
                 }
             }
 
-            plan.Initialize(bestEntry, bestExit, originalDest, peMode);
+            plan.Initialize(bestEntry, bestExit);
             return true;
         }
     }

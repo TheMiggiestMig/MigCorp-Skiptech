@@ -37,19 +37,20 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         public bool IsDisposedOrInvalid {  get { return IsDisposed || IsInvalid; } }
         public bool Arrived { get { return arrived; } }
 
-        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn)
+        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode)
         {
             this.pawn = pawn;
             this.skipNet = skipNet;
+            originalDest = dest;
+            originalDestPostition = dest.Cell != default ? dest.Cell : (IntVec3)dest;
+            originalPeMode = peMode;
             tickCreated = GenTicks.TicksGame;
             skipNet.RegisterPlan(pawn, this);
         }
 
-        public void Initialize(CompSkipdoor entry, CompSkipdoor exit, LocalTargetInfo dest, PathEndMode peMode)
+        public void Initialize(CompSkipdoor entry, CompSkipdoor exit)
         {
-            originalDest = dest;
-            originalDestPostition = dest.Cell != default ? dest.Cell : (IntVec3)dest;
-            originalPeMode = peMode;
+            
             this.entry = entry;
             this.exit = exit;
             State = SkipNetPlanState.ExecutingEntry;
@@ -79,7 +80,7 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             }
 
             // Last check for accessibility.
-            if (!CheckIsStillAccessible() || !CheckIsStillPathable(map, tp))
+            if (!IsStillAccessible() || !IsStillPathableFromEntryToExit(map, tp))
             {
                 Notify_SkipNetPlanFailedOrCancelled();
                 return;
@@ -162,17 +163,21 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         /// Reachability is handled by vanilla pathing.
         /// </remarks>
         /// <returns></returns>
-        public bool CheckIsStillAccessible()
+        public bool IsStillAccessible()
         {
             return entry.IsEnterableBy(pawn) && exit.IsExitableBy(pawn);
         }
 
-        public bool CheckIsStillPathable(Map map, TraverseParms tp)
+        // Fast check. Regular pathing handles whether Pawn->Entry still works,
+        // and the pawn already re-evaluates when it reaches the Exit for Exit->Dest.
+        public bool IsStillPathableFromEntryToExit(Map map, TraverseParms tp)
         {
-            bool reachable = arrived || map.reachability.CanReach(pawn.Position, entry.Position, PathEndMode.OnCell, tp);
-            return reachable &&
-                map.reachability.CanReach(exit.Position, originalDest, originalPeMode, tp) &&
-                map.reachability.CanReach(entry.Position, originalDest, originalPeMode, tp);
+            return map.reachability.CanReach(entry.Position, new LocalTargetInfo(exit.parent), originalPeMode, tp);
+        }
+
+        public bool IsStillPathableFromExitToDest(Map map, TraverseParms tp)
+        {
+            return map.reachability.CanReach(exit.Position, originalDest, originalPeMode, tp);
         }
     }
 }
