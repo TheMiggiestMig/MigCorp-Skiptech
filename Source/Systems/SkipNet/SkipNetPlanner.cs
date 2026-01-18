@@ -29,11 +29,12 @@ namespace MigCorp.Skiptech.Systems.SkipNet
             this.skipNet = skipNet;
 
             map.events.RegionsRoomsChanged += RebuildRegionDoorIndex;
+            RebuildRegionDoorIndex();
         }
 
         public void RebuildRegionDoorIndex()
         {
-            MigcorpSkiptechMod.Message("RegionDoorIndex rebuilt.");
+            MigcorpSkiptechMod.Message("RegionDoorIndex rebuilt.", MigcorpSkiptechMod.LogLevel.Verbose);
             regionSkipdoors.Clear();
 
             foreach (CompSkipdoor skipdoor in skipdoors)
@@ -71,6 +72,12 @@ namespace MigCorp.Skiptech.Systems.SkipNet
         {
             pawnReg = null;
             destRegs = new List<Region>();
+
+            // We can only create a plan if there are actually 2 or more skipdoors present.
+            if(skipNet.skipdoors.Count < 2)
+            {
+                return false;
+            }
 
             // No pawn? No dest? No plan.
             if (pawn?.Map == null || pawn.Map != skipNet.map || dest == null || !dest.IsValid)

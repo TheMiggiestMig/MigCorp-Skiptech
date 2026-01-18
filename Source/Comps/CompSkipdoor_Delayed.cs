@@ -35,7 +35,6 @@ namespace MigCorp.Skiptech.Comps
             base.CompTick();
             if (!open)
             {
-                //if (!opening && curDelayTick > 0) { curDelayTick--; return; }
                 if (opening)
                 {
                     if (curDelayTick == 0)
