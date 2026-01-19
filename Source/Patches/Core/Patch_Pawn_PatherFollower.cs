@@ -2,10 +2,9 @@
 using Verse;
 using HarmonyLib;
 using Verse.AI;
-using System;
-using MigCorp.Skiptech.Systems.SkipNet;
+using MigCorp.Skiptech.SkipNet;
 
-namespace MigCorp.Skiptech.Comps
+namespace MigCorp.Skiptech
 {
     [HarmonyPatch(typeof(Pawn_PathFollower))]
     static class Pawn_PathFollower_Patch

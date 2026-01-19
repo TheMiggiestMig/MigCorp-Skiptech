@@ -1,12 +1,8 @@
 ﻿using RimWorld;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 using UnityEngine;
 using Verse;
-using Verse.Noise;
-using Verse.Sound;
 
-namespace MigCorp.Skiptech.Comps
+namespace MigCorp.Skiptech.SkipNet.Comps
 {
     public class CompProperties_Skipdoor_IndicatorOverlay : CompProperties
     {
@@ -65,7 +61,7 @@ namespace MigCorp.Skiptech.Comps
 
         private void DirtyMesh()
         {
-            parent?.Map?.mapDrawer?.MapMeshDirty(parent.Position, (ulong)(MapMeshFlagDefOf.Things | MapMeshFlagDefOf.Buildings));
+            parent?.Map?.mapDrawer?.MapMeshDirty(parent.Position, MapMeshFlagDefOf.Things | MapMeshFlagDefOf.Buildings);
         }
 
         private void CheckForStateChange()
@@ -88,7 +84,7 @@ namespace MigCorp.Skiptech.Comps
 
         private GraphicData GetGraphicData()
         {
-            switch(currentState)
+            switch (currentState)
             {
                 case SkipdoorState.Powered: return Props.powered;
                 case SkipdoorState.Charging: return Props.charging;

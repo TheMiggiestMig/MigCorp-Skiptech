@@ -19,10 +19,10 @@
     <tickerType>Normal</tickerType>
     <minifiedDef>MinifiedThing</minifiedDef>
     <placeWorkers>
-      <li>MigCorp.Skiptech.PlaceWorker_SkipdoorMinSpacing</li>
+      <li>MigCorp.Skiptech.SkipNet.PlaceWorker_SkipdoorMinSpacing</li>
     </placeWorkers>
     <comps>
-      <li Class="MigCorp.Skiptech.Comps.CompProperties_Skipdoor" />
+      <li Class="MigCorp.Skiptech.SkipNet.Comps.CompProperties_Skipdoor" />
     </comps>
   </ThingDef>
 
@@ -60,10 +60,10 @@
         <basePowerConsumption>300</basePowerConsumption>
         <shortCircuitInRain>false</shortCircuitInRain>
       </li>
-      <li Class="MigCorp.Skiptech.Comps.CompProperties_Skipdoor_Powered">
+      <li Class="MigCorp.Skiptech.SkipNet.Comps.CompProperties_Skipdoor_Powered">
         <delayTicks>120</delayTicks>
       </li>
-      <li Class="MigCorp.Skiptech.Comps.CompProperties_Skipdoor_IndicatorOverlay">
+      <li Class="MigCorp.Skiptech.SkipNet.Comps.CompProperties_Skipdoor_IndicatorOverlay">
         <powered>
           <texPath>Things/Building/Misc/effects/migcorp_MigcorpSkipdoor_IndicatorOverlay_powered</texPath>
           <graphicClass>Graphic_Single</graphicClass>

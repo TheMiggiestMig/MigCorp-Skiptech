@@ -59,24 +59,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
-    <Compile Include="Comps\CompSkipdoor_Delayed.cs" />
-    <Compile Include="Comps\CompSkipdoor_IndicatorOverlay.cs" />
-    <Compile Include="Comps\CompSkipdoor_Powered.cs" />
-    <Compile Include="Comps\CompSkipdoor_RestrictedBase.cs" />
-    <Compile Include="Systems\SkipNet\Building_SkipdoorBase.cs" />
-    <Compile Include="Systems\SkipNet\DebugActions_SkipNet.cs" />
-    <Compile Include="Systems\SkipNet\ISkipdoorAccessible.cs" />
+    <Compile Include="SkipNet\Comps\CompSkipdoor_Delayed.cs" />
+    <Compile Include="SkipNet\Comps\CompSkipdoor_IndicatorOverlay.cs" />
+    <Compile Include="SkipNet\Comps\CompSkipdoor_Powered.cs" />
+    <Compile Include="SkipNet\Comps\CompSkipdoor_RestrictedBase.cs" />
+    <Compile Include="SkipNet\Building_SkipdoorBase.cs" />
+    <Compile Include="SkipNet\DebugActions_SkipNet.cs" />
+    <Compile Include="SkipNet\ISkipdoorAccessible.cs" />
     <Compile Include="Patches\Core\Patch_Pawn_PatherFollower.cs" />
-    <Compile Include="Systems\SkipNet\SkipNetPlan.cs" />
-    <Compile Include="Systems\SkipNet\SkipNetPlanner.cs" />
+    <Compile Include="SkipNet\SkipNetPlan.cs" />
+    <Compile Include="SkipNet\SkipNetPlanner.cs" />
     <Compile Include="Utils\EnumUtil.cs" />
     <Compile Include="Utils\FxUtil.cs" />
-    <Compile Include="Systems\SkipNet\MapComponent_SkipNet.cs" />
+    <Compile Include="SkipNet\MapComponent_SkipNet.cs" />
     <Compile Include="MigcorpSkiptechMod.cs" />
-    <Compile Include="PlaceWorker_SkipdoorMinSpacing.cs" />
-    <Compile Include="Comps\CompSkipdoor.cs" />
+    <Compile Include="SkipNet\PlaceWorker_SkipdoorMinSpacing.cs" />
+    <Compile Include="SkipNet\Comps\CompSkipdoor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utils\SkipNetUtils.cs" />
+    <Compile Include="SkipNet\SkipNetUtils.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

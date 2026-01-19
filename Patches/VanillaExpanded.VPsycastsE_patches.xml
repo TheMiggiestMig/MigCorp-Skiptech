@@ -20,7 +20,7 @@
                 <li Class="PatchOperationAdd">
                     <xpath>Defs/ThingDef[defName="VPE_Skipdoor"]/comps</xpath>
                     <value>
-                        <li Class="MigCorp.Skiptech.Comps.CompProperties_Skipdoor" />
+                        <li Class="MigCorp.Skiptech.SkipNet.Comps.CompProperties_Skipdoor" />
                     </value>
                 </li>
 
