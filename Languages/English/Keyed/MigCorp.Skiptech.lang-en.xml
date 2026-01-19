@@ -16,6 +16,9 @@
 
 	<MigCorp.Skiptech.Settings.Features.Skipshock>Disable Skip-Shock</MigCorp.Skiptech.Settings.Features.Skipshock>
 	<MigCorp.Skiptech.Settings.Features.Skipshock.Tip>Prevents pawns from getting skip-shock when using unpowered skipdoors</MigCorp.Skiptech.Settings.Features.Skipshock.Tip>
+
+	<MigCorp.Skiptech.Settings.Features.SkipshockAvoidance>Enable Skip-Shock Avoidance</MigCorp.Skiptech.Settings.Features.SkipshockAvoidance>
+	<MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip>Pawns will avoid using skipdoors that cause skip-shock unless they are drafted or performing a forced action</MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip>
 	
 	<!-- Accessibility Settings -->
 	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect>Disable teleport visuals</MigCorp.Skiptech.Settings.Accessibility.FlashEffect>

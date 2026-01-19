@@ -12,6 +12,7 @@ namespace MigCorp.Skiptech
         public AccessMode accessMode = AccessMode.Everyone;
         public bool animalsCanUse = true;
         public bool disableSkipShock = false;
+        public bool enableSkipShockAvoidance = false;
         public bool disableTeleportFlashEffect = false;
         public bool debugVerboseLogging = false;
 
@@ -20,6 +21,7 @@ namespace MigCorp.Skiptech
             Scribe_Values.Look(ref accessMode, "accessMode", AccessMode.Everyone);
             Scribe_Values.Look(ref animalsCanUse, "animalsCanUse", true);
             Scribe_Values.Look(ref disableSkipShock, "disableSkipShock", false);
+            Scribe_Values.Look(ref enableSkipShockAvoidance, "enableSkipShockAvoidance", false);
             Scribe_Values.Look(ref disableTeleportFlashEffect, "disableTeleportFlashEffect", false);
             Scribe_Values.Look(ref debugVerboseLogging, "debugVerboseLogging", false);
         }
@@ -62,6 +64,9 @@ namespace MigCorp.Skiptech
             ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Features.Skipshock".Translate(),
                 ref Settings.disableSkipShock,
                 "MigCorp.Skiptech.Settings.Features.Skipshock.Tip".Translate());
+            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Features.SkipshockAvoidance".Translate(),
+                ref Settings.enableSkipShockAvoidance,
+                "MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip".Translate());
 
             // Accessibility Settings
             ls.GapLine();

@@ -33,6 +33,16 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             return !powerTrader.Off ? 0 : base.TicksUntilEnterable(pawn);
         }
 
+        public override bool CanEnter(Pawn pawn)
+        {
+            return WantsToAvoidSkipShock(pawn);
+        }
+
+        public override bool CanExit(Pawn pawn)
+        {
+            return WantsToAvoidSkipShock(pawn);
+        }
+
         public override void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
         {
             // If the skipdoor is not powered and it should be, they'll have a 40% chance of getting sick (for each unpowered skipdoor in the jump, so ~64% chance if both are unpowered).
@@ -96,6 +106,17 @@ namespace MigCorp.Skiptech.SkipNet.Comps
         private static void DoSkipshockTextMote(Pawn pawn)
         {
             MoteMaker.ThrowText(pawn.PositionHeld.ToVector3Shifted(), text: (string)"MigCorp.Skiptech.Text.Skipshock".Translate(), map: pawn.Map, color: Color.yellow);
+        }
+
+        // Checks if the skipdoor would cause skip-shock and the pawn wants to avoid it.
+        public bool WantsToAvoidSkipShock(Pawn pawn)
+        {
+            if (!powerTrader.Off) return true;
+            if (MigcorpSkiptechMod.Settings.disableSkipShock) return true;
+            if (!MigcorpSkiptechMod.Settings.enableSkipShockAvoidance) return true;
+            if (pawn.Faction != Faction.OfPlayer) return true;
+
+            return false;
         }
     }
 }
