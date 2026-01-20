@@ -60,6 +60,7 @@ namespace MigCorp.Skiptech.SkipNet
                 return;
             }
             skipdoors.Add(skipdoor);
+            planner.RebuildRegionDoorIndex();
         }
 
         /// <summary>
@@ -68,6 +69,7 @@ namespace MigCorp.Skiptech.SkipNet
         public void UnregisterSkipdoor(CompSkipdoor skipdoor)
         {
             skipdoors.Remove(skipdoor);
+            planner.RebuildRegionDoorIndex();
 
             // Notify all plans using this skipdoor to cancel
             List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
