@@ -111,10 +111,11 @@ namespace MigCorp.Skiptech.SkipNet.Comps
         // Checks if the skipdoor would cause skip-shock and the pawn wants to avoid it.
         public bool WantsToAvoidSkipShock(Pawn pawn)
         {
+            if (pawn.Faction != Faction.OfPlayer) return true;
             if (!powerTrader.Off) return true;
             if (MigcorpSkiptechMod.Settings.disableSkipShock) return true;
             if (!MigcorpSkiptechMod.Settings.enableSkipShockAvoidance) return true;
-            if (pawn.Faction != Faction.OfPlayer) return true;
+            if (pawn.Drafted || pawn.CurJob.playerForced) return true;
 
             return false;
         }

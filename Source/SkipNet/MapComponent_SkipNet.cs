@@ -107,7 +107,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             foreach (CompSkipdoor skipdoor in skipdoors)
             {
-                if (skipdoor.CanEnter(pawn)) { enterableSkipdoors.Add(skipdoor); }
+                if (skipdoor.IsEnterableBy(pawn)) { enterableSkipdoors.Add(skipdoor); }
             }
 
             return enterableSkipdoors.Count > 0;
@@ -134,7 +134,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             foreach (CompSkipdoor skipdoor in skipdoors)
             {
-                if (skipdoor.CanExit(pawn)) { exitableSkipdoors.Add(skipdoor); }
+                if (skipdoor.IsExitableBy(pawn)) { exitableSkipdoors.Add(skipdoor); }
             }
 
             return exitableSkipdoors.Count > 0;

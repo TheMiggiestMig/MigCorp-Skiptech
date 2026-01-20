@@ -97,34 +97,48 @@ namespace MigCorp.Skiptech.SkipNet.Comps
 
         public bool CanEnter(Pawn pawn)
         {
-            bool allowed = true;
-
             // Check if it is forbidden (if it even has that comp)
-            allowed = pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false) ? false : allowed;
+            if (pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false))
+            {
+                return false;
+            }
 
             // Check if it is broken (if it even has that comp)
-            allowed = parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false ? false : allowed;
+            if(parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false)
+            {
+                return false;
+            }
 
             // Check if it flicked on (if it even has that comp)
-            allowed = !parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false ? false : allowed;
+            if(!parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false)
+            {
+                return false;
+            }
 
-            return allowed;
+            return true;
         }
 
         public bool CanExit(Pawn pawn)
         {
-            bool allowed = true;
-
             // Check if it is forbidden (if it even has that comp)
-            allowed = pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false) ? false : allowed;
+            if (pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false))
+            {
+                return false;
+            }
 
             // Check if it is broken (if it even has that comp)
-            allowed = parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false ? false : allowed;
+            if (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false)
+            {
+                return false;
+            }
 
             // Check if it flicked on (if it even has that comp)
-            allowed = !parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false ? false : allowed;
+            if (!parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false)
+            {
+                return false;
+            }
 
-            return allowed;
+            return true;
         }
 
         public int TicksUntilEnterable(Pawn pawn) { return 0; }
