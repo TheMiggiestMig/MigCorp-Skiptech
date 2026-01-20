@@ -219,7 +219,7 @@ namespace MigCorp.Skiptech.SkipNet
             int exitSkipdoorRange = -1;
             int entryRegionCost = int.MaxValue;
             int exitRegionCost = int.MaxValue;
-            int estimateDirectRegionCost = 0;
+            int estimateDirectRegionCost = -1;
             int linkCost;
             CompSkipdoor bestEntry = null;
             CompSkipdoor bestExit = null;
@@ -313,7 +313,7 @@ namespace MigCorp.Skiptech.SkipNet
 
                         // If we've already established a direct path,
                         // only add regions within our skipdoor search range.
-                        if (pawnSideReachedDest && entrySkipdoorRange != -1 && regionCost > entrySkipdoorRange) continue;
+                        if ((pawnSideReachedDest || exitSkipdoorRange != -1) && entrySkipdoorRange != -1 && regionCost > entrySkipdoorRange) continue;
 
                         closedPawnRegions[nextRegion] = regionCost + linkCost;
                         if (linkCost == 0) { openPawnRegions.AddFirst(nextRegion); }
@@ -355,7 +355,7 @@ namespace MigCorp.Skiptech.SkipNet
 
                         linkCost = nextRegion.IsDoorway ? 0 : 1;
 
-                        if (pawnSideReachedDest && exitSkipdoorRange != -1 && regionCost > exitSkipdoorRange) continue;
+                        if ((pawnSideReachedDest || entrySkipdoorRange != -1) && exitSkipdoorRange != -1 && regionCost > exitSkipdoorRange) continue;
 
                         closedDestRegions[nextRegion] = regionCost + linkCost;
                         if (linkCost == 0) { openDestRegions.AddFirst(nextRegion); }
@@ -375,25 +375,28 @@ namespace MigCorp.Skiptech.SkipNet
             }
 
             // Check if our skipplan is shorter than direct travel by region.
-            int skipplanTotalCost = entryRegionCost + exitRegionCost;
-            if (skipplanTotalCost > estimateDirectRegionCost)
+            if (estimateDirectRegionCost != -1)
             {
-                return false;
-            }
-
-            // Same diff, except comparing octile heuristics (in case of tie break).
-            if (skipplanTotalCost == estimateDirectRegionCost)
-            {
-                int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
-                int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
-                int exitH = SkipNetUtils.OctileDistance(bestExit.Position, dest.Cell);
-
-                if (directH <= entryH)
+                int skipplanTotalCost = entryRegionCost + exitRegionCost;
+                if (skipplanTotalCost > estimateDirectRegionCost)
                 {
                     return false;
                 }
-            }
 
+                // Same diff, except comparing octile heuristics (in case of tie break).
+                if (skipplanTotalCost == estimateDirectRegionCost)
+                {
+                    int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
+                    int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
+                    int exitH = SkipNetUtils.OctileDistance(bestExit.Position, dest.Cell);
+
+                    if (directH <= entryH)
+                    {
+                        return false;
+                    }
+                }
+            }
+            
             plan.Initialize(bestEntry, bestExit);
             return true;
         }
