@@ -211,6 +211,11 @@ namespace MigCorp.Skiptech.SkipNet
                         DeepClean(pawn, plan);
                     }
                 }
+
+                if (pawn?.Map != map || !pawn.Spawned || plan.IsDisposed)
+                {
+                    disposedPawnSkipNetPlans.AddDistinct(pawn);
+                }
             }
         }
 
@@ -227,11 +232,6 @@ namespace MigCorp.Skiptech.SkipNet
 
         public void DeepClean(Pawn pawn, SkipNetPlan plan)
         {
-            if (pawn?.Map != map || !pawn.Spawned || plan.IsDisposed)
-            {
-                disposedPawnSkipNetPlans.AddDistinct(pawn);
-            }
-
             // Check if the paths are still valid.
             TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
 
