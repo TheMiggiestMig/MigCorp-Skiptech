@@ -177,7 +177,6 @@ namespace MigCorp.Skiptech.SkipNet
             CleanupInvalidAndBadPlans();
 
             RemoveDisposedSkipNetPlans();
-            disposedPawnSkipNetPlans.Clear();
         }
 
         public void CleanupInvalidAndBadPlans()
@@ -191,7 +190,7 @@ namespace MigCorp.Skiptech.SkipNet
                 pawn = activeSkipnetPlans[i].Key;
                 plan = activeSkipnetPlans[i].Value;
 
-                if (plan.IsInvalid)
+                if (plan.IsInvalid || pawn?.Map != map || !pawn.Spawned)
                 {
                     plan.Dispose();
                     continue;
@@ -211,11 +210,6 @@ namespace MigCorp.Skiptech.SkipNet
                         DeepClean(pawn, plan);
                     }
                 }
-
-                if (pawn?.Map != map || !pawn.Spawned || plan.IsDisposed)
-                {
-                    disposedPawnSkipNetPlans.AddDistinct(pawn);
-                }
             }
         }
 
@@ -228,6 +222,8 @@ namespace MigCorp.Skiptech.SkipNet
                     pawnSkipNetPlans.Remove(pawn);
                 }
             }
+
+            disposedPawnSkipNetPlans.Clear();
         }
 
         public void DeepClean(Pawn pawn, SkipNetPlan plan)
