@@ -203,15 +203,24 @@ namespace MigCorp.Skiptech.SkipNet
             // A blank plan lets us know we at least attempted one.
             plan = new SkipNetPlan(skipNet, pawn, dest, peMode);
 
-            if (!TryFilterSettings(pawn)) { return false; }
+            if (!TryFilterSettings(pawn))
+            {
+                return false;
+            }
 
             // Make sure we meet the minimum requirements for a SkipNetPlan.
             TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
 
-            if (!TryInitializePlanner(pawn, dest, peMode, tp, out Region regPawn, out List<Region> regDests)) { return false; }
+            if (!TryInitializePlanner(pawn, dest, peMode, tp, out Region regPawn, out List<Region> regDests))
+            {
+                return false;
+            }
             LocalTargetInfo originalDest = dest;
 
-            if (!TryExtractIntVec3Dest(originalDest, out IntVec3 destCell)) { return false; }
+            if (!TryExtractIntVec3Dest(originalDest, out IntVec3 destCell))
+            {
+                return false;
+            }
             dest = destCell;
 
             // Prepare the search from both ends (pawn / dest).
@@ -264,6 +273,13 @@ namespace MigCorp.Skiptech.SkipNet
                     }
                 }
                 return true;
+            }
+
+            // Fast check: Is the destination in the same region as the pawn?
+            if(regDests.Contains(regPawn))
+            {
+                pawnSideReachedDest = true;
+                estimateDirectRegionCost = 0;
             }
 
             // We're gonna do 2 BFS searches at the same time; one from the pawn for the entry, and one from the destination for the exit.
@@ -378,25 +394,22 @@ namespace MigCorp.Skiptech.SkipNet
             if (estimateDirectRegionCost != -1)
             {
                 int skipplanTotalCost = entryRegionCost + exitRegionCost;
-                if (skipplanTotalCost > estimateDirectRegionCost)
+                if (skipplanTotalCost > estimateDirectRegionCost + 2)
                 {
                     return false;
                 }
 
                 // Same diff, except comparing octile heuristics (in case of tie break).
-                if (skipplanTotalCost == estimateDirectRegionCost)
-                {
-                    int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
-                    int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
-                    int exitH = SkipNetUtils.OctileDistance(bestExit.Position, dest.Cell);
+                int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
+                int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
+                int exitH = SkipNetUtils.OctileDistance(bestExit.Position, dest.Cell);
 
-                    if (directH <= entryH)
-                    {
-                        return false;
-                    }
+                if (directH <= entryH + exitH)
+                {
+                    return false;
                 }
             }
-            
+
             plan.Initialize(bestEntry, bestExit);
             return true;
         }
