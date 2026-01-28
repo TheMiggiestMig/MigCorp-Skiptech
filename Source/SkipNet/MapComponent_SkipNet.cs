@@ -199,7 +199,7 @@ namespace MigCorp.Skiptech.SkipNet
                 // Check if the skipdoors are still useable.
                 if (!plan.IsDisposedOrInvalid)
                 {
-                    if (!plan.IsStillAccessible())
+                    if (pawn.IsHashIntervalTick(60) && !plan.IsStillAccessible())
                     {
                         plan.Notify_SkipNetPlanFailedOrCancelled();
                     }
