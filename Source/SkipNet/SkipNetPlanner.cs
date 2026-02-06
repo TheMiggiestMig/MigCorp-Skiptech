@@ -181,10 +181,14 @@ namespace MigCorp.Skiptech.SkipNet
 
         public bool TryFilterSettings(Pawn pawn)
         {
-            if (pawn.Faction != null)
+            if (MigcorpSkiptechMod.Settings.accessMode == AccessMode.Colonists && pawn.Faction != Faction.OfPlayer)
             {
-                if (MigcorpSkiptechMod.Settings.accessMode == AccessMode.Colonists && pawn.Faction != Faction.OfPlayer) { return false; }
-                if (MigcorpSkiptechMod.Settings.accessMode != AccessMode.Everyone && pawn.Faction.HostileTo(Faction.OfPlayer)) { return false; }
+                return false;
+            }
+            
+            if (MigcorpSkiptechMod.Settings.accessMode != AccessMode.Everyone && pawn.HostileTo(Faction.OfPlayer))
+            {
+                return false;
             }
 
             if (!MigcorpSkiptechMod.Settings.animalsCanUse && pawn.IsAnimal)
