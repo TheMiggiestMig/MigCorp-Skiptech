@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Patch>
+    <Operation Class="PatchOperationAdd">
+        <xpath>Defs/ThingSetMakerDef[defName="MapGen_AncientComplexRoomLoot_Default"]/root/options</xpath>
+        <value>
+            <li>
+                <weight>0.03</weight>
+                <thingSetMaker Class="ThingSetMaker_Count">
+                    <fixedParams>
+                    <countRange>1~2</countRange>
+                    <filter>
+                        <thingDefs>
+                        <li>ArchotechSkipdoor</li>
+                        </thingDefs>
+                    </filter>
+                    </fixedParams>
+                </thingSetMaker>
+            </li>
+        </value>
+    </Operation>
+</Patch>

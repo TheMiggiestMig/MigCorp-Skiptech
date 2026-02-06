@@ -30,7 +30,7 @@ namespace MigCorp.Skiptech.SkipNet.Comps
 
         public override int TicksUntilExitable(Pawn pawn)
         {
-            return !powerTrader.Off ? 0 : base.TicksUntilEnterable(pawn);
+            return !powerTrader.Off ? 0 : base.TicksUntilExitable(pawn);
         }
 
         public override bool CanEnter(Pawn pawn)

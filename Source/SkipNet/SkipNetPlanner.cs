@@ -200,6 +200,8 @@ namespace MigCorp.Skiptech.SkipNet
 
         public bool TryFindEligibleSkipNetPlan(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, out SkipNetPlan plan)
         {
+            Pawn DEBUG = (Find.Selector.SingleSelectedThing as Pawn) == pawn ? pawn : null;
+
             // A blank plan lets us know we at least attempted one.
             plan = new SkipNetPlan(skipNet, pawn, dest, peMode);
 
@@ -239,9 +241,11 @@ namespace MigCorp.Skiptech.SkipNet
             openPawnRegions.AddLast(regPawn); closedPawnRegions[regPawn] = 0;
             foreach (Region regDest in regDests)
             {
-                pawnSideReachedDest = regPawn == regDest || pawnSideReachedDest ? true : false;
+                pawnSideReachedDest = pawnSideReachedDest || regPawn == regDest;
                 openDestRegions.AddLast(regDest); closedDestRegions[regDest] = 0;
             }
+
+            estimateDirectRegionCost = pawnSideReachedDest ? 0 : estimateDirectRegionCost;
 
             // Helper function: Scan's a given region for skipdoors the pawn can enter.
             bool TryScanForEntry(Region region, int regionCost)
@@ -275,14 +279,9 @@ namespace MigCorp.Skiptech.SkipNet
                 return true;
             }
 
-            // Fast check: Is the destination in the same region as the pawn?
-            if(regDests.Contains(regPawn))
-            {
-                pawnSideReachedDest = true;
-                estimateDirectRegionCost = 0;
-            }
-
             // We're gonna do 2 BFS searches at the same time; one from the pawn for the entry, and one from the destination for the exit.
+            // (note to self: turns out this is called a 'bi-directional BFS', I learned something new!)
+
             // Early exit conditions: entry + exit found before both searches overlap, or both searches overlap before entry + exit is found.
             while (openPawnRegions.Count > 0 || openDestRegions.Count > 0)
             {
@@ -362,7 +361,7 @@ namespace MigCorp.Skiptech.SkipNet
                     else if (exitSkipdoorRange == -1)
                     {
                         exitSkipdoorRange = Math.Max(regionCost + 1, 2);
-                    }
+                        }
 
                     foreach (RegionLink link in region.links)
                     {
@@ -406,7 +405,7 @@ namespace MigCorp.Skiptech.SkipNet
 
                 if (directH <= entryH + exitH)
                 {
-                    return false;
+                   return false;
                 }
             }
 
