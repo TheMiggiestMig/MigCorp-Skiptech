@@ -14,6 +14,9 @@
 	<MigCorp.Skiptech.Settings.Allowed.Animals>Allow Animals</MigCorp.Skiptech.Settings.Allowed.Animals>
 	<MigCorp.Skiptech.Settings.Allowed.Animals.Tip>Animals can use skipdoors</MigCorp.Skiptech.Settings.Allowed.Animals.Tip>
 
+	<MigCorp.Skiptech.Settings.Features.DisableUnpoweredSkipdoors>Disable Unpowered Skipdoors</MigCorp.Skiptech.Settings.Features.DisableUnpoweredSkipdoors>
+	<MigCorp.Skiptech.Settings.Features.DisableUnpoweredSkipdoors.Tip>Pawns will not use unpowered skipdoors. This applies to all pawns and basically disables skip-shock too.</MigCorp.Skiptech.Settings.Features.DisableUnpoweredSkipdoors.Tip>
+
 	<MigCorp.Skiptech.Settings.Features.Skipshock>Disable Skip-Shock</MigCorp.Skiptech.Settings.Features.Skipshock>
 	<MigCorp.Skiptech.Settings.Features.Skipshock.Tip>Prevents pawns from getting skip-shock when using unpowered skipdoors</MigCorp.Skiptech.Settings.Features.Skipshock.Tip>
 

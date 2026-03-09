@@ -35,11 +35,17 @@ namespace MigCorp.Skiptech.SkipNet.Comps
 
         public override bool CanEnter(Pawn pawn)
         {
+            if (MigcorpSkiptechMod.Settings.disableUnpoweredSkipdoors && !powerTrader.PowerOn)
+                return false;
+
             return WantsToAvoidSkipShock(pawn);
         }
 
         public override bool CanExit(Pawn pawn)
         {
+            if (MigcorpSkiptechMod.Settings.disableUnpoweredSkipdoors && !powerTrader.PowerOn)
+                return false;
+
             return WantsToAvoidSkipShock(pawn);
         }
 
