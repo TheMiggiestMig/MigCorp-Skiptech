@@ -21,6 +21,7 @@ namespace MigCorp.Skiptech.SkipNet
         public MapComponent_SkipNet skipNet;
         public CompSkipdoor entry, exit;
         public int tickCreated;
+        public int loopCounter = 0; // Like the job system, track how many times we've tried this plan in a single tick.
 
         public LocalTargetInfo originalDest;
         public IntVec3 originalDestPostition;
@@ -36,7 +37,7 @@ namespace MigCorp.Skiptech.SkipNet
         public bool IsDisposedOrInvalid { get { return IsDisposed || IsInvalid; } }
         public bool Arrived { get { return arrived; } }
 
-        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode)
+        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, int loopCounter = 1)
         {
             this.pawn = pawn;
             this.skipNet = skipNet;
@@ -45,6 +46,7 @@ namespace MigCorp.Skiptech.SkipNet
             originalPeMode = peMode;
             tickCreated = GenTicks.TicksGame;
             skipNet.RegisterPlan(pawn, this);
+            this.loopCounter = loopCounter;
         }
 
         public void Initialize(CompSkipdoor entry, CompSkipdoor exit)

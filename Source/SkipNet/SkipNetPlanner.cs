@@ -1,10 +1,10 @@
-﻿using MigCorp.Skiptech.Utils;
-using System.Collections.Generic;
-using Verse.AI;
-using Verse;
+﻿using MigCorp.Skiptech.SkipNet.Comps;
+using MigCorp.Skiptech.Utils;
 using RimWorld;
 using System;
-using MigCorp.Skiptech.SkipNet.Comps;
+using System.Collections.Generic;
+using Verse;
+using Verse.AI;
 
 namespace MigCorp.Skiptech.SkipNet
 {
@@ -206,8 +206,27 @@ namespace MigCorp.Skiptech.SkipNet
         {
             Pawn DEBUG = (Find.Selector.SingleSelectedThing as Pawn) == pawn ? pawn : null;
 
+            // Crash Guard
+            int loopCounter = 1;
+            if (skipNet.TryGetSkipNetPlan(pawn, out SkipNetPlan prevPlan, force:true))
+            {
+                if (prevPlan.tickCreated == GenTicks.TicksGame &&
+                    prevPlan.originalDest == dest &&
+                    prevPlan.originalPeMode == peMode)
+                {
+                    loopCounter = prevPlan.loopCounter + 1;
+                }
+
+                if (loopCounter >= 10) // If we exceed 10 attempts for the same plan in the same tick, give up to prevent CTD.
+                {
+                    plan = new SkipNetPlan(skipNet, pawn, dest, peMode, loopCounter);
+                    MigcorpSkiptechMod.Error($"{pawn.LabelShort} attempted 10 identical SkipNetPlans in a single tick. To prevent infinite loops, they have now given up. (job={pawn.CurJob}, dest={dest}, peMode={peMode}, previousEntry={prevPlan.entry}, previousExit={prevPlan.exit})");
+                    return false;
+                }
+            }
+
             // A blank plan lets us know we at least attempted one.
-            plan = new SkipNetPlan(skipNet, pawn, dest, peMode);
+            plan = new SkipNetPlan(skipNet, pawn, dest, peMode, loopCounter);
 
             if (!TryFilterSettings(pawn))
             {

@@ -11,6 +11,7 @@ Source/.idea/
 Source/.vs/
 Source/packages/
 Source/obj/
+_local/
 
 deploy_to_local.bat
 deploy.log
