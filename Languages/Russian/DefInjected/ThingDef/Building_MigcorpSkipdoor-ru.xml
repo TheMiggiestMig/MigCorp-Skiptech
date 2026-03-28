@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+
+  <MigcorpSkipdoor.label>скип-дверь migcorp</MigcorpSkipdoor.label>
+  <MigcorpSkipdoor.description>Стационарный телепортационный генератор, дающий доступ к локальной сети SkipNet. Несмотря на то что он может работать от внутренней батареи, внешний источник питания сокращает задержку и предотвращает скип-шок.</MigcorpSkipdoor.description>
+
+  <ArchotechSkipdoor.label>скип-дверь архотека</ArchotechSkipdoor.label>
+  <ArchotechSkipdoor.description>Древнее устройство архотека, дающее мгновенный доступ к сети SkipNet без каких-либо побочных эффектов.</ArchotechSkipdoor.description>
+
+</LanguageData>
