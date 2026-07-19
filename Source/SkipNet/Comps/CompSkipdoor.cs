@@ -115,6 +115,10 @@ namespace MigCorp.Skiptech.SkipNet.Comps
                 return false;
             }
 
+            // Check if the skipdoor is within the allowed area of the pawn (if applicable)
+            Area allowed = PathUtility.GetAllowedArea(pawn);
+            if (allowed != null && !allowed[parent.Position]) { return false; }
+
             return true;
         }
 
@@ -137,6 +141,10 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             {
                 return false;
             }
+
+            // Check if the skipdoor is within the allowed area of the pawn (if applicable)
+            Area allowed = PathUtility.GetAllowedArea(pawn);
+            if (allowed != null && !allowed[parent.Position]) { return false; }
 
             return true;
         }
