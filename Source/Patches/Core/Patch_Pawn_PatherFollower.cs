@@ -1,8 +1,7 @@
-﻿using RimWorld;
-using Verse;
-using HarmonyLib;
-using Verse.AI;
+﻿using HarmonyLib;
 using MigCorp.Skiptech.SkipNet;
+using Verse;
+using Verse.AI;
 
 namespace MigCorp.Skiptech
 {
@@ -27,14 +26,14 @@ namespace MigCorp.Skiptech
             // Intercept the original StartPath request, and try to generate a SkipNetPlan if none exists for this pawn.
             // Otherwise, carry on.
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            if(skipNet == null) { return; }
+            if (skipNet == null) { return; }
 
             // Not sure why someone would call StartPath to "Invalid" specifically, but here we are.
-            if(!dest.IsValid || peMode == PathEndMode.None) { return; }
+            if (!dest.IsValid || peMode == PathEndMode.None) { return; }
 
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
-                bool matchesOriginalDest =  dest == plan.originalDest && peMode == plan.originalPeMode;
+                bool matchesOriginalDest = dest == plan.originalDest && peMode == plan.originalPeMode;
 
                 if (plan.State == SkipNetPlanState.ExecutingEntry)
                 {
@@ -100,7 +99,7 @@ namespace MigCorp.Skiptech
                 plan.Notify_SkipNetPlanExitReached();
                 return true;
             }
-            else if(plan.State == SkipNetPlanState.ExecutingExit)
+            else if (plan.State == SkipNetPlanState.ExecutingExit)
             {
                 plan.Notify_SkipNetPlanExitReached();
                 return true;
@@ -142,7 +141,7 @@ namespace MigCorp.Skiptech
 
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
-                if(plan.tickCreated == GenTicks.TicksGame)
+                if (plan.tickCreated == GenTicks.TicksGame)
                 {
                     // This path request is for a plan that was just created. Don't bother doing the checks, it's good... trust.
                     return true;
@@ -164,7 +163,7 @@ namespace MigCorp.Skiptech
 
 
                         // Try finding a new route.
-                        if(skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
+                        if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
                         {
                             dest = plan.entry.parent;
                             peMode = PathEndMode.OnCell;
@@ -181,7 +180,7 @@ namespace MigCorp.Skiptech
             // Check if we've tried a skipnet plan this tick, if not, try that instead.
             // If there is a disposed of plan, then we may have already tried. If not,
             // Try one first.
-            else if(!skipNet.TryGetSkipNetPlan(___pawn, out plan, true) || !plan.IsInvalid)
+            else if (!skipNet.TryGetSkipNetPlan(___pawn, out plan, true) || !plan.IsInvalid)
             {
                 if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
                 {
@@ -193,7 +192,7 @@ namespace MigCorp.Skiptech
             // Fall-through: plan is still fine; allow vanilla to create a new request
             return true;
         }
-        
+
         // Make sure the save data holds the original destination and peMode, not the SkipNetPlan replacement.
         public struct SwappedSaveState
         {
@@ -202,7 +201,7 @@ namespace MigCorp.Skiptech
             public PathEndMode swappedPeMode;
             public bool swappedCurPathJobIsStale;
         }
-        
+
         [HarmonyPrefix]
         [HarmonyPatch(nameof(Pawn_PathFollower.ExposeData))]
         static void ExposeData_Prefix(

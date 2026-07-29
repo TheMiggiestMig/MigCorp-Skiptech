@@ -59,18 +59,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
+    <Compile Include="MigcorpSkiptechSettings.cs" />
+    <Compile Include="Utils\SkiptechUtil.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_Delayed.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_IndicatorOverlay.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_Powered.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_RestrictedBase.cs" />
     <Compile Include="SkipNet\Building_SkipdoorBase.cs" />
-    <Compile Include="SkipNet\DebugActions_SkipNet.cs" />
     <Compile Include="SkipNet\ISkipdoorAccessible.cs" />
     <Compile Include="Patches\Core\Patch_Pawn_PatherFollower.cs" />
     <Compile Include="SkipNet\SkipNetAccessContext.cs" />
     <Compile Include="SkipNet\SkipNetPlan.cs" />
     <Compile Include="SkipNet\SkipNetPlanner.cs" />
-    <Compile Include="Utils\EnumUtil.cs" />
     <Compile Include="Utils\FxUtil.cs" />
     <Compile Include="SkipNet\MapComponent_SkipNet.cs" />
     <Compile Include="MigcorpSkiptechMod.cs" />

@@ -1,44 +1,15 @@
+using MigCorp.Skiptech.Utils;
+using RimWorld;
+using System;
 using UnityEngine;
 using Verse;
-using MigCorp.Skiptech.Utils;
-using System;
-using RimWorld;
 
 namespace MigCorp.Skiptech
 {
-    // Mod Settings
-    public class MigcorpSkiptechSettings : ModSettings
-    {
-        public AccessMode accessMode = AccessMode.Everyone;
-        public bool animalsCanUse = true;
-        public bool disableUnpoweredSkipdoors = false;
-        public bool disableSkipShock = false;
-        public bool enableSkipShockAvoidance = false;
-        public bool disableTeleportFlashEffect = false;
-        public bool debugVerboseLogging = false;
-
-        public override void ExposeData()
-        {
-            Scribe_Values.Look(ref accessMode, "accessMode", AccessMode.Everyone);
-            Scribe_Values.Look(ref animalsCanUse, "animalsCanUse", true);
-            Scribe_Values.Look(ref disableUnpoweredSkipdoors, "disableUnpoweredSkipdoors", false);
-            Scribe_Values.Look(ref disableSkipShock, "disableSkipShock", false);
-            Scribe_Values.Look(ref enableSkipShockAvoidance, "enableSkipShockAvoidance", false);
-            Scribe_Values.Look(ref disableTeleportFlashEffect, "disableTeleportFlashEffect", false);
-            Scribe_Values.Look(ref debugVerboseLogging, "debugVerboseLogging", false);
-        }
-    }
-
     // Mod Options and helper functions
     public class MigcorpSkiptechMod : Mod
     {
         public static MigcorpSkiptechSettings Settings;
-
-        public enum LogLevel { Normal, Debug, Verbose }
-        public enum LogType { Info, Warning, Error }
-
-        // UI Helpers
-        private static readonly string modTagString = "[MigCorp-Skiptech]";
 
         public MigcorpSkiptechMod(ModContentPack content) : base(content)
         {
@@ -104,56 +75,5 @@ namespace MigCorp.Skiptech
                 Settings.accessMode = accessMode;
             }
         }
-
-        // Logging and messages
-        private static string LogString(string message, LogLevel level = LogLevel.Normal)
-        {
-            switch (level)
-            {
-                case LogLevel.Debug:
-                    return "[DEBUG] " + message;
-                case LogLevel.Verbose:
-                    return "[INFO] " + message;
-            }
-
-            return " " + message;
-        }
-
-        public static void Log(string message, LogLevel level = LogLevel.Normal, LogType type = LogType.Info)
-        {
-            if ((level == LogLevel.Debug || level == LogLevel.Verbose) && !Prefs.DevMode) { return; }
-            if (level == LogLevel.Verbose && !MigcorpSkiptechMod.Settings.debugVerboseLogging) { return; }
-
-            switch (type)
-            {
-                case LogType.Info:
-                    Verse.Log.Message(modTagString + LogString(message));
-                    return;
-                case LogType.Warning:
-                    Verse.Log.Warning(modTagString + LogString(message));
-                    return;
-                case LogType.Error:
-                    Verse.Log.Error(modTagString + LogString(message));
-                    return;
-            }
-        }
-
-        public static void Log(object obj, LogLevel level = LogLevel.Normal, LogType type = LogType.Info)
-        {
-            Log(obj.ToString(), level, type);
-        }
-
-        public static void Message(string message, LogLevel level = LogLevel.Normal)
-        { MigcorpSkiptechMod.Log(message, level); }
-        public static void Message(object obj, LogLevel level = LogLevel.Normal)
-        { MigcorpSkiptechMod.Log(obj, level); }
-        public static void Warning(string message,LogLevel level = LogLevel.Normal)
-        { MigcorpSkiptechMod.Log(message, level, LogType.Warning); }
-        public static void Warning(object obj, LogLevel level = LogLevel.Normal)
-        { MigcorpSkiptechMod.Log(obj, level, LogType.Warning); }
-        public static void Error(string message, LogLevel level = LogLevel.Normal)
-        { MigcorpSkiptechMod.Log(message, level, LogType.Error); }
-        public static void Error(object obj, LogLevel level = LogLevel.Normal)
-        { MigcorpSkiptechMod.Log(obj, level, LogType.Error); }
     }
 }

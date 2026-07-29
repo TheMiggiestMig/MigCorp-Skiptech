@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-using Verse;
+﻿using MigCorp.Skiptech.Utils;
 using System;
-using MigCorp.Skiptech.Utils;
+using UnityEngine;
+using Verse;
 
 namespace MigCorp.Skiptech.SkipNet
 {

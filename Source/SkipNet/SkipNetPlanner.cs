@@ -40,7 +40,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         public void RebuildRegionDoorIndex()
         {
-            MigcorpSkiptechMod.Message("RegionDoorIndex rebuilt.", MigcorpSkiptechMod.LogLevel.Verbose);
+            SkiptechUtil.Message("RegionDoorIndex rebuilt.", LogLevel.Verbose);
             regionSkipdoors.Clear();
 
             foreach (CompSkipdoor skipdoor in skipdoors)
@@ -193,7 +193,7 @@ namespace MigCorp.Skiptech.SkipNet
             {
                 return false;
             }
-            
+
             if (MigcorpSkiptechMod.Settings.accessMode != AccessMode.Everyone && pawn.HostileTo(Faction.OfPlayer))
             {
                 return false;
@@ -216,7 +216,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             // Crash Guard
             int loopCounter = 1;
-            if (skipNet.TryGetSkipNetPlan(pawn, out SkipNetPlan prevPlan, force:true))
+            if (skipNet.TryGetSkipNetPlan(pawn, out SkipNetPlan prevPlan, force: true))
             {
                 if (prevPlan.tickCreated == GenTicks.TicksGame &&
                     prevPlan.originalDest == dest &&
@@ -228,7 +228,7 @@ namespace MigCorp.Skiptech.SkipNet
                 if (loopCounter >= 10) // If we exceed 10 attempts for the same plan in the same tick, give up to prevent CTD.
                 {
                     plan = new SkipNetPlan(skipNet, pawn, dest, peMode, loopCounter);
-                    MigcorpSkiptechMod.Error($"{pawn.LabelShort} attempted 10 identical SkipNetPlans in a single tick. To prevent infinite loops, they have now given up. (job={pawn.CurJob}, dest={dest}, peMode={peMode}, previousEntry={prevPlan.entry}, previousExit={prevPlan.exit})");
+                    SkiptechUtil.Error($"{pawn.LabelShort} attempted 10 identical SkipNetPlans in a single tick. To prevent infinite loops, they have now given up. (job={pawn.CurJob}, dest={dest}, peMode={peMode}, previousEntry={prevPlan.entry}, previousExit={prevPlan.exit})");
                     return false;
                 }
             }
@@ -323,9 +323,9 @@ namespace MigCorp.Skiptech.SkipNet
                 IntVec3 targetCell = entering ? pawn.Position : dest.Cell;
                 int currentBestHeuristic = entering ? bestEntryHeuristicCost : bestExitHeuristicCost;
 
-                foreach (CompSkipdoor skipdoor in  candidateSkipdoors)
+                foreach (CompSkipdoor skipdoor in candidateSkipdoors)
                 {
-                    if(!accessCheckedSkipdoors.TryGetValue(skipdoor, out SkipdoorAccessRecord accessRecord))
+                    if (!accessCheckedSkipdoors.TryGetValue(skipdoor, out SkipdoorAccessRecord accessRecord))
                     {
                         accessRecord = new SkipdoorAccessRecord();
                         skipdoor.IsUsableBy(ac, out accessRecord.canEnter, out accessRecord.canExit);
@@ -334,7 +334,7 @@ namespace MigCorp.Skiptech.SkipNet
                     if (entering ? !accessRecord.canEnter : !accessRecord.canExit) continue;
 
                     int heuristicCost = SkipNetUtils.OctileDistance(skipdoor.Position, targetCell);
-                    if(heuristicCost < currentBestHeuristic &&
+                    if (heuristicCost < currentBestHeuristic &&
                         map.reachability.CanReach(targetCell, skipdoor.parent, PathEndMode.OnCell, tp))
                     {
                         if (entering)
@@ -374,7 +374,7 @@ namespace MigCorp.Skiptech.SkipNet
                     // or are still within the search range for them.
                     if (entrySkipdoorRange == -1 || regionCost <= entrySkipdoorRange)
                     {
-                        if (CheckSkipdoorAccess(region, regionCost, entering:true) && entrySkipdoorRange == -1)
+                        if (CheckSkipdoorAccess(region, regionCost, entering: true) && entrySkipdoorRange == -1)
                         {
                             entrySkipdoorRange = Math.Max(regionCost + 1, 2);
                         }
@@ -390,7 +390,7 @@ namespace MigCorp.Skiptech.SkipNet
                             estimateDirectRegionCost = closedDestRegions[region] + regionCost;
                         }
                     }
-                    else if(entrySkipdoorRange == -1)
+                    else if (entrySkipdoorRange == -1)
                     {
                         entrySkipdoorRange = Math.Max(regionCost + 1, 2);
                     }
@@ -440,7 +440,7 @@ namespace MigCorp.Skiptech.SkipNet
                     else if (exitSkipdoorRange == -1)
                     {
                         exitSkipdoorRange = Math.Max(regionCost + 1, 2);
-                        }
+                    }
 
                     foreach (RegionLink link in region.links)
                     {
@@ -484,7 +484,7 @@ namespace MigCorp.Skiptech.SkipNet
 
                 if (directH <= entryH + exitH)
                 {
-                   return false;
+                    return false;
                 }
             }
 

@@ -1,4 +1,5 @@
-﻿using RimWorld;
+﻿using MigCorp.Skiptech.Utils;
+using RimWorld;
 using UnityEngine;
 using Verse;
 
@@ -20,7 +21,7 @@ namespace MigCorp.Skiptech.SkipNet.Comps
         {
             base.PostSpawnSetup(respawningAfterLoad);
             powerTrader = parent.TryGetComp<CompPowerTrader>();
-            if (powerTrader == null) { MigcorpSkiptechMod.Warning("CompProperties_Skipdoor_Powered was instantiated without a CompPowerTrader attached to parent."); }
+            if (powerTrader == null) { SkiptechUtil.Warning("CompProperties_Skipdoor_Powered was instantiated without a CompPowerTrader attached to parent."); }
         }
 
         public override int TicksUntilEnterable(Pawn pawn)

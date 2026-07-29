@@ -1,9 +1,9 @@
-﻿using Verse;
-using Verse.AI;
-using UnityEngine;
-using RimWorld;
+﻿using MigCorp.Skiptech.SkipNet.Comps;
+using MigCorp.Skiptech.Utils;
 using System;
-using MigCorp.Skiptech.SkipNet.Comps;
+using UnityEngine;
+using Verse;
+using Verse.AI;
 
 namespace MigCorp.Skiptech.SkipNet
 {
@@ -123,7 +123,7 @@ namespace MigCorp.Skiptech.SkipNet
             {
                 if (pawn?.Map == null || !pawn.Spawned || pawn.pather == null)
                 {
-                    MigcorpSkiptechMod.Error($"Not sure how we got here, but skipnet plan failed because pawn't.");
+                    SkiptechUtil.Error($"Not sure how we got here, but skipnet plan failed because pawn't.");
                 }
                 else
                 {
@@ -142,7 +142,7 @@ namespace MigCorp.Skiptech.SkipNet
             }
             catch (NullReferenceException ex)
             {
-                MigcorpSkiptechMod.Error($"Hmm... I missed something in the Notify_SkipNetPlanFailedOrCancelled checks:\n{ex.Message}\n{ex.StackTrace}");
+                SkiptechUtil.Error($"Hmm... I missed something in the Notify_SkipNetPlanFailedOrCancelled checks:\n{ex.Message}\n{ex.StackTrace}");
             }
             finally
             {

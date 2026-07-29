@@ -1,7 +1,7 @@
-﻿using System.Linq;
+﻿using MigCorp.Skiptech.SkipNet.Comps;
 using RimWorld;
+using System.Linq;
 using Verse;
-using MigCorp.Skiptech.SkipNet.Comps;
 
 namespace MigCorp.Skiptech.SkipNet
 {

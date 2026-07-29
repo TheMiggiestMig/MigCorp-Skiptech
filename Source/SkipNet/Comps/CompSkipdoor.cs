@@ -1,7 +1,7 @@
-﻿using Verse;
+﻿using RimWorld;
 using System.Collections.Generic;
-using RimWorld;
 using UnityEngine;
+using Verse;
 
 namespace MigCorp.Skiptech.SkipNet.Comps
 {

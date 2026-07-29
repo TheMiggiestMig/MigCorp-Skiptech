@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using MigCorp.Skiptech.SkipNet.Comps;
+using MigCorp.Skiptech.Utils;
+using System.Collections.Generic;
 using Verse;
-using MigCorp.Skiptech.SkipNet.Comps;
 
 namespace MigCorp.Skiptech.SkipNet
 {
@@ -56,7 +57,7 @@ namespace MigCorp.Skiptech.SkipNet
         {
             if (skipdoors.Contains(skipdoor))
             {
-                MigcorpSkiptechMod.Warning($"Attempted to register already registered skipdoor at {skipdoor.Position}.");
+                SkiptechUtil.Warning($"Attempted to register already registered skipdoor at {skipdoor.Position}.");
                 return;
             }
             skipdoors.Add(skipdoor);
