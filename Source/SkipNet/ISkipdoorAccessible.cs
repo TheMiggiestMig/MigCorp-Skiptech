@@ -4,17 +4,18 @@ namespace MigCorp.Skiptech.SkipNet
 {
     public interface ISkipdoorAccessible
     {
+
         /// <summary>
         /// Checks if the pawn is allowed to enter the skipdoor
         /// </summary>
         /// <param name="pawn"></param>
-        bool CanEnter(Pawn pawn);
+        bool CanEnter(in SkipNetAccessContext ac);
 
         /// <summary>
         /// Checks if the pawn is allowed to exit the skipdoor
         /// </summary>
         /// <param name="pawn"></param>
-        bool CanExit(Pawn pawn);
+        bool CanExit(in SkipNetAccessContext ac);
 
         /// <summary>
         /// Checks if the pawn is able to enter the skipdoor right at this moment.

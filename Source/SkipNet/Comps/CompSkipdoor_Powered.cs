@@ -33,20 +33,25 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             return !powerTrader.Off ? 0 : base.TicksUntilExitable(pawn);
         }
 
-        public override bool CanEnter(Pawn pawn)
+        // Aggregate check of power (mod settings make unpowered skipdoors unusable) and skipshock
+        // which is now checked in the SkipNetAccessContext. Not sure yet if that's the best place for
+        // it though.
+        private bool UsableGivenPowerAndShock(in SkipNetAccessContext ac)
         {
             if (MigcorpSkiptechMod.Settings.disableUnpoweredSkipdoors && !powerTrader.PowerOn)
                 return false;
 
-            return WantsToAvoidSkipShock(pawn);
+            return ac.shockExempt || !powerTrader.Off;
         }
 
-        public override bool CanExit(Pawn pawn)
+        public override bool CanEnter(in SkipNetAccessContext ac)
         {
-            if (MigcorpSkiptechMod.Settings.disableUnpoweredSkipdoors && !powerTrader.PowerOn)
-                return false;
+            return UsableGivenPowerAndShock(in ac);
+        }
 
-            return WantsToAvoidSkipShock(pawn);
+        public override bool CanExit(in SkipNetAccessContext ac)
+        {
+            return UsableGivenPowerAndShock(in ac);
         }
 
         public override void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
@@ -114,6 +119,9 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             MoteMaker.ThrowText(pawn.PositionHeld.ToVector3Shifted(), text: (string)"MigCorp.Skiptech.Text.Skipshock".Translate(), map: pawn.Map, color: Color.yellow);
         }
 
+        /*
+        // TODO: Remove. Check is now being done by SkipNetAccessContext, since it's tied directly to MigCorpMod.Settings.
+
         // Checks if the skipdoor would cause skip-shock and the pawn wants to avoid it.
         public bool WantsToAvoidSkipShock(Pawn pawn)
         {
@@ -125,5 +133,6 @@ namespace MigCorp.Skiptech.SkipNet.Comps
 
             return false;
         }
+        */
     }
 }

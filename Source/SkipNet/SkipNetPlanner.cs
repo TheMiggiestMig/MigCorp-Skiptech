@@ -18,7 +18,14 @@ namespace MigCorp.Skiptech.SkipNet
         private Dictionary<Region, int> closedPawnRegions = new Dictionary<Region, int>();
         private Dictionary<Region, int> closedDestRegions = new Dictionary<Region, int>();
         private Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
+        private Dictionary<CompSkipdoor, SkipdoorAccessRecord> accessCheckedSkipdoors = new Dictionary<CompSkipdoor, SkipdoorAccessRecord>();
         private HashSet<(IntVec3 dest, Region region)> proxyDestinations = new HashSet<(IntVec3 dest, Region region)>();
+
+        private struct SkipdoorAccessRecord
+        {
+            public bool canEnter;
+            public bool canExit;
+        }
 
         public List<CompSkipdoor> skipdoors { get { return skipNet.skipdoors; } }
         public Map map { get { return skipNet.map; } }
@@ -149,6 +156,7 @@ namespace MigCorp.Skiptech.SkipNet
             closedPawnRegions.Clear();
             closedDestRegions.Clear();
             proxyDestinations.Clear();
+            accessCheckedSkipdoors.Clear();
 
             return true;
         }
@@ -235,6 +243,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             // Make sure we meet the minimum requirements for a SkipNetPlan.
             TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
+            SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
 
             if (!TryInitializePlanner(pawn, dest, peMode, tp, out Region regPawn, out List<Region> regDests))
             {
@@ -270,6 +279,8 @@ namespace MigCorp.Skiptech.SkipNet
 
             estimateDirectRegionCost = pawnSideReachedDest ? 0 : estimateDirectRegionCost;
 
+
+            /*
             // Helper function: Scan's a given region for skipdoors the pawn can enter.
             bool TryScanForEntry(Region region, int regionCost)
             {
@@ -289,8 +300,8 @@ namespace MigCorp.Skiptech.SkipNet
             // Helper function: Scan's a given region for skipdoors the pawn can exit.
             bool TryScanForExit(Region region, int regionCost)
             {
-                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> candidateSkipdoors)) return false;
-                if (!skipNet.TryGetExitableSkipdoors(pawn, out List<CompSkipdoor> exitable, skipdoorListToFilter: candidateSkipdoors)) return false;
+                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> accessCheckedSkipdoors)) return false;
+                if (!skipNet.TryGetExitableSkipdoors(pawn, out List<CompSkipdoor> exitable, skipdoorListToFilter: accessCheckedSkipdoors)) return false;
                 foreach (CompSkipdoor skipdoor in exitable)
                 {
                     int heuristicCost = SkipNetUtils.OctileDistance(skipdoor.Position, dest.Cell);
@@ -301,6 +312,51 @@ namespace MigCorp.Skiptech.SkipNet
                 }
                 return true;
             }
+            */
+
+            // Checks a region for skipdoors it can use, and sets the best if found.
+            bool CheckSkipdoorAccess(Region region, int regionCost, bool entering = true)
+            {
+                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> candidateSkipdoors)) return false;
+
+                bool usableSkipdoorFound = false;
+                IntVec3 targetCell = entering ? pawn.Position : dest.Cell;
+                int currentBestHeuristic = entering ? bestEntryHeuristicCost : bestExitHeuristicCost;
+
+                foreach (CompSkipdoor skipdoor in  candidateSkipdoors)
+                {
+                    if(!accessCheckedSkipdoors.TryGetValue(skipdoor, out SkipdoorAccessRecord accessRecord))
+                    {
+                        accessRecord = new SkipdoorAccessRecord();
+                        skipdoor.IsUsableBy(ac, out accessRecord.canEnter, out accessRecord.canExit);
+                    }
+
+                    if (entering ? !accessRecord.canEnter : !accessRecord.canExit) continue;
+
+                    int heuristicCost = SkipNetUtils.OctileDistance(skipdoor.Position, targetCell);
+                    if(heuristicCost < currentBestHeuristic &&
+                        map.reachability.CanReach(targetCell, skipdoor.parent, PathEndMode.OnCell, tp))
+                    {
+                        if (entering)
+                        {
+                            bestEntryHeuristicCost = heuristicCost;
+                            bestEntry = skipdoor;
+                            entryRegionCost = regionCost;
+                        }
+                        else
+                        {
+                            bestExitHeuristicCost = heuristicCost;
+                            bestExit = skipdoor;
+                            exitRegionCost = regionCost;
+                        }
+
+                        usableSkipdoorFound = true;
+                    }
+                }
+
+                return usableSkipdoorFound;
+            }
+
 
             // We're gonna do 2 BFS searches at the same time; one from the pawn for the entry, and one from the destination for the exit.
             // (note to self: turns out this is called a 'bi-directional BFS', I learned something new!)
@@ -318,7 +374,7 @@ namespace MigCorp.Skiptech.SkipNet
                     // or are still within the search range for them.
                     if (entrySkipdoorRange == -1 || regionCost <= entrySkipdoorRange)
                     {
-                        if (TryScanForEntry(region, regionCost) && entrySkipdoorRange == -1)
+                        if (CheckSkipdoorAccess(region, regionCost, entering:true) && entrySkipdoorRange == -1)
                         {
                             entrySkipdoorRange = Math.Max(regionCost + 1, 2);
                         }
@@ -367,7 +423,7 @@ namespace MigCorp.Skiptech.SkipNet
 
                     if (exitSkipdoorRange == -1 || regionCost <= exitSkipdoorRange)
                     {
-                        if (TryScanForExit(region, regionCost) && exitSkipdoorRange == -1)
+                        if (CheckSkipdoorAccess(region, regionCost, entering: false) && exitSkipdoorRange == -1)
                         {
                             exitSkipdoorRange = Math.Max(regionCost + 1, 2);
                         }

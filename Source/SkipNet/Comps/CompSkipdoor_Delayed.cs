@@ -55,12 +55,12 @@ namespace MigCorp.Skiptech.SkipNet.Comps
                 parent.BroadcastCompSignal("SkipdoorClosed");
             }
         }
-        public override bool CanEnter(Pawn pawn)
+        public override bool CanEnter(in SkipNetAccessContext ac)
         {
             return true;
         }
 
-        public override bool CanExit(Pawn pawn)
+        public override bool CanExit(in SkipNetAccessContext ac)
         {
             return true;
         }

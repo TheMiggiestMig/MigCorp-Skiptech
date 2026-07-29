@@ -17,6 +17,10 @@ namespace MigCorp.Skiptech.SkipNet.Comps
         public List<ISkipdoorAccessible> accessibilityComps = new List<ISkipdoorAccessible>();
         public MapComponent_SkipNet SkipNet => parent.Map?.GetComponent<MapComponent_SkipNet>();
 
+        private CompForbiddable forbiddableComp;
+        private CompBreakdownable breakdownableComp;
+        private CompFlickable flickableComp;
+
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             List<ThingComp> parentThingComps = parent.AllComps;
@@ -27,6 +31,10 @@ namespace MigCorp.Skiptech.SkipNet.Comps
                 if (thingComp is ISkipdoorAccessible accessible) { accessibilityComps.Add(accessible); }
             }
 
+            forbiddableComp = parent.GetComp<CompForbiddable>();
+            breakdownableComp = parent.GetComp<CompBreakdownable>();
+            flickableComp = parent.GetComp<CompFlickable>();
+
             SkipNet.RegisterSkipdoor(this);
         }
 
@@ -36,31 +44,71 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             base.PostDeSpawn(map, dMode);
         }
 
+        // Alternate ways to check entry (being tested for optimizations)
+        private bool GetAccess(in SkipNetAccessContext ac)
+        {
+            if (ac.isPlayerFaction && (forbiddableComp?.Forbidden ?? false)) { return false; }
+            if (breakdownableComp?.BrokenDown ?? false) { return false; }
+            if (!(flickableComp?.SwitchIsOn ?? true)) { return false; }
+
+            // Should fix pawns pathing to skipdoors outside their allowed zones... I think.
+            if (ac.allowedArea != null && !ac.allowedArea[parent.Position]) { return false; }
+
+            return true;
+        }
+
+        public void IsUsableBy(in SkipNetAccessContext ac, out bool canEnter, out bool canExit)
+        {
+            canEnter = canExit = false;
+            if (!GetAccess(in ac)) { return; }
+            canEnter = canExit = true;
+            foreach (ISkipdoorAccessible comp in accessibilityComps)
+            {
+                if (comp == this) { continue; }
+                if (canEnter && !comp.CanEnter(in ac)) { canEnter = false; }
+                if (canExit && !comp.CanExit(in ac)) { canExit = false; }
+                if (!canEnter && !canExit) { return; }
+            }
+        }
+
+        /// <summary>
+        /// Aggregate check if a pawn can enter this skipdoor by checking the comps that define access rules.
+        /// </summary>
+        public bool IsEnterableBy(in SkipNetAccessContext ac)
+        {
+            foreach (ISkipdoorAccessible comp in accessibilityComps)
+                if (!comp.CanEnter(in ac)) { return false; }
+
+            return true;
+        }
 
         /// <summary>
         /// Aggregate check if a pawn can exit this skipdoor by checking the comps that define access rules.
         /// </summary>
+        public bool IsExitableBy(in SkipNetAccessContext ac)
+        {
+            foreach (ISkipdoorAccessible comp in accessibilityComps)
+                if (!comp.CanExit(in ac)) { return false; }
+
+            return true;
+        }
+
+        /*
         public bool IsEnterableBy(Pawn pawn)
         {
-            foreach (ISkipdoorAccessible comp in accessibilityComps)
-                if (!comp.CanEnter(pawn)) { return false; }
-
-            return true;
+            SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
+            return IsEnterableBy(in ac);
         }
 
-        /// <summary>
-        /// Aggregate check if a pawn can exit this skipdoor by checking the comps that define access rules.
-        /// </summary>
         public bool IsExitableBy(Pawn pawn)
         {
-            foreach (ISkipdoorAccessible comp in accessibilityComps)
-                if (!comp.CanExit(pawn)) { return false; }
-
-            return true;
+            SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
+            return IsExitableBy(in ac);
         }
+        */
 
         /// <summary>
-        /// Aggregate check if a pawn can exit this skipdoor at this very moment by checking the comps that define access rules.
+        /// Aggregate check if a pawn can enter this skipdoor at this very moment by checking the comps that define access rules.
         /// </summary>
         /// <remarks>
         /// This differs from <c>IsEnterableBy</c> since a pawn may be a "allowed" access to enter a skipdoor,
@@ -95,6 +143,7 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             return ticks == 0;
         }
 
+        /*
         public bool CanEnter(Pawn pawn)
         {
             // Check if it is forbidden (if it even has that comp)
@@ -147,6 +196,15 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             if (allowed != null && !allowed[parent.Position]) { return false; }
 
             return true;
+        }
+        */
+        public bool CanEnter(in SkipNetAccessContext ac)
+        {
+            return GetAccess(in ac);
+        }
+        public bool CanExit(in SkipNetAccessContext ac)
+        {
+            return GetAccess(in ac);
         }
 
         public int TicksUntilEnterable(Pawn pawn) { return 0; }

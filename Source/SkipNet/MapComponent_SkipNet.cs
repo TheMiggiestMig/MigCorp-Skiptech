@@ -85,7 +85,7 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         //
-
+        /*
         /// <summary>
         /// Returns <c>true</c> if there is one or more skipdoors the <c>pawn</c> can enter.
         /// </summary>
@@ -139,6 +139,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             return exitableSkipdoors.Count > 0;
         }
+        */
 
         public bool TryGetSkipNetPlan(Pawn pawn, out SkipNetPlan plan, bool force = false)
         {

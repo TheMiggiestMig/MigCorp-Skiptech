@@ -166,7 +166,8 @@ namespace MigCorp.Skiptech.SkipNet
         /// <returns></returns>
         public bool IsStillAccessible()
         {
-            return entry.IsEnterableBy(pawn) && exit.IsExitableBy(pawn);
+            SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
+            return entry.IsEnterableBy(ac) && exit.IsExitableBy(ac);
         }
 
         // Fast check. Regular pathing handles whether Pawn->Entry still works,

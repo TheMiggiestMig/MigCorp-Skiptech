@@ -67,6 +67,7 @@
     <Compile Include="SkipNet\DebugActions_SkipNet.cs" />
     <Compile Include="SkipNet\ISkipdoorAccessible.cs" />
     <Compile Include="Patches\Core\Patch_Pawn_PatherFollower.cs" />
+    <Compile Include="SkipNet\SkipNetAccessContext.cs" />
     <Compile Include="SkipNet\SkipNetPlan.cs" />
     <Compile Include="SkipNet\SkipNetPlanner.cs" />
     <Compile Include="Utils\EnumUtil.cs" />
@@ -81,7 +82,8 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>pushd "../"
+call deploy_to_local.bat
+popd</PostBuildEvent>
   </PropertyGroup>
 </Project>
