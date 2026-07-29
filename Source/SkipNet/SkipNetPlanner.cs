@@ -37,7 +37,6 @@ namespace MigCorp.Skiptech.SkipNet
             map.events.RegionsRoomsChanged += RebuildRegionDoorIndex;
             RebuildRegionDoorIndex();
         }
-
         public void RebuildRegionDoorIndex()
         {
             SkiptechUtil.Message("RegionDoorIndex rebuilt.", LogLevel.Verbose);
@@ -212,8 +211,6 @@ namespace MigCorp.Skiptech.SkipNet
 
         public bool TryFindEligibleSkipNetPlan(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, out SkipNetPlan plan)
         {
-            Pawn DEBUG = (Find.Selector.SingleSelectedThing as Pawn) == pawn ? pawn : null;
-
             // Crash Guard
             int loopCounter = 1;
             if (skipNet.TryGetSkipNetPlan(pawn, out SkipNetPlan prevPlan, force: true))
@@ -278,41 +275,6 @@ namespace MigCorp.Skiptech.SkipNet
             }
 
             estimateDirectRegionCost = pawnSideReachedDest ? 0 : estimateDirectRegionCost;
-
-
-            /*
-            // Helper function: Scan's a given region for skipdoors the pawn can enter.
-            bool TryScanForEntry(Region region, int regionCost)
-            {
-                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> candidateSkipDoors)) return false;
-                if (!skipNet.TryGetEnterableSkipdoors(pawn, out List<CompSkipdoor> enterable, skipdoorListToFilter: candidateSkipDoors)) return false;
-                foreach (CompSkipdoor skipdoor in enterable)
-                {
-                    int heuristicCost = SkipNetUtils.OctileDistance(pawn.Position, skipdoor.Position);
-                    if (heuristicCost < bestEntryHeuristicCost && map.reachability.CanReach(pawn.Position, skipdoor.parent, PathEndMode.OnCell, tp))
-                    {
-                        bestEntryHeuristicCost = heuristicCost; bestEntry = skipdoor; entryRegionCost = regionCost;
-                    }
-                }
-                return true;
-            }
-
-            // Helper function: Scan's a given region for skipdoors the pawn can exit.
-            bool TryScanForExit(Region region, int regionCost)
-            {
-                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> accessCheckedSkipdoors)) return false;
-                if (!skipNet.TryGetExitableSkipdoors(pawn, out List<CompSkipdoor> exitable, skipdoorListToFilter: accessCheckedSkipdoors)) return false;
-                foreach (CompSkipdoor skipdoor in exitable)
-                {
-                    int heuristicCost = SkipNetUtils.OctileDistance(skipdoor.Position, dest.Cell);
-                    if (heuristicCost < bestExitHeuristicCost && map.reachability.CanReach(region.AnyCell, skipdoor.parent, PathEndMode.OnCell, tp))
-                    {
-                        bestExitHeuristicCost = heuristicCost; bestExit = skipdoor; exitRegionCost = regionCost;
-                    }
-                }
-                return true;
-            }
-            */
 
             // Checks a region for skipdoors it can use, and sets the best if found.
             bool CheckSkipdoorAccess(Region region, int regionCost, bool entering = true)

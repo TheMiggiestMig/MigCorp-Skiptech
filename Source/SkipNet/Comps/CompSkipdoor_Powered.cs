@@ -119,21 +119,5 @@ namespace MigCorp.Skiptech.SkipNet.Comps
         {
             MoteMaker.ThrowText(pawn.PositionHeld.ToVector3Shifted(), text: (string)"MigCorp.Skiptech.Text.Skipshock".Translate(), map: pawn.Map, color: Color.yellow);
         }
-
-        /*
-        // TODO: Remove. Check is now being done by SkipNetAccessContext, since it's tied directly to MigCorpMod.Settings.
-
-        // Checks if the skipdoor would cause skip-shock and the pawn wants to avoid it.
-        public bool WantsToAvoidSkipShock(Pawn pawn)
-        {
-            if (pawn.Faction != Faction.OfPlayer) return true;
-            if (!powerTrader.Off) return true;
-            if (MigcorpSkiptechMod.Settings.disableSkipShock) return true;
-            if (!MigcorpSkiptechMod.Settings.enableSkipShockAvoidance) return true;
-            if (pawn.Drafted || pawn.CurJob.playerForced) return true;
-
-            return false;
-        }
-        */
     }
 }

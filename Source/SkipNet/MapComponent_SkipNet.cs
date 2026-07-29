@@ -84,64 +84,6 @@ namespace MigCorp.Skiptech.SkipNet
                     plan.Notify_SkipNetPlanFailedOrCancelled();
             }
         }
-
-        //
-        /*
-        /// <summary>
-        /// Returns <c>true</c> if there is one or more skipdoors the <c>pawn</c> can enter.
-        /// </summary>
-        /// <remarks>
-        /// If <c>skipdoorListToFilter</c> is provided, that list is filtered instead of the whole SkipNet registered set of skipdoors.
-        /// </remarks>
-        /// <param name="pawn">Pawn to check</param>
-        /// <param name="enterableSkipdoors">Found list of skipdoors</param>
-        /// <param name="skipdoorListToFilter">(Optional) List of skipdoors to filter.</param>
-        /// <returns></returns>
-        public bool TryGetEnterableSkipdoors(Pawn pawn, out List<CompSkipdoor> enterableSkipdoors, List<CompSkipdoor> skipdoorListToFilter = null)
-        {
-            enterableSkipdoors = tmpEnterableSkipdoors;
-            enterableSkipdoors.Clear();
-
-            if (pawn == null) { return false; }
-
-            List<CompSkipdoor> skipdoors = skipdoorListToFilter ?? this.skipdoors;
-
-            foreach (CompSkipdoor skipdoor in skipdoors)
-            {
-                if (skipdoor.IsEnterableBy(pawn)) { enterableSkipdoors.Add(skipdoor); }
-            }
-
-            return enterableSkipdoors.Count > 0;
-        }
-
-        /// <summary>
-        /// Returns <c>true</c> if there is one or more skipdoors the <c>pawn</c> can exit.
-        /// </summary>
-        /// <remarks>
-        /// If <c>skipdoorListToFilter</c> is provided, that list is filtered instead of the whole SkipNet registered set of skipdoors.
-        /// </remarks>
-        /// <param name="pawn">Pawn to check</param>
-        /// <param name="exitableSkipdoors">Found list of skipdoors</param>
-        /// <param name="skipdoorListToFilter">(Optional) List of skipdoors to filter.</param>
-        /// <returns></returns>
-        public bool TryGetExitableSkipdoors(Pawn pawn, out List<CompSkipdoor> exitableSkipdoors, List<CompSkipdoor> skipdoorListToFilter = null)
-        {
-            exitableSkipdoors = tmpExitableSkipdoors;
-            exitableSkipdoors.Clear();
-
-            if (pawn == null) { return false; }
-
-            List<CompSkipdoor> skipdoors = skipdoorListToFilter ?? this.skipdoors;
-
-            foreach (CompSkipdoor skipdoor in skipdoors)
-            {
-                if (skipdoor.IsExitableBy(pawn)) { exitableSkipdoors.Add(skipdoor); }
-            }
-
-            return exitableSkipdoors.Count > 0;
-        }
-        */
-
         public bool TryGetSkipNetPlan(Pawn pawn, out SkipNetPlan plan, bool force = false)
         {
             if (pawn == null ||

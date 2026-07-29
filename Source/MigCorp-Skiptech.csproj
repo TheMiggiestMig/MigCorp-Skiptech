@@ -65,7 +65,6 @@
     <Compile Include="SkipNet\Comps\CompSkipdoor_IndicatorOverlay.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_Powered.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_RestrictedBase.cs" />
-    <Compile Include="SkipNet\Building_SkipdoorBase.cs" />
     <Compile Include="SkipNet\ISkipdoorAccessible.cs" />
     <Compile Include="Patches\Core\Patch_Pawn_PatherFollower.cs" />
     <Compile Include="SkipNet\SkipNetAccessContext.cs" />

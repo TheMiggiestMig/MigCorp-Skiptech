@@ -44,7 +44,6 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             base.PostDeSpawn(map, dMode);
         }
 
-        // Alternate ways to check entry (being tested for optimizations)
         private bool GetAccess(in SkipNetAccessContext ac)
         {
             if (ac.isPlayerFaction && (forbiddableComp?.Forbidden ?? false)) { return false; }
@@ -93,20 +92,6 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             return true;
         }
 
-        /*
-        public bool IsEnterableBy(Pawn pawn)
-        {
-            SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
-            return IsEnterableBy(in ac);
-        }
-
-        public bool IsExitableBy(Pawn pawn)
-        {
-            SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
-            return IsExitableBy(in ac);
-        }
-        */
-
         /// <summary>
         /// Aggregate check if a pawn can enter this skipdoor at this very moment by checking the comps that define access rules.
         /// </summary>
@@ -143,61 +128,6 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             return ticks == 0;
         }
 
-        /*
-        public bool CanEnter(Pawn pawn)
-        {
-            // Check if it is forbidden (if it even has that comp)
-            if (pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false))
-            {
-                return false;
-            }
-
-            // Check if it is broken (if it even has that comp)
-            if(parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false)
-            {
-                return false;
-            }
-
-            // Check if it flicked on (if it even has that comp)
-            if(!parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false)
-            {
-                return false;
-            }
-
-            // Check if the skipdoor is within the allowed area of the pawn (if applicable)
-            Area allowed = PathUtility.GetAllowedArea(pawn);
-            if (allowed != null && !allowed[parent.Position]) { return false; }
-
-            return true;
-        }
-
-        public bool CanExit(Pawn pawn)
-        {
-            // Check if it is forbidden (if it even has that comp)
-            if (pawn.Faction == Faction.OfPlayer && (parent.GetComp<CompForbiddable>()?.Forbidden ?? false))
-            {
-                return false;
-            }
-
-            // Check if it is broken (if it even has that comp)
-            if (parent.GetComp<CompBreakdownable>()?.BrokenDown ?? false)
-            {
-                return false;
-            }
-
-            // Check if it flicked on (if it even has that comp)
-            if (!parent.GetComp<CompFlickable>()?.SwitchIsOn ?? false)
-            {
-                return false;
-            }
-
-            // Check if the skipdoor is within the allowed area of the pawn (if applicable)
-            Area allowed = PathUtility.GetAllowedArea(pawn);
-            if (allowed != null && !allowed[parent.Position]) { return false; }
-
-            return true;
-        }
-        */
         public bool CanEnter(in SkipNetAccessContext ac)
         {
             return GetAccess(in ac);
