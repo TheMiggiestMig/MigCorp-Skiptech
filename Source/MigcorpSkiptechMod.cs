@@ -6,74 +6,156 @@ using Verse;
 
 namespace MigCorp.Skiptech
 {
-    // Mod Options and helper functions
     public class MigcorpSkiptechMod : Mod
     {
         public static MigcorpSkiptechSettings Settings;
+
+        private const string keyPrefix = "MigCorp.Skiptech.Settings";
 
         public MigcorpSkiptechMod(ModContentPack content) : base(content)
         {
             Settings = GetSettings<MigcorpSkiptechSettings>();
         }
 
-        public override string SettingsCategory() => "MigCorp.Skiptech.Settings".Translate();
+        public override string SettingsCategory() => keyPrefix.Translate();
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
-            // Gameplay Settings
-            var ls = new Listing_Standard();
+            Listing_Standard ls = new Listing_Standard();
             ls.Begin(inRect);
-            ls.GapLine();
-            ls.Label("MigCorp.Skiptech.Settings.Allowed".Translate());
 
-            foreach (AccessMode accessMode in Enum.GetValues(typeof(AccessMode)))
-                AccessMode_RadioButton(ls, accessMode);
-
-            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Allowed.Animals".Translate(),
-                ref Settings.animalsCanUse,
-                "MigCorp.Skiptech.Settings.Allowed.Animals.Tip".Translate());
-            ls.Gap();
-            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Features.Skipshock".Translate(),
-                ref Settings.disableSkipShock,
-                "MigCorp.Skiptech.Settings.Features.Skipshock.Tip".Translate());
-            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Features.SkipshockAvoidance".Translate(),
-                ref Settings.enableSkipShockAvoidance,
-                "MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip".Translate());
-            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Features.DisableUnpoweredSkipdoors".Translate(),
-                ref Settings.disableUnpoweredSkipdoors,
-                "MigCorp.Skiptech.Settings.Features.DisableUnpoweredSkipdoors.Tip".Translate());
-
-            // Accessibility Settings
-            ls.GapLine();
-            ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Accessibility.FlashEffect".Translate(),
-                ref Settings.disableTeleportFlashEffect,
-                "MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip".Translate());
-
-            // Dev Settings
-            ls.GapLine();
-            if (Prefs.DevMode)
-            {
-                ls.Gap();
-                ls.CheckboxLabeled("MigCorp.Skiptech.Settings.Debug.Verbose".Translate(),
-                    ref Settings.debugVerboseLogging);
-            }
-            else
-            {
-                ls.Label("MigCorp.Skiptech.Settings.Debug.Enable".Translate());
-            }
+            DrawAccessSection(ls);
+            DrawFeatureSection(ls);
+            DrawPowerSection(ls);
+            DrawAccessibilitySection(ls);
+            DrawDebugSection(ls);
 
             ls.End();
         }
 
-        private void AccessMode_RadioButton(Listing_Standard ls, AccessMode accessMode)
+        private static void DrawAccessSection(Listing_Standard ls)
         {
-            if (ls.RadioButton($"MigCorp.Skiptech.Settings.Allowed.{accessMode}".Translate(),
-                Settings.accessMode == accessMode,
-                20,
-                $"MigCorp.Skiptech.Settings.Allowed.{accessMode}.Tip".Translate()))
+            ls.GapLine();
+            ls.Label($"{keyPrefix}.Allowed".Translate());
+
+            foreach (AccessMode mode in Enum.GetValues(typeof(AccessMode)))
             {
-                Settings.accessMode = accessMode;
+                if (ls.RadioButton($"{keyPrefix}.Allowed.{mode}".Translate(),
+                        Settings.accessMode == mode, 20f,
+                        $"{keyPrefix}.Allowed.{mode}.Tip".Translate()))
+                {
+                    Settings.accessMode = mode;
+                }
             }
+
+            Checkbox(ls, $"{keyPrefix}.Allowed.Animals", ref Settings.animalsCanUse);
+        }
+
+        private static void DrawFeatureSection(Listing_Standard ls)
+        {
+            ls.Gap();
+            Checkbox(ls, $"{keyPrefix}.Features.Skipshock", ref Settings.disableSkipShock);
+            Checkbox(ls, $"{keyPrefix}.Features.SkipshockAvoidance", ref Settings.enableSkipShockAvoidance);
+            Checkbox(ls, $"{keyPrefix}.Features.DisableUnpoweredSkipdoors", ref Settings.disableUnpoweredSkipdoors);
+        }
+
+        private static void DrawPowerSection(Listing_Standard ls)
+        {
+            ls.GapLine();
+
+            bool inGame = Current.ProgramState == ProgramState.Playing && Current.Game != null;
+            GameComponent_Skiptech gameComp = inGame ? Current.Game.GetComponent<GameComponent_Skiptech>() : null;
+
+            float shownWatts = inGame ? SkipdoorCustomPower.CurrentGameWatts
+                                      : SkipdoorCustomPower.DefaultWatts;
+            bool isCustom = inGame ? gameComp != null && gameComp.skipdoorPowerOverride >= 0
+                                   : Settings.defaultSkipdoorPower >= 0;
+            string key = inGame ? $"{keyPrefix}.Power.Game" : $"{keyPrefix}.Power.Default";
+            string fallback = (inGame ? SkipdoorCustomPower.DefaultWatts
+                                      : SkipdoorCustomPower.XmlWatts).ToString("F0");
+
+
+            float powerSlider = SliderRow(ls,
+                key.Translate(shownWatts.ToString("F0")),
+                (key + ".Tip").Translate(fallback),
+                shownWatts, SkipdoorCustomPower.MinWatts, SkipdoorCustomPower.MaxWatts,
+                roundTo: SkipdoorCustomPower.StepWatts,
+                showReset: isCustom,
+                resetTo: SkipdoorCustomPower.Unset,
+                resetTip: $"{keyPrefix}.Power.Reset".Translate());
+
+            int watts = Mathf.RoundToInt(powerSlider);
+            if (watts != Mathf.RoundToInt(shownWatts))
+            {
+                if (inGame)
+                {
+                    gameComp.skipdoorPowerOverride = watts;
+                    SkipdoorCustomPower.ApplyToActiveGame();
+                }
+                else
+                {
+                    Settings.defaultSkipdoorPower = watts;
+                }
+            }
+        }
+
+        private static void DrawAccessibilitySection(Listing_Standard ls)
+        {
+            ls.GapLine();
+            Checkbox(ls, $"{keyPrefix}.Accessibility.FlashEffect", ref Settings.disableTeleportFlashEffect);
+        }
+
+        private static void DrawDebugSection(Listing_Standard ls)
+        {
+            ls.GapLine();
+            if (Prefs.DevMode)
+            {
+                Checkbox(ls, $"{keyPrefix}.Debug.Verbose", ref Settings.debugVerboseLogging, hasTip: false);
+            }
+            else
+            {
+                ls.Label($"{keyPrefix}.Debug.Enable".Translate());
+            }
+        }
+
+        // Row helpers (trying to make this a bit neater)
+        private static void Checkbox(Listing_Standard ls, string key, ref bool value, bool hasTip = true)
+        {
+            ls.CheckboxLabeled(key.Translate(), ref value,
+                hasTip ? (key + ".Tip").Translate().ToString() : null);
+        }
+
+        private static float SliderRow(Listing_Standard ls, string label, string tooltip,
+            float value, float min, float max, float roundTo,
+            bool showReset, float resetTo, string resetTip)
+        {
+            const float rowHeight = 30f;
+            const float iconSize = 24f;
+            const float pad = 8f;
+
+            Rect row = ls.GetRect(rowHeight);
+            Rect iconRect = new Rect(row.xMax - iconSize, row.y + (rowHeight - iconSize) / 2f, iconSize, iconSize);
+            Rect labelRect = row.LeftPart(0.45f);
+            Rect sliderRect = new Rect(labelRect.xMax + pad, row.y,
+                iconRect.xMin - labelRect.xMax - 2f * pad, rowHeight);
+
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(labelRect, label);
+            Text.Anchor = TextAnchor.UpperLeft;
+            if (!tooltip.NullOrEmpty())
+            {
+                Widgets.DrawHighlightIfMouseover(labelRect);
+                TooltipHandler.TipRegion(labelRect, tooltip);
+            }
+
+            float result = Widgets.HorizontalSlider(sliderRect, value, min, max,
+                middleAlignment: true, roundTo: roundTo);
+
+            if (showReset && Widgets.ButtonImage(iconRect, TexButton.Reload, true, resetTip))
+                result = resetTo;
+
+            ls.Gap(ls.verticalSpacing);
+            return result;
         }
     }
 }

@@ -22,6 +22,13 @@
 
 	<MigCorp.Skiptech.Settings.Features.SkipshockAvoidance>Enable Skip-Shock Avoidance</MigCorp.Skiptech.Settings.Features.SkipshockAvoidance>
 	<MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip>Pawns will avoid using skipdoors that cause skip-shock unless they are drafted or performing a forced action</MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip>
+
+	<MigCorp.Skiptech.Settings.Power.Default>Skipdoor power consumption (default): {0} W</MigCorp.Skiptech.Settings.Power.Default>
+	<MigCorp.Skiptech.Settings.Power.Default.Tip>Default skipdoor power draw for new games and for saves that haven't been customized. Reset returns to the mod's built-in value ({0} W).</MigCorp.Skiptech.Settings.Power.Default.Tip>
+	<MigCorp.Skiptech.Settings.Power.Game>Skipdoor power consumption (current game): {0} W</MigCorp.Skiptech.Settings.Power.Game>
+	<MigCorp.Skiptech.Settings.Power.Game.Tip>Power draw for all skipdoors in the current game. Applies immediately to every existing and future skipdoor. Reset to follow the mod default ({0} W).</MigCorp.Skiptech.Settings.Power.Game.Tip>
+	<MigCorp.Skiptech.Settings.Power.Reset>Reset to default</MigCorp.Skiptech.Settings.Power.Reset>
+
 	
 	<!-- Accessibility Settings -->
 	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect>Disable teleport visuals</MigCorp.Skiptech.Settings.Accessibility.FlashEffect>
