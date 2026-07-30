@@ -66,6 +66,7 @@
     <Compile Include="GameComponent_Skiptech.cs" />
     <Compile Include="MigcorpSkiptechSettings.cs" />
     <Compile Include="SkipNet\SkipdoorCustomPower.cs" />
+    <Compile Include="SkipNet\SkipNetProposer.cs" />
     <Compile Include="Utils\SkiptechUtil.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_Delayed.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_IndicatorOverlay.cs" />

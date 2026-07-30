@@ -1,12 +1,25 @@
-﻿using MigCorp.Skiptech.Utils;
+﻿using HarmonyLib;
+using MigCorp.Skiptech.Utils;
 using System;
 using UnityEngine;
 using Verse;
+using Verse.AI;
 
 namespace MigCorp.Skiptech.SkipNet
 {
     public static class SkipNetUtils
     {
+        // Special accessors to dig into a given Pawn_PathFollower's private fields.
+        // Moved to SkipNetUtils since I'm now using it for more than just the patches.
+        public static readonly AccessTools.FieldRef<Pawn_PathFollower, LocalTargetInfo>
+        _patherDestRef = AccessTools.FieldRefAccess<Pawn_PathFollower, LocalTargetInfo>("destination");
+        public static readonly AccessTools.FieldRef<Pawn_PathFollower, PathEndMode>
+        _patherPeModeRef = AccessTools.FieldRefAccess<Pawn_PathFollower, PathEndMode>("peMode");
+
+        // Read-only views.
+        public static LocalTargetInfo PatherDest(Pawn_PathFollower pather) => _patherDestRef(pather);
+        public static PathEndMode PatherPeMode(Pawn_PathFollower pather) => _patherPeModeRef(pather);
+
         public static int OctileDistance(IntVec3 start, IntVec3 end)
         {
             IntVec3 d = start - end;

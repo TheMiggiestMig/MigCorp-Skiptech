@@ -3,6 +3,7 @@ using MigCorp.Skiptech.Utils;
 using RimWorld;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Verse;
 using Verse.AI;
 
@@ -186,31 +187,12 @@ namespace MigCorp.Skiptech.SkipNet
             return false;
         }
 
-        public bool TryFilterSettings(Pawn pawn)
-        {
-            if (MigcorpSkiptechMod.Settings.accessMode == AccessMode.Colonists && pawn.Faction != Faction.OfPlayer)
-            {
-                return false;
-            }
-
-            if (MigcorpSkiptechMod.Settings.accessMode != AccessMode.Everyone && pawn.HostileTo(Faction.OfPlayer))
-            {
-                return false;
-            }
-
-            if (!MigcorpSkiptechMod.Settings.animalsCanUse && pawn.IsAnimal)
-            {
-                if (!(pawn.jobs?.curJob?.def == JobDefOf.FollowRoper))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         public bool TryFindEligibleSkipNetPlan(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, out SkipNetPlan plan)
         {
+            // Keeping this here for performance testing once I make the search harnesses.
+            // Stopwatch stopwatch = Stopwatch.StartNew();
+            // stopwatch.ElapsedTicks;
+
             // Crash Guard
             int loopCounter = 1;
             if (skipNet.TryGetSkipNetPlan(pawn, out SkipNetPlan prevPlan, force: true))
@@ -232,11 +214,6 @@ namespace MigCorp.Skiptech.SkipNet
 
             // A blank plan lets us know we at least attempted one.
             plan = new SkipNetPlan(skipNet, pawn, dest, peMode, loopCounter);
-
-            if (!TryFilterSettings(pawn))
-            {
-                return false;
-            }
 
             // Make sure we meet the minimum requirements for a SkipNetPlan.
             TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);

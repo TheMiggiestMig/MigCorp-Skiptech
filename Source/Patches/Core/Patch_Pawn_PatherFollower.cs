@@ -9,10 +9,6 @@ namespace MigCorp.Skiptech
     static class Pawn_PathFollower_Patch
     {
         // Special accessors to dig into a given Pawn_PathFollower's private fields.
-        static readonly AccessTools.FieldRef<Pawn_PathFollower, LocalTargetInfo>
-        _patherDestRef = AccessTools.FieldRefAccess<Pawn_PathFollower, LocalTargetInfo>("destination");
-        static readonly AccessTools.FieldRef<Pawn_PathFollower, PathEndMode>
-        _patherPeModeRef = AccessTools.FieldRefAccess<Pawn_PathFollower, PathEndMode>("peMode");
 
         [HarmonyPrefix]
         [HarmonyPatch(nameof(Pawn_PathFollower.StartPath))]
@@ -136,8 +132,8 @@ namespace MigCorp.Skiptech
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
             if (skipNet == null) { return true; }
 
-            ref LocalTargetInfo dest = ref _patherDestRef(___pawn.pather);
-            ref PathEndMode peMode = ref _patherPeModeRef(___pawn.pather);
+            ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
+            ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);
 
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
@@ -228,8 +224,8 @@ namespace MigCorp.Skiptech
 
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
-                ref LocalTargetInfo dest = ref _patherDestRef(___pawn.pather);
-                ref PathEndMode peMode = ref _patherPeModeRef(___pawn.pather);
+                ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
+                ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);
 
                 __state.swapped = true;
 
@@ -249,8 +245,8 @@ namespace MigCorp.Skiptech
         {
             if (__state.swapped)
             {
-                ref LocalTargetInfo dest = ref _patherDestRef(___pawn.pather);
-                ref PathEndMode peMode = ref _patherPeModeRef(___pawn.pather);
+                ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
+                ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);
 
                 dest = __state.swappedDestination;
                 peMode = __state.swappedPeMode;
