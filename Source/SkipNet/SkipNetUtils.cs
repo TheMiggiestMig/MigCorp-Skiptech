@@ -23,9 +23,9 @@ namespace MigCorp.Skiptech.SkipNet
         public static int OctileDistance(IntVec3 start, IntVec3 end)
         {
             IntVec3 d = start - end;
-            int dx = Mathf.Abs(d.x);
-            int dz = Mathf.Abs(d.z);
-            return Mathf.Min(dx, dz) * 10 + Mathf.Abs(dx - dz) * 4;
+            int dx = Math.Abs(d.x);
+            int dz = Math.Abs(d.z);
+            return Math.Max(dx, dz) * 10 + Math.Min(dx, dz) * 4;
         }
 
         internal static void TeleportPawn(Pawn pawn, IntVec3 position)
