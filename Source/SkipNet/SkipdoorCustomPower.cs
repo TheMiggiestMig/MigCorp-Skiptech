@@ -1,11 +1,10 @@
 ﻿using HarmonyLib;
-using MigCorp.Skiptech.SkipNet;
 using MigCorp.Skiptech.SkipNet.Comps;
 using MigCorp.Skiptech.Utils;
 using RimWorld;
 using Verse;
 
-namespace MigCorp.Skiptech
+namespace MigCorp.Skiptech.SkipNet
 {
     // For customizing how much power the MigCorp Skipdoors consume.
     // Mainly for balance and scenarios (builders may want them to be free, other players may want more of a challenge).

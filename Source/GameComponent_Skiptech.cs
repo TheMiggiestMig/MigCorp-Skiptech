@@ -1,4 +1,5 @@
-﻿using Verse;
+﻿using MigCorp.Skiptech.SkipNet;
+using Verse;
 
 namespace MigCorp.Skiptech
 {
