@@ -18,16 +18,13 @@ namespace MigCorp.Skiptech.SkipNet
         public List<CompSkipdoor> skipdoors;
 
         // SkipNetPlans
+        public SkipNetProposer proposer;
         public SkipNetPlanner planner;
         public Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans;
         private readonly List<KeyValuePair<Pawn, SkipNetPlan>> _tempPawnSkipNetPlans = new List<KeyValuePair<Pawn, SkipNetPlan>>(); // Snapshot for the pawnSkipNetPlans to prevent mutating the table mid loop.
 
         public List<Pawn> disposedPawnSkipNetPlans;
         public int lastSkipNetPlanDeepCleanTick;
-
-        // Buffers
-        private List<CompSkipdoor> tmpEnterableSkipdoors;
-        private List<CompSkipdoor> tmpExitableSkipdoors;
 
 
         public MapComponent_SkipNet(Map map) : base(map)
@@ -37,9 +34,7 @@ namespace MigCorp.Skiptech.SkipNet
             pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
             disposedPawnSkipNetPlans = new List<Pawn>();
 
-            tmpEnterableSkipdoors = new List<CompSkipdoor>();
-            tmpExitableSkipdoors = new List<CompSkipdoor>();
-
+            proposer = new SkipNetProposer(this);
             planner = new SkipNetPlanner(this);
         }
 
@@ -47,6 +42,7 @@ namespace MigCorp.Skiptech.SkipNet
         {
             base.MapComponentTick();
             ResolveActivePlans();
+            proposer.ProcessQueue();
             Cleanup();
         }
 

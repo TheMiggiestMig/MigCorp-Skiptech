@@ -8,67 +8,43 @@ namespace MigCorp.Skiptech
     [HarmonyPatch(typeof(Pawn_PathFollower))]
     static class Pawn_PathFollower_Patch
     {
-        // Special accessors to dig into a given Pawn_PathFollower's private fields.
-
+        // Nuke any current SkipNetPlan for the pawn since we're doing a whole new StartPath request.
         [HarmonyPrefix]
         [HarmonyPatch(nameof(Pawn_PathFollower.StartPath))]
-        static void StartPath_Prefix(
-            Pawn_PathFollower __instance,
-            ref LocalTargetInfo dest,
-            ref PathEndMode peMode,
-            Pawn ___pawn
-            )
+        static bool StartPath_Prefix(
+            LocalTargetInfo dest,
+            PathEndMode peMode,
+            Pawn ___pawn)
         {
-            // Intercept the original StartPath request, and try to generate a SkipNetPlan if none exists for this pawn.
-            // Otherwise, carry on.
-            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            if (skipNet == null) { return; }
+            MapComponent_SkipNet skipNet =
+                ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
 
-            // Not sure why someone would call StartPath to "Invalid" specifically, but here we are.
-            if (!dest.IsValid || peMode == PathEndMode.None) { return; }
+            if (skipNet == null) { return true; }
 
+            // There are some real weird mod decisions out there that specifically try to path
+            // to exacly nowhere.
+            if (!dest.IsValid || peMode == PathEndMode.None) { return true; }
+
+            // Preserve StartPath calls made by proposer.
+            if (skipNet.proposer.IsHijacking(___pawn)) { return true; }
+
+            // If a valid plan already exists, and it's going to the same location,
+            // it's probably GetNewPathRequest refreshing the path. Skip proposing a new plan
+            // and re-establish the hijack.
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
-                bool matchesOriginalDest = dest == plan.originalDest && peMode == plan.originalPeMode;
+                if (plan.State == SkipNetPlanState.ExecutingEntry &&
+                plan.originalDest == dest && plan.originalPeMode == peMode &&
+                ___pawn.pather.Moving)
+                {
+                    return false;
+                }
 
-                if (plan.State == SkipNetPlanState.ExecutingEntry)
-                {
-                    // For some reason, start path was called again to the same destination. Just keep using the current plan.
-                    if (matchesOriginalDest)
-                    {
-                        dest = plan.entry.parent;
-                        peMode = PathEndMode.OnCell;
-
-                        return;
-                    }
-                    else
-                    {
-                        plan.Dispose();
-                    }
-                }
-                else if (plan.IsInvalid && matchesOriginalDest)
-                {
-                    // We've already tried and failed this tick. Let vanilla handle it.
-                    return;
-                }
-                else
-                {
-                    // This shouldn't happen. It means that StartPath was called while the plan was in an ExecutingExit state.
-                    // ExecutingExit disposes the plan immediately once it hits that state, so it should never live long enough to live to this state.
-                    plan.ResetPawnMoveState();
-                    plan.Dispose();
-                    return;
-                }
+                plan.Dispose();
             }
 
-            // There isn't an existing plan, try generating one.
-            if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, dest, peMode, out plan))
-            {
-                dest = plan.entry.parent;
-                peMode = PathEndMode.OnCell;
-            }
+            return true;
         }
-
 
         // We need to intercept and cancel if we arrived at an entry portal as part of a SkipNetPlan.
         // If we CanExit the exit, and the path from exit to dest is valid, ignore.
@@ -119,32 +95,29 @@ namespace MigCorp.Skiptech
             return false;
         }
 
+        // Usually called from StartPath (occasionally from the PatherTick).
+        // Re-affirms good plans, nuke's bad ones.
         [HarmonyPrefix]
         [HarmonyPatch("GenerateNewPathRequest")]
-        static bool GenerateNewPathRequest_Prefix(
+        static void GenerateNewPathRequest_Prefix(
             Pawn_PathFollower __instance,
-            ref PathRequest __result,
-            Pawn ___pawn,
-            LocalTargetInfo ___destination,
-            PathEndMode ___peMode)
+            Pawn ___pawn)
         {
-            Map map = ___pawn.Map;
-            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            if (skipNet == null) { return true; }
+            Map map = ___pawn?.Map;
+            MapComponent_SkipNet skipNet = map?.GetComponent<MapComponent_SkipNet>();
+            if (skipNet == null) { return; }
 
             ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
             ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);
 
+            TraverseParms tp = SkipNetUtils.JankyTraverseParmsFor(___pawn);
+
             if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
-                if (plan.tickCreated == GenTicks.TicksGame)
-                {
-                    // This path request is for a plan that was just created. Don't bother doing the checks, it's good... trust.
-                    return true;
-                }
+                // This path request is for a plan that was just created. Don't bother doing the checks, it's good... trust.
+                if (skipNet.proposer.IsHijacking(___pawn)) { return; }
 
-                TraverseParms tp = TraverseParms.For(___pawn, mode: TraverseMode.ByPawn);
-
+                // Check if we need to nuke the plan or just reapply the hijack.
                 if (plan.State == SkipNetPlanState.ExecutingEntry)
                 {
 
@@ -156,15 +129,7 @@ namespace MigCorp.Skiptech
                         peMode = plan.originalPeMode;
 
                         plan.Dispose();
-
-
-                        // Try finding a new route.
-                        if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
-                        {
-                            dest = plan.entry.parent;
-                            peMode = PathEndMode.OnCell;
-                        };
-                        return true;
+                        return;
                     }
 
                     // Re-apply the hijack.
@@ -172,21 +137,28 @@ namespace MigCorp.Skiptech
                     peMode = PathEndMode.OnCell;
                 }
             }
+        }
 
-            // Check if we've tried a skipnet plan this tick, if not, try that instead.
-            // If there is a disposed of plan, then we may have already tried. If not,
-            // Try one first.
-            else if (!skipNet.TryGetSkipNetPlan(___pawn, out plan, true) || !plan.IsInvalid)
-            {
-                if (skipNet.planner.TryFindEligibleSkipNetPlan(___pawn, ___destination, ___peMode, out plan))
-                {
-                    dest = plan.entry.parent;
-                    peMode = PathEndMode.OnCell;
-                }
-            }
+        // Now handles the proposing of new plans.
+        [HarmonyPostfix]
+        [HarmonyPatch("GenerateNewPathRequest")]
+        static void GenerateNewPathRequest_Postfix(
+            PathRequest __result,
+            Pawn ___pawn,
+            LocalTargetInfo ___destination,
+            PathEndMode ___peMode)
+        {
+            // Just in case another mod kills GenerateNewPathRequest.
+            if (__result == null) { return; }
 
-            // Fall-through: plan is still fine; allow vanilla to create a new request
-            return true;
+            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            if (skipNet == null) { return; }
+            if (skipNet.proposer.IsHijacking(___pawn)) { return; }
+
+            // Already serving an active plan (hijack re-applied in the prefix), or attempted (and failed) a plan this tic.
+            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
+
+            skipNet.proposer.TryMakeSkipNetProposal(___pawn, ___destination, ___peMode, __result.TraverseParms);
         }
 
         // Make sure the save data holds the original destination and peMode, not the SkipNetPlan replacement.
