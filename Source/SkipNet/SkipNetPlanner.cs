@@ -1,32 +1,26 @@
 ﻿using MigCorp.Skiptech.SkipNet.Comps;
 using MigCorp.Skiptech.Utils;
-using RimWorld;
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Verse;
 using Verse.AI;
+using static MigCorp.Skiptech.SkipNet.SkipNetProposer;
 
 namespace MigCorp.Skiptech.SkipNet
 {
     public class SkipNetPlanner
     {
-        public MapComponent_SkipNet skipNet;
+        public readonly MapComponent_SkipNet skipNet;
+        private readonly SkipNetSearcher searcher;
 
-        // BFS
-        private Deque<Region> openPawnRegions = new Deque<Region>();
-        private Deque<Region> openDestRegions = new Deque<Region>();
-        private Dictionary<Region, int> closedPawnRegions = new Dictionary<Region, int>();
-        private Dictionary<Region, int> closedDestRegions = new Dictionary<Region, int>();
-        private Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
-        private Dictionary<CompSkipdoor, SkipdoorAccessRecord> accessCheckedSkipdoors = new Dictionary<CompSkipdoor, SkipdoorAccessRecord>();
-        private HashSet<(IntVec3 dest, Region region)> proxyDestinations = new HashSet<(IntVec3 dest, Region region)>();
+        // Region --> Skipdoor mapping
+        private bool regionSkipdoorsDirty = true;
+        public readonly Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
 
-        private struct SkipdoorAccessRecord
-        {
-            public bool canEnter;
-            public bool canExit;
-        }
+        // Plan management
+        public readonly Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
+        private readonly List<KeyValuePair<Pawn, SkipNetPlan>> _tempPawnSkipNetPlans = new List<KeyValuePair<Pawn, SkipNetPlan>>(); // Snapshot for the pawnSkipNetPlans to prevent mutating the table mid loop.
+        public readonly List<Pawn> disposedPawnSkipNetPlans = new List<Pawn>();
+        public int lastSkipNetPlanDeepCleanTick;
 
         public List<CompSkipdoor> skipdoors { get { return skipNet.skipdoors; } }
         public Map map { get { return skipNet.map; } }
@@ -34,32 +28,37 @@ namespace MigCorp.Skiptech.SkipNet
         public SkipNetPlanner(MapComponent_SkipNet skipNet)
         {
             this.skipNet = skipNet;
+            searcher = new SkipNetSearcherBFS(this);
 
-            map.events.RegionsRoomsChanged += RebuildRegionDoorIndex;
+            map.events.RegionsRoomsChanged += MarkRegionDoorIndexDirty;
             RebuildRegionDoorIndex();
         }
-        public void RebuildRegionDoorIndex()
+
+        public void Run()
         {
-            SkiptechUtil.Message("RegionDoorIndex rebuilt.", LogLevel.Verbose);
+            ResolveActivePlans();
+            Cleanup();
+        }
+
+        /// <summary>
+        /// Rebuilds the Region --> Skipdoor lookup if marked as dirty.
+        /// </summary>
+        /// <remarks>
+        /// The regionSkipdoors lookup is for quickly identifying which skipdoors are in a given region.
+        /// </remarks>
+        private void RebuildRegionDoorIndex()
+        {
+            if (!regionSkipdoorsDirty) { return; }
+
             regionSkipdoors.Clear();
 
             foreach (CompSkipdoor skipdoor in skipdoors)
             {
-                if (skipdoor == null || !skipdoor.parent.Spawned)
-                {
-                    continue;
-                }
-
-                if (skipdoor.parent?.Map != skipNet.map || !skipdoor.Position.InBounds(map))
-                {
-                    continue;
-                }
+                if (skipdoor == null || !skipdoor.parent.Spawned) { continue; }
+                if (skipdoor.parent?.Map != skipNet.map || !skipdoor.Position.InBounds(map)) { continue; }
 
                 Region region = map.regionGrid.GetValidRegionAt_NoRebuild(skipdoor.Position);
-                if (region == null || !region.valid || region.type == RegionType.None)
-                {
-                    continue;
-                }
+                if (region == null || !region.valid || region.type == RegionType.None) { continue; }
 
                 if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> skipdoorsInRegion))
                 {
@@ -68,367 +67,209 @@ namespace MigCorp.Skiptech.SkipNet
 
                 skipdoorsInRegion.Add(skipdoor);
             }
+
+            SkiptechUtil.Message("RegionDoorIndex rebuilt.", LogLevel.Verbose);
+            regionSkipdoorsDirty = false;
+        }
+
+        public void MarkRegionDoorIndexDirty() => regionSkipdoorsDirty = true;
+
+        /// <summary>
+        /// Returns a SkipNetPlan if it exists.
+        /// </summary>
+        /// <param name="force">Include "disposed" plans</param>
+        /// <returns>Returns <see langword="true"/> if a plan existed or <see langword="false"/> otherwise.</returns>
+        public bool TryGetSkipNetPlan(Pawn pawn, out SkipNetPlan plan, bool force = false)
+        {
+            if (pawn == null ||
+                !pawnSkipNetPlans.TryGetValue(pawn, out plan) ||
+                !force && plan.IsDisposed
+                )
+            {
+                plan = default;
+                return false;
+            }
+            return true;
+        }
+
+        public void RegisterPlan(Pawn pawn, SkipNetPlan plan)
+        {
+            pawnSkipNetPlans[pawn] = plan;
+        }
+
+        /// <summary>
+        /// Loops through all active plans and attempts to resolve them.
+        /// The plan itself handles the resolution; this method just tells it to try.
+        /// </summary>
+        public void ResolveActivePlans()
+        {
+            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
+            SkipNetPlan plan;
+
+            for (int i = 0; i < activeSkipnetPlans.Count; i++)
+            {
+                plan = activeSkipnetPlans[i].Value;
+
+                if (!plan.IsDisposedOrInvalid && plan.Arrived)
+                    plan.Resolve();
+            }
+        }
+
+        /// <summary>
+        /// Cancels all active SkipNetPlans that use <see langword="skipdoor"/>
+        /// </summary>
+        /// <param name="skipdoor">The affected skipdoor (typically destroyed, minified, or despawned).</param>
+        public void CancelPlansUsingSkipdoor(CompSkipdoor skipdoor)
+        {
+            // Notify all plans using this skipdoor to cancel
+            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
+            SkipNetPlan plan;
+
+            for (int i = 0; i < activeSkipnetPlans.Count; i++)
+            {
+                plan = activeSkipnetPlans[i].Value;
+
+                if (plan.entry == skipdoor || plan.exit == skipdoor)
+                    plan.Notify_SkipNetPlanFailedOrCancelled();
+            }
+        }
+
+        public void Cleanup()
+        {
+            CleanupInvalidAndBadPlans();
+            RemoveDisposedSkipNetPlans();
+        }
+
+        public void CleanupInvalidAndBadPlans()
+        {
+            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
+            Pawn pawn;
+            SkipNetPlan plan;
+
+            for (int i = 0; i < activeSkipnetPlans.Count; i++)
+            {
+                pawn = activeSkipnetPlans[i].Key;
+                plan = activeSkipnetPlans[i].Value;
+
+                if (plan.IsInvalid || pawn?.Map != map || !pawn.Spawned)
+                {
+                    plan.Dispose();
+                    continue;
+                }
+
+                // Check if the skipdoors are still useable.
+                if (!plan.IsDisposedOrInvalid)
+                {
+                    if (pawn.IsHashIntervalTick(60) && !plan.IsStillAccessible())
+                    {
+                        plan.Notify_SkipNetPlanFailedOrCancelled();
+                    }
+
+                    // Do a DeepClean on the plan.
+                    if (pawn.IsHashIntervalTick(180))
+                    {
+                        DeepClean(pawn, plan);
+                    }
+                }
+            }
+        }
+
+        public void RemoveDisposedSkipNetPlans()
+        {
+            foreach (Pawn pawn in disposedPawnSkipNetPlans)
+            {
+                if (pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan) && plan.IsDisposed)
+                {
+                    pawnSkipNetPlans.Remove(pawn);
+                }
+            }
+
+            disposedPawnSkipNetPlans.Clear();
+        }
+
+        public void DeepClean(Pawn pawn, SkipNetPlan plan)
+        {
+            // Check if the paths are still valid.
+            TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
+
+            if (!plan.IsDisposedOrInvalid &&
+            (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp)))
+            {
+                plan.Notify_SkipNetPlanFailedOrCancelled();
+            };
+        }
+
+        private List<KeyValuePair<Pawn, SkipNetPlan>> SnapshotPawnSkipNetPlans()
+        {
+            _tempPawnSkipNetPlans.Clear();
+            _tempPawnSkipNetPlans.AddRange(pawnSkipNetPlans);
+
+            return _tempPawnSkipNetPlans;
         }
 
         /// <summary>
         /// Performs some initial validation to make sure the plan can be generated, then initializes the
         /// search.
         /// </summary>
-        public bool TryInitializePlanner(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, TraverseParms tp, out Region pawnReg, out List<Region> destRegs)
+        public bool TryInitializePlanner(Pawn pawn, LocalTargetInfo dest, TraverseParms tp, PawnPath directPath, out Region pawnRegion, out Region destRegion)
         {
-            pawnReg = null;
-            destRegs = new List<Region>();
+            pawnRegion = null;
+            destRegion = null;
 
             // We can only create a plan if there are actually 2 or more skipdoors present.
-            if (skipNet.skipdoors.Count < 2)
-            {
-                return false;
-            }
-
-            // No pawn? No dest? No plan.
-            if (pawn?.Map == null || pawn.Map != skipNet.map || dest == null || !dest.IsValid)
-            {
-                return false;
-            }
-
-            // I don't care how advanced the science is: If the pawn can't crawl to their destination, they can't crawl to a skipdoor neither.
-            if (pawn.Downed && !pawn.health.CanCrawl)
-            {
-                return false;
-            }
+            if (skipNet.skipdoors.Count < 2) { return false; }
 
             // Make sure the pawn is actually in a valid region.
-            //Thing.Spawned and Map.InBounds(Thing) are both covered by this.
-            pawnReg = pawn.GetRegion();
-            if (pawnReg == null)
-            {
-                return false;
-            }
+            // Thing.Spawned and Map.InBounds(Thing) are both covered by this.
+            pawnRegion = pawn.GetRegion();
+            if (pawnRegion == null) { return false; }
 
             // Are they on the same map?
-            if (dest.HasThing && dest.Thing.MapHeld != pawn.Map)
-            {
-                return false;
-            }
+            if (dest.HasThing && dest.Thing.MapHeld != pawn.Map) { return false; }
 
-            if (!dest.Cell.InBounds(pawn.Map))
-            {
-                return false;
-            }
+            // Get the final cell.
+            IntVec3 destCell = directPath.LastNode;
+            destRegion = map.regionGrid.GetValidRegionAt_NoRebuild(destCell);
 
-            // Quick vanilla check. For performance reasons, we only want plans for paths
-            // we could reach normally. Only for performance reasons, and not because I
-            // can't be arsed fighting CanReach in future >.>
-            if (!skipNet.map.reachability.CanReach(pawn.Position, dest, peMode, tp))
-            {
-                return false;
-            }
+            if (destRegion == null || !destRegion.Allows(tp, isDestination: true)) { return false; }
 
-            // Normalize the dest and peMode, and see what regions we can search from for dest.
-            PathEndMode normalizedPeMode = peMode;
-            LocalTargetInfo normalizedDest = (LocalTargetInfo)GenPath.ResolvePathMode(pawn, dest.ToTargetInfo(map), ref normalizedPeMode);
-
-            if (normalizedPeMode == PathEndMode.OnCell)
-            {
-                Region region = map.regionGrid.GetValidRegionAt_NoRebuild(normalizedDest.Cell);
-                if (region != null && region.Allows(tp, isDestination: true))
-                {
-                    destRegs.Add(region);
-                }
-            }
-            // This should fix it for mining, shuttle loading, and pit gates.
-            else if (normalizedPeMode == PathEndMode.Touch)
-            {
-                TouchPathEndModeUtility.AddAllowedAdjacentRegions(normalizedDest, tp, map, destRegs);
-
-                // Clean up any null regions from AddAllowedAdjacentRegions (just in case it hadn't finished rebuilding).
-                destRegs.RemoveAll(r => r == null || !r.valid || !r.Allows(tp, isDestination: false));
-            }
-
-            if (destRegs.Count == 0)
-            {
-                return false;
-            }
-
-            // Looks good, clear the buffers before searching.
-            openPawnRegions.Clear();
-            openDestRegions.Clear();
-            closedPawnRegions.Clear();
-            closedDestRegions.Clear();
-            proxyDestinations.Clear();
-            accessCheckedSkipdoors.Clear();
+            RebuildRegionDoorIndex();
 
             return true;
         }
 
-        public bool TryExtractIntVec3Dest(LocalTargetInfo dest, out IntVec3 destCell)
-        {
-            destCell = IntVec3.Invalid;
-
-            if (dest.Cell.IsValid)
-            {
-                destCell = dest.Cell;
-                return true;
-            }
-
-            if (dest.HasThing)
-            {
-                // Make sure it hasn't been destroyed (shakes fist at despawning filth)
-                if (dest.ThingDestroyed)
-                    return false;
-
-                // Check if the thing is not spawned and has no owner (not being held or in a container).
-                if (!dest.Thing.Spawned && dest.Thing.holdingOwner == null) { return false; }
-
-                destCell = dest.Thing.PositionHeld;
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool TryFindEligibleSkipNetPlan(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, out SkipNetPlan plan)
+        /// <summary>
+        /// Performs a search for a skipdoor pairing that reduces the pawn's current trip.
+        /// </summary>
+        /// <param name="proposal">The SkipNetProposal to convert into a SkipNetPlan</param>
+        /// <param name="directPath">The pawn's current direct path to the destination</param>
+        /// <returns></returns>
+        public bool TryFindEligibleSkipNetPlan(SkipNetProposal proposal, PawnPath directPath, out SkipNetPlan plan)
         {
             // Keeping this here for performance testing once I make the search harnesses.
             // Stopwatch stopwatch = Stopwatch.StartNew();
             // stopwatch.ElapsedTicks;
 
-            // Crash Guard
-            int loopCounter = 1;
-            if (skipNet.TryGetSkipNetPlan(pawn, out SkipNetPlan prevPlan, force: true))
-            {
-                if (prevPlan.tickCreated == GenTicks.TicksGame &&
-                    prevPlan.originalDest == dest &&
-                    prevPlan.originalPeMode == peMode)
-                {
-                    loopCounter = prevPlan.loopCounter + 1;
-                }
+            Pawn pawn = proposal.pawn;
+            LocalTargetInfo dest = proposal.dest;
+            PathEndMode peMode = proposal.peMode;
+            TraverseParms tp = proposal.tp;
 
-                if (loopCounter >= 10) // If we exceed 10 attempts for the same plan in the same tick, give up to prevent CTD.
-                {
-                    plan = new SkipNetPlan(skipNet, pawn, dest, peMode, loopCounter);
-                    SkiptechUtil.Error($"{pawn.LabelShort} attempted 10 identical SkipNetPlans in a single tick. To prevent infinite loops, they have now given up. (job={pawn.CurJob}, dest={dest}, peMode={peMode}, previousEntry={prevPlan.entry}, previousExit={prevPlan.exit})");
-                    return false;
-                }
-            }
-
-            // A blank plan lets us know we at least attempted one.
-            plan = new SkipNetPlan(skipNet, pawn, dest, peMode, loopCounter);
+            plan = null;
 
             // Make sure we meet the minimum requirements for a SkipNetPlan.
-            TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
+            if (!TryInitializePlanner(pawn, dest, tp, directPath, out Region pawnRegion, out Region destRegion)) { return false; }
+
             SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
+            bool found = searcher.TrySearchForSkipdoorPair(pawn, pawnRegion, destRegion, directPath, tp, ac, out CompSkipdoor entry, out CompSkipdoor exit, out int popCost);
 
-            if (!TryInitializePlanner(pawn, dest, peMode, tp, out Region regPawn, out List<Region> regDests))
+            if (found)
             {
-                return false;
-            }
-            LocalTargetInfo originalDest = dest;
+                plan = new SkipNetPlan(skipNet, pawn, dest, peMode);
+                plan.Initialize(entry, exit);
+            };
 
-            if (!TryExtractIntVec3Dest(originalDest, out IntVec3 destCell))
-            {
-                return false;
-            }
-            dest = destCell;
-
-            // Prepare the search from both ends (pawn / dest).
-            int entrySkipdoorRange = -1;
-            int exitSkipdoorRange = -1;
-            int entryRegionCost = int.MaxValue;
-            int exitRegionCost = int.MaxValue;
-            int estimateDirectRegionCost = -1;
-            int linkCost;
-            CompSkipdoor bestEntry = null;
-            CompSkipdoor bestExit = null;
-            int bestEntryHeuristicCost = int.MaxValue;
-            int bestExitHeuristicCost = int.MaxValue;
-            bool pawnSideReachedDest = false;
-
-            openPawnRegions.AddLast(regPawn); closedPawnRegions[regPawn] = 0;
-            foreach (Region regDest in regDests)
-            {
-                pawnSideReachedDest = pawnSideReachedDest || regPawn == regDest;
-                openDestRegions.AddLast(regDest); closedDestRegions[regDest] = 0;
-            }
-
-            estimateDirectRegionCost = pawnSideReachedDest ? 0 : estimateDirectRegionCost;
-
-            // Checks a region for skipdoors it can use, and sets the best if found.
-            bool CheckSkipdoorAccess(Region region, int regionCost, bool entering = true)
-            {
-                if (!regionSkipdoors.TryGetValue(region, out List<CompSkipdoor> candidateSkipdoors)) return false;
-
-                bool usableSkipdoorFound = false;
-                IntVec3 targetCell = entering ? pawn.Position : dest.Cell;
-                int currentBestHeuristic = entering ? bestEntryHeuristicCost : bestExitHeuristicCost;
-
-                foreach (CompSkipdoor skipdoor in candidateSkipdoors)
-                {
-                    if (!accessCheckedSkipdoors.TryGetValue(skipdoor, out SkipdoorAccessRecord accessRecord))
-                    {
-                        accessRecord = new SkipdoorAccessRecord();
-                        skipdoor.IsUsableBy(ac, out accessRecord.canEnter, out accessRecord.canExit);
-                    }
-
-                    if (entering ? !accessRecord.canEnter : !accessRecord.canExit) continue;
-
-                    int heuristicCost = SkipNetUtils.OctileDistance(skipdoor.Position, targetCell);
-                    if (heuristicCost < currentBestHeuristic &&
-                        map.reachability.CanReach(targetCell, skipdoor.parent, PathEndMode.OnCell, tp))
-                    {
-                        if (entering)
-                        {
-                            bestEntryHeuristicCost = heuristicCost;
-                            bestEntry = skipdoor;
-                            entryRegionCost = regionCost;
-                        }
-                        else
-                        {
-                            bestExitHeuristicCost = heuristicCost;
-                            bestExit = skipdoor;
-                            exitRegionCost = regionCost;
-                        }
-
-                        usableSkipdoorFound = true;
-                    }
-                }
-
-                return usableSkipdoorFound;
-            }
-
-
-            // We're gonna do 2 BFS searches at the same time; one from the pawn for the entry, and one from the destination for the exit.
-            // (note to self: turns out this is called a 'bi-directional BFS', I learned something new!)
-
-            // Early exit conditions: entry + exit found before both searches overlap, or both searches overlap before entry + exit is found.
-            while (openPawnRegions.Count > 0 || openDestRegions.Count > 0)
-            {
-                // Expand pawn search
-                if (openPawnRegions.Count > 0)
-                {
-                    Region region = openPawnRegions.PopFirst();
-                    int regionCost = closedPawnRegions[region];
-
-                    // Search for an entry skipdoor if we either haven't discovered one,
-                    // or are still within the search range for them.
-                    if (entrySkipdoorRange == -1 || regionCost <= entrySkipdoorRange)
-                    {
-                        if (CheckSkipdoorAccess(region, regionCost, entering: true) && entrySkipdoorRange == -1)
-                        {
-                            entrySkipdoorRange = Math.Max(regionCost + 1, 2);
-                        }
-                    }
-
-                    // Check if we've made contact with the dest search.
-                    if (!pawnSideReachedDest)
-                    {
-                        if (regDests.Contains(region) || closedDestRegions.ContainsKey(region))
-                        {
-                            // We have a direct path, which is a prerequisite for a SkipNetPlan.
-                            pawnSideReachedDest = true;
-                            estimateDirectRegionCost = closedDestRegions[region] + regionCost;
-                        }
-                    }
-                    else if (entrySkipdoorRange == -1)
-                    {
-                        entrySkipdoorRange = Math.Max(regionCost + 1, 2);
-                    }
-
-
-                    // Add the linked regions to the pawn search.
-                    foreach (RegionLink link in region.links)
-                    {
-                        Region nextRegion = link.GetOtherRegion(region);
-                        if (nextRegion == null || !nextRegion.valid || closedPawnRegions.ContainsKey(nextRegion) || !nextRegion.Allows(tp, false)) continue;
-
-                        // We don't want pathable doors to cost extra.
-                        linkCost = nextRegion.IsDoorway ? 0 : 1;
-
-                        // If we've already established a direct path,
-                        // only add regions within our skipdoor search range.
-                        if ((pawnSideReachedDest || exitSkipdoorRange != -1) && entrySkipdoorRange != -1 && regionCost > entrySkipdoorRange) continue;
-
-                        closedPawnRegions[nextRegion] = regionCost + linkCost;
-                        if (linkCost == 0) { openPawnRegions.AddFirst(nextRegion); }
-                        else { openPawnRegions.AddLast(nextRegion); }
-                    }
-                }
-
-                // Expand destination search (same thing as the pawn search)
-                if (openDestRegions.Count > 0)
-                {
-                    Region region = openDestRegions.PopFirst();
-                    int regionCost = closedDestRegions[region];
-
-                    if (exitSkipdoorRange == -1 || regionCost <= exitSkipdoorRange)
-                    {
-                        if (CheckSkipdoorAccess(region, regionCost, entering: false) && exitSkipdoorRange == -1)
-                        {
-                            exitSkipdoorRange = Math.Max(regionCost + 1, 2);
-                        }
-                    }
-
-                    if (!pawnSideReachedDest)
-                    {
-                        if (region == regPawn || closedPawnRegions.ContainsKey(region))
-                        {
-                            pawnSideReachedDest = true;
-                            estimateDirectRegionCost = closedPawnRegions[region] + regionCost;
-                        }
-                    }
-                    else if (exitSkipdoorRange == -1)
-                    {
-                        exitSkipdoorRange = Math.Max(regionCost + 1, 2);
-                    }
-
-                    foreach (RegionLink link in region.links)
-                    {
-                        Region nextRegion = link.GetOtherRegion(region);
-                        if (nextRegion == null || !nextRegion.valid || closedDestRegions.ContainsKey(nextRegion) || !nextRegion.Allows(tp, false)) continue;
-
-                        linkCost = nextRegion.IsDoorway ? 0 : 1;
-
-                        if ((pawnSideReachedDest || entrySkipdoorRange != -1) && exitSkipdoorRange != -1 && regionCost > exitSkipdoorRange) continue;
-
-                        closedDestRegions[nextRegion] = regionCost + linkCost;
-                        if (linkCost == 0) { openDestRegions.AddFirst(nextRegion); }
-                        else { openDestRegions.AddLast(nextRegion); }
-                    }
-                }
-            }
-
-            if (bestEntry == null || bestExit == null)
-            {
-                return false;
-            }
-
-            if (bestEntry == bestExit)
-            {
-                return false;
-            }
-
-            // Check if our skipplan is shorter than direct travel by region.
-            if (estimateDirectRegionCost != -1)
-            {
-                int skipplanTotalCost = entryRegionCost + exitRegionCost;
-                if (skipplanTotalCost > estimateDirectRegionCost + 2)
-                {
-                    return false;
-                }
-
-                // Same diff, except comparing octile heuristics (in case of tie break).
-                int directH = SkipNetUtils.OctileDistance(pawn.Position, dest.Cell);
-                int entryH = SkipNetUtils.OctileDistance(pawn.Position, bestEntry.Position);
-                int exitH = SkipNetUtils.OctileDistance(bestExit.Position, dest.Cell);
-
-                if (directH <= entryH + exitH)
-                {
-                    return false;
-                }
-            }
-
-            plan.Initialize(bestEntry, bestExit);
-            return true;
+            return found;
         }
     }
 }

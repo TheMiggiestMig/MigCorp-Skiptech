@@ -1,6 +1,5 @@
 ﻿using MigCorp.Skiptech.Utils;
 using RimWorld;
-using System;
 using System.Collections.Generic;
 using Verse;
 using Verse.AI;
@@ -105,7 +104,7 @@ namespace MigCorp.Skiptech.SkipNet
         {
             Pawn pawn = proposal.pawn;
 
-            if(!IsValidProposal(proposal)) { return false; }
+            if (!IsValidProposal(proposal)) { return false; }
             if (pawn.Dead || !pawn.Spawned || pawn.Map != skipNet.map || pawn.pather == null) { return false; }
             if (pawn.Downed && !pawn.health.CanCrawl) { return false; }
             if (!TryFilterSettings(pawn)) { return false; }
@@ -121,9 +120,9 @@ namespace MigCorp.Skiptech.SkipNet
 
         public bool TryMakeSkipNetProposal(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, TraverseParms tp)
         {
-            if (!IsValidProposal(pawn, ref dest, peMode)) {  return false; }
+            if (!IsValidProposal(pawn, ref dest, peMode)) { return false; }
 
-            if(proposalsByPawn.TryGetValue(pawn, out SkipNetProposal existingProposal))
+            if (proposalsByPawn.TryGetValue(pawn, out SkipNetProposal existingProposal))
             {
                 existingProposal.Update(dest, peMode, tp);
                 return true;
@@ -175,7 +174,7 @@ namespace MigCorp.Skiptech.SkipNet
             // This will be needed for the Dijkstra implementation.
             if (!TryExtractPawnPath(pawn, out PawnPath directPath)) { return false; }
 
-            if (skipNet.planner.TryFindEligibleSkipNetPlan(proposal.pawn, proposal.dest, proposal.peMode, out SkipNetPlan plan))
+            if (skipNet.planner.TryFindEligibleSkipNetPlan(proposal, directPath, out SkipNetPlan plan))
             {
                 StartPathToEntry(plan);
                 return true;

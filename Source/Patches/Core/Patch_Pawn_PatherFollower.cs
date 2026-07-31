@@ -31,7 +31,7 @@ namespace MigCorp.Skiptech
             // If a valid plan already exists, and it's going to the same location,
             // it's probably GetNewPathRequest refreshing the path. Skip proposing a new plan
             // and re-establish the hijack.
-            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
+            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
                 if (plan.State == SkipNetPlanState.ExecutingEntry &&
                 plan.originalDest == dest && plan.originalPeMode == peMode &&
@@ -59,7 +59,7 @@ namespace MigCorp.Skiptech
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
             if (skipNet == null) { return true; }
 
-            if (!skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
+            if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
 
             if (plan.State == SkipNetPlanState.ExecutingEntry && ___pawn.CanReachImmediate(new LocalTargetInfo(plan.entry.parent), PathEndMode.OnCell))
             {
@@ -88,7 +88,7 @@ namespace MigCorp.Skiptech
             if (skipNet == null) { return true; }
 
             // If we weren't running on a plan, let the PatherFailed notification pass.
-            if (!skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
+            if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
 
             // We had a plan and it failed. Let it try again or reset pathing rather than failing the original task.
             plan.Notify_SkipNetPlanFailedOrCancelled();
@@ -112,7 +112,7 @@ namespace MigCorp.Skiptech
 
             TraverseParms tp = SkipNetUtils.JankyTraverseParmsFor(___pawn);
 
-            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
+            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
                 // This path request is for a plan that was just created. Don't bother doing the checks, it's good... trust.
                 if (skipNet.proposer.IsHijacking(___pawn)) { return; }
@@ -156,7 +156,7 @@ namespace MigCorp.Skiptech
             if (skipNet.proposer.IsHijacking(___pawn)) { return; }
 
             // Already serving an active plan (hijack re-applied in the prefix), or attempted (and failed) a plan this tic.
-            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
+            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
 
             skipNet.proposer.TryMakeSkipNetProposal(___pawn, ___destination, ___peMode, __result.TraverseParms);
         }
@@ -194,7 +194,7 @@ namespace MigCorp.Skiptech
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
             if (skipNet == null) { return; }
 
-            if (skipNet.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
+            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
             {
                 ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
                 ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);

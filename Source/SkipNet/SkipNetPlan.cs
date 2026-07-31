@@ -45,7 +45,6 @@ namespace MigCorp.Skiptech.SkipNet
             originalDestPostition = dest.Cell != default ? dest.Cell : (IntVec3)dest;
             originalPeMode = peMode;
             tickCreated = GenTicks.TicksGame;
-            skipNet.RegisterPlan(pawn, this);
             this.loopCounter = loopCounter;
         }
 
@@ -55,6 +54,7 @@ namespace MigCorp.Skiptech.SkipNet
             this.entry = entry;
             this.exit = exit;
             State = SkipNetPlanState.ExecutingEntry;
+            skipNet.planner.RegisterPlan(pawn, this);
         }
         public void Resolve()
         {
@@ -153,7 +153,7 @@ namespace MigCorp.Skiptech.SkipNet
         public void Dispose()
         {
             State = SkipNetPlanState.Disposed;
-            skipNet.disposedPawnSkipNetPlans.AddDistinct(pawn);
+            skipNet.planner.disposedPawnSkipNetPlans.AddDistinct(pawn);
         }
 
         /// <summary>
