@@ -153,7 +153,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             // Doing it like this to avoid the need for SnapshotPawnSkipNetPlans().
             // Hopefully a minor performance upgrade without breaking anything.
-            while (numPlansToResolve > 0)
+            while (numPlansToResolve-- > 0 && plans.Count > 0)
             {
                 Pawn pawn = plans.PopFirst();
 
