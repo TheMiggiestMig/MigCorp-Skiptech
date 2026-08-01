@@ -20,6 +20,13 @@ namespace MigCorp.Skiptech
         // Skipdoor power (for custom difficulty scaling)
         public int defaultSkipdoorPower = -1;
 
+        // SkipNet search tuning
+        public const float DefaultSkipCost = 60;
+        public const float DefaultWorthItFactor = 0.85f;
+
+        public float skipCost = DefaultSkipCost;
+        public float worthItFactor = DefaultWorthItFactor;
+
         // Accessibility
         public bool disableTeleportFlashEffect = false;
 
@@ -39,6 +46,10 @@ namespace MigCorp.Skiptech
 
             // Skipdoor power
             Scribe_Values.Look(ref defaultSkipdoorPower, "defaultSkipdoorPower", -1);
+
+            // SkipNet search tuning
+            Scribe_Values.Look(ref skipCost, "skipCost", DefaultSkipCost);
+            Scribe_Values.Look(ref worthItFactor, "worthItFactor", DefaultWorthItFactor);
 
             // Accessibility
             Scribe_Values.Look(ref disableTeleportFlashEffect, "disableTeleportFlashEffect", false);

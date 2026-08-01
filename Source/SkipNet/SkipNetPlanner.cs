@@ -14,7 +14,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         // Region --> Skipdoor mapping
         private bool regionSkipdoorsDirty = true;
-        public readonly Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
+        private readonly Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
 
         // Plan management
         public readonly Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
@@ -28,7 +28,8 @@ namespace MigCorp.Skiptech.SkipNet
         public SkipNetPlanner(MapComponent_SkipNet skipNet)
         {
             this.skipNet = skipNet;
-            searcher = new SkipNetSearcherBFS(this);
+            //searcher = new SkipNetSearcherBFS(this);
+            searcher = new SkipNetSearcherDijkstra(this);
 
             map.events.RegionsRoomsChanged += MarkRegionDoorIndexDirty;
             RebuildRegionDoorIndex();
@@ -73,7 +74,10 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         public void MarkRegionDoorIndexDirty() => regionSkipdoorsDirty = true;
-
+        public bool TryGetSkipdoorsInRegion(Region region, out List<CompSkipdoor> doors)
+        {
+            return regionSkipdoors.TryGetValue(region, out doors);
+        }
         /// <summary>
         /// Returns a SkipNetPlan if it exists.
         /// </summary>

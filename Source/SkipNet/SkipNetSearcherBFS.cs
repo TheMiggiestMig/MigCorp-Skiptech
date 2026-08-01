@@ -25,7 +25,6 @@ namespace MigCorp.Skiptech.SkipNet
         private int bestEntryHeuristicCost;
         private int bestExitHeuristicCost;
         private bool pawnSideReachedDest;
-        private Dictionary<Region, List<CompSkipdoor>> RegionSkipdoors { get { return planner.regionSkipdoors; } }
 
         private struct SkipdoorAccessRecord
         {
@@ -81,7 +80,7 @@ namespace MigCorp.Skiptech.SkipNet
             // Checks a region for skipdoors it can use, and sets the best if found.
             bool CheckSkipdoorAccess(Region region, int regionCost, bool entering = true)
             {
-                if (!RegionSkipdoors.TryGetValue(region, out List<CompSkipdoor> candidateSkipdoors)) { return false; }
+                if (!planner.TryGetSkipdoorsInRegion(region, out List<CompSkipdoor> candidateSkipdoors)) { return false; }
 
                 bool usableSkipdoorFound = false;
                 IntVec3 targetCell = entering ? pawn.Position : directPath.LastNode;

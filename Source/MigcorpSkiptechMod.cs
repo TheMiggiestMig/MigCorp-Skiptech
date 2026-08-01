@@ -28,6 +28,7 @@ namespace MigCorp.Skiptech
             DrawAccessSection(ls);
             DrawFeatureSection(ls);
             DrawPowerSection(ls);
+            DrawSkipNetTuningSection(ls);
             DrawAccessibilitySection(ls);
             DrawDebugSection(ls);
 
@@ -99,6 +100,21 @@ namespace MigCorp.Skiptech
                 }
             }
         }
+        private void DrawSkipNetTuningSection(Listing_Standard ls)
+        {
+            ls.GapLine();
+            ls.Label($"{keyPrefix}.Tuning".Translate());
+
+            Settings.skipCost = TuningRow(ls, "SkipCost",
+                Settings.skipCost, 0f, 300f, 5f,
+                MigcorpSkiptechSettings.DefaultSkipCost,
+                Settings.skipCost.ToString("F0"));
+
+            Settings.worthItFactor = TuningRow(ls, "WorthItFactor",
+                Settings.worthItFactor, 0.25f, 1f, 0.05f,
+                MigcorpSkiptechSettings.DefaultWorthItFactor,
+                Settings.worthItFactor.ToStringPercent());
+        }
 
         private static void DrawAccessibilitySection(Listing_Standard ls)
         {
@@ -157,6 +173,19 @@ namespace MigCorp.Skiptech
 
             ls.Gap(ls.verticalSpacing);
             return result;
+        }
+
+        private static float TuningRow(Listing_Standard ls, string keySuffix,
+            float value, float min, float max, float roundTo,
+            float defaultValue, string valueText)
+        {
+            string key = $"{keyPrefix}.SkipNetTuning.{keySuffix}";
+            return SliderRow(ls,
+                key.Translate(valueText), (key + ".Tip").Translate(),
+                value, min, max, roundTo,
+                showReset: !Mathf.Approximately(value, defaultValue),
+                resetTo: defaultValue,
+                resetTip: $"{keyPrefix}.SkipNetTuning.Reset".Translate());
         }
     }
 }
