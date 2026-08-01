@@ -68,12 +68,7 @@ namespace MigCorp.Skiptech
             }
             else if (___pawn.CanReachImmediate(plan.originalDest, plan.originalPeMode))
             {
-                plan.Notify_SkipNetPlanExitReached();
-                return true;
-            }
-            else if (plan.State == SkipNetPlanState.ExecutingExit)
-            {
-                plan.Notify_SkipNetPlanExitReached();
+                plan.Dispose();
                 return true;
             }
 

@@ -127,7 +127,7 @@ namespace MigCorp.Skiptech.SkipNet
             maxRouteCost = EstimateDirectPathCost(directPath) * worthItFactor - skipCost;
             if (maxRouteCost <= 0f) { return false; }
 
-            ac = new SkipNetAccessContext(pawn);
+            this.ac = ac;
             IntVec3 destCell = directPath.LastNode;
 
             // If none of the candidates can produce a shorter pair, bail.

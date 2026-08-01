@@ -92,6 +92,7 @@ namespace MigCorp.Skiptech.SkipNet
                     {
                         accessRecord = new SkipdoorAccessRecord();
                         skipdoor.IsUsableBy(ac, out accessRecord.canEnter, out accessRecord.canExit);
+                        accessCheckedSkipdoors[skipdoor] = accessRecord;
                     }
 
                     if (entering ? !accessRecord.canEnter : !accessRecord.canExit) { continue; }

@@ -1,6 +1,7 @@
 ﻿using MigCorp.Skiptech.SkipNet.Comps;
 using MigCorp.Skiptech.Utils;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Verse;
 using Verse.AI;
 using static MigCorp.Skiptech.SkipNet.SkipNetProposer;
@@ -14,13 +15,12 @@ namespace MigCorp.Skiptech.SkipNet
 
         // Region --> Skipdoor mapping
         private bool regionSkipdoorsDirty = true;
+        private int tickLastRegionSkipdoorRebuild;
         private readonly Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
 
         // Plan management
         public readonly Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
-        private readonly List<KeyValuePair<Pawn, SkipNetPlan>> _tempPawnSkipNetPlans = new List<KeyValuePair<Pawn, SkipNetPlan>>(); // Snapshot for the pawnSkipNetPlans to prevent mutating the table mid loop.
-        public readonly List<Pawn> disposedPawnSkipNetPlans = new List<Pawn>();
-        public int lastSkipNetPlanDeepCleanTick;
+        private readonly Deque<Pawn> plans = new Deque<Pawn>(); // Stealing this idea from the SkipNetProposer. Trust me, they're plans, not pawns.
 
         public List<CompSkipdoor> skipdoors { get { return skipNet.skipdoors; } }
         public Map map { get { return skipNet.map; } }
@@ -28,7 +28,6 @@ namespace MigCorp.Skiptech.SkipNet
         public SkipNetPlanner(MapComponent_SkipNet skipNet)
         {
             this.skipNet = skipNet;
-            //searcher = new SkipNetSearcherBFS(this);
             searcher = new SkipNetSearcherDijkstra(this);
 
             map.events.RegionsRoomsChanged += MarkRegionDoorIndexDirty;
@@ -38,7 +37,6 @@ namespace MigCorp.Skiptech.SkipNet
         public void Run()
         {
             ResolveActivePlans();
-            Cleanup();
         }
 
         /// <summary>
@@ -71,6 +69,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             SkiptechUtil.Message("RegionDoorIndex rebuilt.", LogLevel.Verbose);
             regionSkipdoorsDirty = false;
+            tickLastRegionSkipdoorRebuild = GenTicks.TicksGame;
         }
 
         public void MarkRegionDoorIndexDirty() => regionSkipdoorsDirty = true;
@@ -99,6 +98,7 @@ namespace MigCorp.Skiptech.SkipNet
         public void RegisterPlan(Pawn pawn, SkipNetPlan plan)
         {
             pawnSkipNetPlans[pawn] = plan;
+            plans.AddLast(pawn);
         }
 
         /// <summary>
@@ -107,15 +107,38 @@ namespace MigCorp.Skiptech.SkipNet
         /// </summary>
         public void ResolveActivePlans()
         {
-            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
-            SkipNetPlan plan;
+            int numPlansToResolve = plans.Count;
 
-            for (int i = 0; i < activeSkipnetPlans.Count; i++)
+            // Doing it like this to avoid the need for SnapshotPawnSkipNetPlans().
+            // Hopefully a minor performance upgrade without breaking anything.
+            while (numPlansToResolve-- > 0 && plans.Count > 0)
             {
-                plan = activeSkipnetPlans[i].Value;
+                Pawn pawn = plans.PopFirst();
 
-                if (!plan.IsDisposedOrInvalid && plan.Arrived)
-                    plan.Resolve();
+                // Check if this is a stale entry (i.e. the plan's been disposed of or cancelled)
+                if (!pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan)) { continue; }
+
+                // Check if the plan is bad or invalid
+                TryDisposeBadOrInvalidPlan(pawn, plan);
+
+                // Check if the plan is still able to perform
+                TryValidatePlan(pawn, plan);
+
+                // Check if the plan is disposed
+                if (plan.IsDisposed)
+                {
+                    pawnSkipNetPlans.Remove(pawn);
+                    continue;
+                }
+
+                // Try to resolve the plans if they were waiting on something.
+                if (!plan.IsDisposedOrInvalid && plan.Arrived && plan.Resolve())
+                {
+                    continue;
+                }
+
+                // If we can't resolve the plan this tick, put the pawn back on the list to be tried again next tick.
+                plans.AddLast(pawn);
             }
         }
 
@@ -126,89 +149,64 @@ namespace MigCorp.Skiptech.SkipNet
         public void CancelPlansUsingSkipdoor(CompSkipdoor skipdoor)
         {
             // Notify all plans using this skipdoor to cancel
-            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
-            SkipNetPlan plan;
+            int numPlansToResolve = plans.Count;
 
-            for (int i = 0; i < activeSkipnetPlans.Count; i++)
+            // Doing it like this to avoid the need for SnapshotPawnSkipNetPlans().
+            // Hopefully a minor performance upgrade without breaking anything.
+            while (numPlansToResolve > 0)
             {
-                plan = activeSkipnetPlans[i].Value;
+                Pawn pawn = plans.PopFirst();
+
+                // Check if this is a stale entry (i.e. the plan's been disposed of or cancelled)
+                if (!pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan)) { continue; }
 
                 if (plan.entry == skipdoor || plan.exit == skipdoor)
-                    plan.Notify_SkipNetPlanFailedOrCancelled();
-            }
-        }
-
-        public void Cleanup()
-        {
-            CleanupInvalidAndBadPlans();
-            RemoveDisposedSkipNetPlans();
-        }
-
-        public void CleanupInvalidAndBadPlans()
-        {
-            List<KeyValuePair<Pawn, SkipNetPlan>> activeSkipnetPlans = SnapshotPawnSkipNetPlans();
-            Pawn pawn;
-            SkipNetPlan plan;
-
-            for (int i = 0; i < activeSkipnetPlans.Count; i++)
-            {
-                pawn = activeSkipnetPlans[i].Key;
-                plan = activeSkipnetPlans[i].Value;
-
-                if (plan.IsInvalid || pawn?.Map != map || !pawn.Spawned)
                 {
-                    plan.Dispose();
+                    plan.Notify_SkipNetPlanFailedOrCancelled();
                     continue;
                 }
 
-                // Check if the skipdoors are still useable.
-                if (!plan.IsDisposedOrInvalid)
+                plans.AddLast(pawn);
+            }
+        }
+
+        public bool TryDisposeBadOrInvalidPlan(Pawn pawn, SkipNetPlan plan)
+        {
+            if (plan.IsInvalid || pawn?.Map != map || !pawn.Spawned)
+            {
+                plan.Dispose();
+                return true;
+            }
+            return false;
+        }
+
+        public bool TryValidatePlan(Pawn pawn, SkipNetPlan plan)
+        {
+            if (!plan.IsDisposedOrInvalid)
+            {
+
+                // Check if the paths are still valid since the regionSkipdoor mapping was dirtied (i.e. The RegionGrid rebuilt).
+                if (pawn.IsHashIntervalTick(60) && plan.tickLastRegionSkipdoorRebuild != tickLastRegionSkipdoorRebuild)
                 {
-                    if (pawn.IsHashIntervalTick(60) && !plan.IsStillAccessible())
+                    plan.tickLastRegionSkipdoorRebuild = tickLastRegionSkipdoorRebuild;
+                    TraverseParms tp = SkipNetUtils.JankyTraverseParmsFor(pawn);
+
+                    if (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp))
                     {
                         plan.Notify_SkipNetPlanFailedOrCancelled();
-                    }
-
-                    // Do a DeepClean on the plan.
-                    if (pawn.IsHashIntervalTick(180))
-                    {
-                        DeepClean(pawn, plan);
+                        return true;
                     }
                 }
-            }
-        }
 
-        public void RemoveDisposedSkipNetPlans()
-        {
-            foreach (Pawn pawn in disposedPawnSkipNetPlans)
-            {
-                if (pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan) && plan.IsDisposed)
+
+                // Check if the skipdoors are still usable.
+                if (pawn.IsHashIntervalTick(180) && !plan.IsStillAccessible())
                 {
-                    pawnSkipNetPlans.Remove(pawn);
+                    plan.Notify_SkipNetPlanFailedOrCancelled();
+                    return true;
                 }
             }
-
-            disposedPawnSkipNetPlans.Clear();
-        }
-
-        public void DeepClean(Pawn pawn, SkipNetPlan plan)
-        {
-            // Check if the paths are still valid.
-            TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
-
-            if (!plan.IsDisposedOrInvalid &&
-            (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp)))
-            {
-                plan.Notify_SkipNetPlanFailedOrCancelled();
-            };
-        }
-
-        private List<KeyValuePair<Pawn, SkipNetPlan>> SnapshotPawnSkipNetPlans()
-        {
-            _tempPawnSkipNetPlans.Clear();
-            _tempPawnSkipNetPlans.AddRange(pawnSkipNetPlans);
-
-            return _tempPawnSkipNetPlans;
+            return false;
         }
 
         /// <summary>
@@ -265,13 +263,17 @@ namespace MigCorp.Skiptech.SkipNet
             if (!TryInitializePlanner(pawn, dest, tp, directPath, out Region pawnRegion, out Region destRegion)) { return false; }
 
             SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
+
             bool found = searcher.TrySearchForSkipdoorPair(pawn, pawnRegion, destRegion, directPath, tp, ac, out CompSkipdoor entry, out CompSkipdoor exit, out int popCost);
 
             if (found)
             {
-                plan = new SkipNetPlan(skipNet, pawn, dest, peMode);
+                plan = new SkipNetPlan(skipNet, pawn, dest, peMode, tickLastRegionSkipdoorRebuild);
                 plan.Initialize(entry, exit);
             };
+
+            //SkiptechUtil.Message($"{pawn.LabelShort} performed a search (bfs_time:{(bfs_time * 1_000_000.0) / Stopwatch.Frequency}us, dijkstra_time:{(dijkstra_time * 1_000_000.0) / Stopwatch.Frequency}us, diff:{((dijkstra_time * 1_000_000.0) / Stopwatch.Frequency) - ((bfs_time * 1_000_000.0) / Stopwatch.Frequency)}us)");
+            skipNet.proposer.ConsumePopBudget(popCost);
 
             return found;
         }

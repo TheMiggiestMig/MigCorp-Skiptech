@@ -21,6 +21,7 @@ namespace MigCorp.Skiptech.SkipNet
         public MapComponent_SkipNet skipNet;
         public CompSkipdoor entry, exit;
         public int tickCreated;
+        public int tickLastRegionSkipdoorRebuild;
 
         public LocalTargetInfo originalDest;
         public IntVec3 originalDestPostition;
@@ -36,7 +37,7 @@ namespace MigCorp.Skiptech.SkipNet
         public bool IsDisposedOrInvalid { get { return IsDisposed || IsInvalid; } }
         public bool Arrived { get { return arrived; } }
 
-        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode)
+        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, int tickLastRegionSkipdoorRebuild)
         {
             this.pawn = pawn;
             this.skipNet = skipNet;
@@ -44,6 +45,7 @@ namespace MigCorp.Skiptech.SkipNet
             originalDestPostition = dest.Cell != default ? dest.Cell : (IntVec3)dest;
             originalPeMode = peMode;
             tickCreated = GenTicks.TicksGame;
+            this.tickLastRegionSkipdoorRebuild = tickLastRegionSkipdoorRebuild; // To throttle the reachability checks.
         }
 
         public void Initialize(CompSkipdoor entry, CompSkipdoor exit)
@@ -54,13 +56,13 @@ namespace MigCorp.Skiptech.SkipNet
             State = SkipNetPlanState.ExecutingEntry;
             skipNet.planner.RegisterPlan(pawn, this);
         }
-        public void Resolve()
+        public bool Resolve()
         {
             // If we haven't arrived at the entry skipdoor yet, do nothing.
-            if (!arrived) { return; }
+            if (!arrived) { return false; }
 
             // If we are still waiting for something, do nothing.
-            if (nextResolveTick > GenTicks.TicksGame) { return; }
+            if (nextResolveTick > GenTicks.TicksGame) { return false; }
 
             Map map = pawn.Map;
             TraverseParms tp = TraverseParms.For(pawn, mode: TraverseMode.ByPawn);
@@ -75,14 +77,14 @@ namespace MigCorp.Skiptech.SkipNet
             {
                 nextResolveTick = GenTicks.TicksGame + waitTicks;
                 pawn.stances.SetStance(new Stance_Cooldown(waitTicks, pawn, null));
-                return;
+                return false;
             }
 
             // Last check for accessibility.
             if (!IsStillAccessible() || !IsStillPathableFromEntryToExit(map, tp))
             {
                 Notify_SkipNetPlanFailedOrCancelled();
-                return;
+                return false;
             }
 
             // We're green to go.
@@ -90,6 +92,8 @@ namespace MigCorp.Skiptech.SkipNet
             SkipNetUtils.TeleportPawn(pawn, exit.Position);
             Notify_SkipNetPlanExitReached();
             pawn.pather.StartPath(originalDest, originalPeMode);
+
+            return true;
         }
 
         public void ResetPawnMoveState()
@@ -151,7 +155,6 @@ namespace MigCorp.Skiptech.SkipNet
         public void Dispose()
         {
             State = SkipNetPlanState.Disposed;
-            skipNet.planner.disposedPawnSkipNetPlans.AddDistinct(pawn);
         }
 
         /// <summary>

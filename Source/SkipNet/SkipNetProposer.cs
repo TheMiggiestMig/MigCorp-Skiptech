@@ -230,6 +230,11 @@ namespace MigCorp.Skiptech.SkipNet
 
             return true;
         }
+
+        public void ConsumePopBudget(int popCount)
+        {
+            tickPopCount += popCount;
+        }
         private void ResetPopBudget()
         {
             tickPopCount = 0;
