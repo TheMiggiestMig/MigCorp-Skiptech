@@ -124,7 +124,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             if (proposalsByPawn.TryGetValue(pawn, out SkipNetProposal existingProposal))
             {
-                existingProposal.Update(dest, peMode, tp);
+                proposalsByPawn[pawn] = new SkipNetProposal(pawn, dest, peMode, tp);
                 return true;
             }
 

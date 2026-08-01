@@ -134,6 +134,7 @@ namespace MigCorp.Skiptech.SkipNet
                 // Try to resolve the plans if they were waiting on something.
                 if (!plan.IsDisposedOrInvalid && plan.Arrived && plan.Resolve())
                 {
+                    TryRemovePlan(pawn, plan);
                     continue;
                 }
 
@@ -163,11 +164,22 @@ namespace MigCorp.Skiptech.SkipNet
                 if (plan.entry == skipdoor || plan.exit == skipdoor)
                 {
                     plan.Notify_SkipNetPlanFailedOrCancelled();
+                    TryRemovePlan(pawn, plan);
                     continue;
                 }
 
                 plans.AddLast(pawn);
             }
+        }
+
+        private bool TryRemovePlan(Pawn pawn, SkipNetPlan plan)
+        {
+            if (pawnSkipNetPlans.TryGetValue(pawn, out var current) && current == plan)
+            {
+                pawnSkipNetPlans.Remove(pawn);
+                return true;
+            }
+            return false;
         }
 
         public bool TryDisposeBadOrInvalidPlan(Pawn pawn, SkipNetPlan plan)
@@ -194,6 +206,7 @@ namespace MigCorp.Skiptech.SkipNet
                     if (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp))
                     {
                         plan.Notify_SkipNetPlanFailedOrCancelled();
+                        TryRemovePlan(pawn, plan);
                         return true;
                     }
                 }
