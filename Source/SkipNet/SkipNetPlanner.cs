@@ -37,6 +37,7 @@ namespace MigCorp.Skiptech.SkipNet
         public void Run()
         {
             ResolveActivePlans();
+            RebuildRegionDoorIndex();
         }
 
         /// <summary>
