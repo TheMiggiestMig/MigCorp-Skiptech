@@ -157,7 +157,7 @@ namespace MigCorp.Skiptech
                         !plan.IsStillPathableFromEntryToExit(map, tp))
                     {
 
-                        dest = plan.originalDestPostition;
+                        dest = plan.originalDest;
                         peMode = plan.originalPeMode;
 
                         plan.Dispose();
