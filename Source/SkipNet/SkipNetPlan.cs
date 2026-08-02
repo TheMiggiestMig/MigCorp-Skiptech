@@ -173,7 +173,7 @@ namespace MigCorp.Skiptech.SkipNet
         // and the pawn already re-evaluates when it reaches the Exit for Exit->Dest.
         public bool IsStillPathableFromEntryToExit(Map map, TraverseParms tp)
         {
-            return map.reachability.CanReach(entry.Position, new LocalTargetInfo(exit.parent), originalPeMode, tp);
+            return map.reachability.CanReach(pawn.Position, new LocalTargetInfo(entry.parent), PathEndMode.OnCell, tp);
         }
 
         public bool IsStillPathableFromExitToDest(Map map, TraverseParms tp)
