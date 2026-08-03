@@ -41,10 +41,10 @@ namespace MigCorp.Skiptech.SkipNet
 
         internal static void TeleportPawn(Pawn pawn, IntVec3 position)
         {
-            FxUtil.PlaySkip(pawn.Position, pawn.Map, true);
+            FxUtil.PlaySkip(pawn.Position, pawn.Map, false);
             pawn.Position = position;
             pawn.Drawer.tweener.Notify_Teleported();
-            FxUtil.PlaySkip(pawn.Position, pawn.Map, true);
+            FxUtil.PlaySkip(pawn.Position, pawn.Map, false);
         }
     }
 

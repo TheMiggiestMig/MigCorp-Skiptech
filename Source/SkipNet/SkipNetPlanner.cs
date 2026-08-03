@@ -1,7 +1,6 @@
 ﻿using MigCorp.Skiptech.SkipNet.Comps;
 using MigCorp.Skiptech.Utils;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Verse;
 using Verse.AI;
 using static MigCorp.Skiptech.SkipNet.SkipNetProposer;
@@ -125,22 +124,52 @@ namespace MigCorp.Skiptech.SkipNet
                 // Check if the plan is still able to perform
                 TryValidatePlan(pawn, plan);
 
+                // Try to resolve the plans if they were waiting on something.
+                if (!plan.IsDisposedOrInvalid && plan.Arrived)
+                {
+                    plan.Resolve();
+                }
+
                 // Check if the plan is disposed
                 if (plan.IsDisposed)
                 {
+                    RecoverPawnIfNeeded(plan);
                     pawnSkipNetPlans.Remove(pawn);
-                    continue;
-                }
-
-                // Try to resolve the plans if they were waiting on something.
-                if (!plan.IsDisposedOrInvalid && plan.Arrived && plan.Resolve())
-                {
-                    TryRemovePlan(pawn, plan);
                     continue;
                 }
 
                 // If we can't resolve the plan this tick, put the pawn back on the list to be tried again next tick.
                 plans.AddLast(pawn);
+            }
+            //SkiptechUtil.Message($"Plans - Pawn Keys {plans.Count}, Pawn Plans {pawnSkipNetPlans.Count}");
+        }
+
+        // DEBUG This basically takes the role of the old SkipNetPlan.Notify_SkipNetPlanFailedOrCancelled.
+        // Not sure if needed in the end, but for the mark-and-sweep refactor, I'll add it here instead.
+        private void RecoverPawnIfNeeded(SkipNetPlan plan)
+        {
+            if (plan.DisposeState != SkipNetPlanDisposeState.Cancelled) { return; }
+
+            // If pawn't, then plan't
+            Pawn pawn = plan.pawn;
+            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map || pawn.pather == null) { return; }
+
+            Thing entryThing = plan.entry?.parent;
+            if (entryThing == null) { return; }
+
+            // Trying to remove things from the harmony patches where possible.
+            LocalTargetInfo patherDest = SkipNetUtils.PatherDest(pawn.pather);
+            bool stillOnHijackedLeg = patherDest.HasThing
+                ? patherDest.Thing == entryThing
+                : patherDest.Cell == entryThing.Position;
+            if (!stillOnHijackedLeg) { return; }
+
+            plan.ResetPawnMoveState();
+
+            if (plan.originalDest.IsValid && plan.originalPeMode != PathEndMode.None &&
+                !plan.originalDest.ThingDestroyed)
+            {
+                pawn.pather.StartPath(plan.originalDest, plan.originalPeMode);
             }
         }
 
@@ -150,29 +179,16 @@ namespace MigCorp.Skiptech.SkipNet
         /// <param name="skipdoor">The affected skipdoor (typically destroyed, minified, or despawned).</param>
         public void CancelPlansUsingSkipdoor(CompSkipdoor skipdoor)
         {
-            // Notify all plans using this skipdoor to cancel
-            int numPlansToResolve = plans.Count;
-
-            // Doing it like this to avoid the need for SnapshotPawnSkipNetPlans().
-            // Hopefully a minor performance upgrade without breaking anything.
-            while (numPlansToResolve-- > 0 && plans.Count > 0)
+            // DEBUG In theory, no risk of mutating lists anymore since we're only marking disposals :)
+            foreach (SkipNetPlan plan in pawnSkipNetPlans.Values)
             {
-                Pawn pawn = plans.PopFirst();
-
-                // Check if this is a stale entry (i.e. the plan's been disposed of or cancelled)
-                if (!pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan)) { continue; }
-
                 if (plan.entry == skipdoor || plan.exit == skipdoor)
                 {
-                    plan.Notify_SkipNetPlanFailedOrCancelled();
-                    TryRemovePlan(pawn, plan);
-                    continue;
+                    plan.DisposeCancelled();
                 }
-
-                plans.AddLast(pawn);
             }
         }
-
+        /*
         private bool TryRemovePlan(Pawn pawn, SkipNetPlan plan)
         {
             if (pawnSkipNetPlans.TryGetValue(pawn, out var current) && current == plan)
@@ -182,12 +198,13 @@ namespace MigCorp.Skiptech.SkipNet
             }
             return false;
         }
+        */
 
         public bool TryDisposeBadOrInvalidPlan(Pawn pawn, SkipNetPlan plan)
         {
             if (plan.IsInvalid || pawn?.Map != map || !pawn.Spawned)
             {
-                plan.Dispose();
+                plan.DisposeSuperseded(); // Janky, but Superseded should prevent it from retrying.
                 return true;
             }
             return false;
@@ -206,8 +223,7 @@ namespace MigCorp.Skiptech.SkipNet
 
                     if (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp))
                     {
-                        plan.Notify_SkipNetPlanFailedOrCancelled();
-                        TryRemovePlan(pawn, plan);
+                        plan.DisposeCancelled();
                         return true;
                     }
                 }
@@ -216,7 +232,7 @@ namespace MigCorp.Skiptech.SkipNet
                 // Check if the skipdoors are still usable.
                 if (pawn.IsHashIntervalTick(180) && !plan.IsStillAccessible())
                 {
-                    plan.Notify_SkipNetPlanFailedOrCancelled();
+                    plan.DisposeCancelled();
                     return true;
                 }
             }

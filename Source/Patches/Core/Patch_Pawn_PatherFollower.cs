@@ -40,7 +40,7 @@ namespace MigCorp.Skiptech
                     return false;
                 }
 
-                plan.Dispose();
+                plan.DisposeSuperseded();
             }
 
             return true;
@@ -68,7 +68,7 @@ namespace MigCorp.Skiptech
             }
             else if (___pawn.CanReachImmediate(plan.originalDest, plan.originalPeMode))
             {
-                plan.Dispose();
+                plan.DisposeSuperseded();
                 return true;
             }
 
@@ -86,7 +86,7 @@ namespace MigCorp.Skiptech
             if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
 
             // We had a plan and it failed. Let it try again or reset pathing rather than failing the original task.
-            plan.Notify_SkipNetPlanFailedOrCancelled();
+            plan.DisposeCancelled();
             return false;
         }
 
@@ -123,7 +123,7 @@ namespace MigCorp.Skiptech
                         dest = plan.originalDestPostition;
                         peMode = plan.originalPeMode;
 
-                        plan.Dispose();
+                        plan.DisposeCancelled();
                         return;
                     }
 

@@ -17,3 +17,4 @@ _local/
 deploy_to_local.bat
 deploy.log
 *.pdb
+*.editorconfig

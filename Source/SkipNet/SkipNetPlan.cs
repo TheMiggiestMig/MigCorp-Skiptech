@@ -1,6 +1,5 @@
 ﻿using MigCorp.Skiptech.SkipNet.Comps;
 using MigCorp.Skiptech.Utils;
-using System;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -15,6 +14,14 @@ namespace MigCorp.Skiptech.SkipNet
         Disposed
     }
 
+    public enum SkipNetPlanDisposeState
+    {
+        None,
+        Completed,
+        Superseded,
+        Cancelled
+    }
+
     public class SkipNetPlan
     {
         public Pawn pawn;
@@ -23,12 +30,18 @@ namespace MigCorp.Skiptech.SkipNet
         public int tickCreated;
         public int tickLastRegionSkipdoorRebuild;
 
+
         public LocalTargetInfo originalDest;
         public IntVec3 originalDestPostition;
         public PathEndMode originalPeMode;
 
         private SkipNetPlanState state = SkipNetPlanState.None;
+        private SkipNetPlanDisposeState disposeState = SkipNetPlanDisposeState.None;
+        private SkipNetPlanState planStateAtDispose = SkipNetPlanState.None;
         public SkipNetPlanState State { get { return state; } set { state = value; } }
+        public SkipNetPlanDisposeState DisposeState { get { return disposeState; } }
+        public SkipNetPlanState PlanStateAtDispose { get { return planStateAtDispose; } }
+
         private bool arrived = false;
         private int nextResolveTick;
 
@@ -83,7 +96,7 @@ namespace MigCorp.Skiptech.SkipNet
             // Last check for accessibility.
             if (!IsStillAccessible() || !IsStillPathableFromEntryToExit(map, tp))
             {
-                Notify_SkipNetPlanFailedOrCancelled();
+                Dispose(SkipNetPlanDisposeState.Cancelled);
                 return false;
             }
 
@@ -116,9 +129,10 @@ namespace MigCorp.Skiptech.SkipNet
             ResetPawnMoveState();
             entry.Notify_PawnTeleported(pawn, this, SkipdoorType.Entry);
             exit.Notify_PawnTeleported(pawn, this, SkipdoorType.Exit);
-            Dispose();
+            Dispose(SkipNetPlanDisposeState.Completed);
         }
 
+        /*
         public void Notify_SkipNetPlanFailedOrCancelled()
         {
             try
@@ -151,11 +165,19 @@ namespace MigCorp.Skiptech.SkipNet
                 Dispose();
             }
         }
-
-        public void Dispose()
+        */
+        private void Dispose(SkipNetPlanDisposeState disposeState)
         {
+            if (IsDisposed) { return; }
+
+            planStateAtDispose = state;
+            this.disposeState = disposeState;
             State = SkipNetPlanState.Disposed;
         }
+
+        public void DisposeCancelled() { Dispose(SkipNetPlanDisposeState.Cancelled); }
+        public void DisposeSuperseded() { Dispose(SkipNetPlanDisposeState.Superseded); }
+        public void DisposeCompleted() { Dispose(SkipNetPlanDisposeState.Completed); }
 
         /// <summary>
         /// Checks if the entry and exit portals are still useable.
