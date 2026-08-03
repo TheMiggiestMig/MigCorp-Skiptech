@@ -131,16 +131,10 @@ namespace MigCorp.Skiptech.SkipNet
                 // Check if the plan is still able to perform
                 TryValidatePlan(pawn, plan);
 
-                // Try to resolve the plans if they were waiting on something.
-                if (!plan.IsDisposedOrInvalid && plan.Arrived)
-                {
-                    plan.Resolve();
-                }
-
                 // Check if the plan is disposed
                 if (plan.IsDisposed)
                 {
-                    RecoverPawnIfNeeded(plan);
+                    //RecoverPawnIfNeeded(plan);
                     pawnSkipNetPlans.Remove(pawn);
                     continue;
                 }
@@ -153,6 +147,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         // DEBUG This basically takes the role of the old SkipNetPlan.Notify_SkipNetPlanFailedOrCancelled.
         // Not sure if needed in the end, but for the mark-and-sweep refactor, I'll add it here instead.
+        /*
         private void RecoverPawnIfNeeded(SkipNetPlan plan)
         {
             if (plan.DisposeState != SkipNetPlanDisposeState.Cancelled) { return; }
@@ -179,6 +174,7 @@ namespace MigCorp.Skiptech.SkipNet
                 pawn.pather.StartPath(plan.originalDest, plan.originalPeMode);
             }
         }
+        */
 
         /// <summary>
         /// Cancels all active SkipNetPlans that use <see langword="skipdoor"/>

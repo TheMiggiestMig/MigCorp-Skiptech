@@ -1,6 +1,4 @@
 ﻿using MigCorp.Skiptech.SkipNet.Comps;
-using MigCorp.Skiptech.Utils;
-using UnityEngine;
 using Verse;
 using Verse.AI;
 
@@ -9,8 +7,8 @@ namespace MigCorp.Skiptech.SkipNet
     public enum SkipNetPlanState
     {
         None,
-        ExecutingEntry,
-        ExecutingExit,
+        SkipPathsPending,
+        Installed,
         Disposed
     }
 
@@ -66,9 +64,12 @@ namespace MigCorp.Skiptech.SkipNet
 
             this.entry = entry;
             this.exit = exit;
-            State = SkipNetPlanState.ExecutingEntry;
+            // State = SkipNetPlanState.ExecutingEntry; // SkipNetPathSplicer informs the state now
             skipNet.planner.RegisterPlan(pawn, this);
         }
+
+        /*
+        // Handled by the TryEnterNextPathCell patchs.
         public bool Resolve()
         {
             // If we haven't arrived at the entry skipdoor yet, do nothing.
@@ -108,7 +109,10 @@ namespace MigCorp.Skiptech.SkipNet
 
             return true;
         }
+        */
 
+        /*
+        // Handled by the TryEnterNextPathCell patchs.
         public void ResetPawnMoveState()
         {
             pawn.pather.StopDead();

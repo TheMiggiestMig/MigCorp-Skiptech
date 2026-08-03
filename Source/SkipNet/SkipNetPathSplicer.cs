@@ -22,6 +22,15 @@ namespace MigCorp.Skiptech.SkipNet
         private const int skipPathTimeoutTicks = 600;
         private const int MaxConcurrentSplicesHard = 8;
 
+        private const bool spliceDryRun = false; // Dev test mode
+
+        public enum TeleportStepDecision
+        {
+            Approved,
+            Waiting,     // used if the skipdoor is delayed
+            BlockedDead
+        }
+
         private class SkipPathPair
         {
             public Pawn pawn;
@@ -36,6 +45,18 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         private readonly List<SkipPathPair> pendingPairs = new List<SkipPathPair>();
+
+        public class SeamInfo
+        {
+            public SkipNetPlan plan;
+            public PawnPath installedPath; // Keep a record of the path we installed (in case it goes missing >.>). Don't do ANYTHING with it, just use it to check agains the pawn's curPath.
+            public IntVec3 entryCell;
+            public IntVec3 exitCell;
+            public bool compsNotified;     // Make sure we only Notify_PawnArrived once
+        }
+
+        private readonly Dictionary<Pawn, SeamInfo> seams = new Dictionary<Pawn, SeamInfo>();
+        private static readonly List<Pawn> tmpSeamCleanup = new List<Pawn>();
 
         private int debugBegunCount;
         private int debugMergedCount;
@@ -63,7 +84,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         public bool AtCapacity { get { return pendingPairs.Count >= MaxPendingPairs; } }
 
-        public bool TryBeginDryRunSkipPaths(SkipNetPlan plan, PawnPath directPath)
+        public bool TryBeginSkipPaths(SkipNetPlan plan, PawnPath directPath)
         {
             if (AtCapacity) { return false; }
 
@@ -94,12 +115,15 @@ namespace MigCorp.Skiptech.SkipNet
             });
             debugBegunCount++;
 
+            // The splicer owns this trip now.
+            plan.State = SkipNetPlanState.SkipPathsPending;
             return true;
         }
 
         public void Run()
         {
             RunPendingPairs();
+            RunSeamMaintenance();
         }
 
         private void RunPendingPairs()
@@ -123,6 +147,25 @@ namespace MigCorp.Skiptech.SkipNet
                 if (plan == null || plan.IsDisposedOrInvalid)
                 {
                     AbortPair(i, pair, "plan retired");
+                    continue;
+                }
+
+                Pawn_PathFollower pather = pawn.pather;
+
+                // If there's already another path request for the pawn, the pawn isn't moving or doesn't have a path,
+                // then the plan is already invalid (since we assume it's supposed to be moving on the direct path for now).
+                if (pather.curPathRequest != null || !pather.Moving || pather.curPath == null)
+                {
+                    AbortPair(i, pair, "pather state changed");
+                    continue;
+                }
+
+                // If for whatever reason the pawn isn't going to the same destination after we requested the skip paths,
+                // then the plan is invalid.
+                if (SkipNetUtils.PatherDest(pather) != plan.originalDest ||
+                    SkipNetUtils.PatherPeMode(pather) != plan.originalPeMode)
+                {
+                    AbortPair(i, pair, "trip changed");
                     continue;
                 }
 
@@ -156,18 +199,27 @@ namespace MigCorp.Skiptech.SkipNet
                 PawnPath spliced = BuildSplicedPath(entryPath, destPath);
                 debugMergedCount++;
 
-                SkiptechUtil.Message($"[Splicer] {pawn.LabelShort}: {plan.entry.Position}→{plan.exit.Position}," +
+                // DEBUG testing only
+                if (spliceDryRun)
+                {
+                    SkiptechUtil.Message($"[Splicer] {pawn.LabelShort}: {plan.entry.Position}→{plan.exit.Position}," +
                     $"skip paths {entryCost}+{destCost}+skip {MigcorpSkiptechMod.Settings.skipCost} = spliced {spliced.TotalCost} ({spliced.NodesLeftCount} nodes) vs direct {pair.directCost} ({pair.directNodes} nodes). {DebugTally()}",
                     LogLevel.Verbose);
 
-                // DEBUG Only need to dispose here for testing, but keep in mind the PawnPath must be handled VERY carefully during it's lifecycle.
-                // That's what kept breaking the Aug 2025 prototypes :/
-                spliced.Dispose();
+                    spliced.Dispose();          // still safe since it hasn't been passed off to the pawn yet.
+                    plan.DisposeSuperseded();
+                    continue;
+                }
+
+                // Swap the pawn's direct path with our spliced one.
+                Install(pawn, plan, spliced);
             }
         }
 
         private void AbortPair(int index, SkipPathPair pair, string reason)
         {
+            pair.plan?.DisposeSuperseded();
+
             DisposeRequests(pair);
             pendingPairs.RemoveAt(index);
             debugAbortedCount++;
@@ -206,6 +258,160 @@ namespace MigCorp.Skiptech.SkipNet
         {
             for (int i = pendingPairs.Count - 1; i >= 0; i--) { DisposeRequests(pendingPairs[i]); }
             pendingPairs.Clear();
+            seams.Clear();
+        }
+        private void Install(Pawn pawn, SkipNetPlan plan, PawnPath spliced)
+        {
+            Pawn_PathFollower pather = pawn.pather;
+
+            // Blatantly copied from vanilla's path claiming (PatherTick)
+            pather.DisposeAndClearCurPath();
+            pather.curPath = spliced;          // vanilla owns it from here, let it handle disposal. NEVER dispose it here again.
+            pather.curPathJobIsStale = false;  // whoops
+
+            plan.State = SkipNetPlanState.Installed;
+            seams[pawn] = new SeamInfo
+            {
+                plan = plan,
+                installedPath = spliced,
+                entryCell = plan.entry.Position,
+                exitCell = plan.exit.Position,
+            };
+
+            SkiptechUtil.Message($"[Splicer] installed spliced path for {pawn.LabelShort} ({plan.entry.Position}→{plan.exit.Position}, {spliced.NodesLeftCount} nodes). {DebugTally()}", LogLevel.Verbose);
+        }
+
+        public bool TryGetSeam(Pawn pawn, out SeamInfo seam)
+        {
+            return seams.TryGetValue(pawn, out seam);
+        }
+
+        public static void HoldAtSeam(Pawn_PathFollower pather)
+        {
+            pather.nextCellCostLeft = 1f;
+            pather.nextCellCostTotal = 1f;
+        }
+
+        public TeleportStepDecision DecideTeleportStep(Pawn pawn, SkipNetPathSplicer.SeamInfo seam)
+        {
+            Pawn_PathFollower pather = pawn.pather;
+            SkipNetPlan plan = seam.plan;
+
+            // MAke sure the plan and path are still good this tick, otherwise it's an invalid teleport.
+            if (plan == null || plan.IsDisposedOrInvalid || pather.curPath != seam.installedPath)
+            {
+                pather.ResetToCurrentPosition();
+                seams.Remove(pawn);
+                return TeleportStepDecision.BlockedDead;
+            }
+
+            // I totally didn't forget to tell the doors to start charging >.>;
+            if (!seam.compsNotified)
+            {
+                seam.compsNotified = true;
+                plan.entry.Notify_PawnArrived(pawn, plan, SkipdoorType.Entry);
+                plan.exit.Notify_PawnArrived(pawn, plan, SkipdoorType.Exit);
+            }
+
+            // Doors still spinning up? Park the pawn in a cooldown stance.
+            // Blatantly stolen from the door check in Pawn_PathFollower.TryEnterNextPathCell
+            plan.entry.IsEnterableNowBy(pawn, out int entryWait);
+            plan.exit.IsExitableNowBy(pawn, out int exitWait);
+            int waitTicks = Mathf.Max(entryWait, exitWait);
+            if (waitTicks > 0)
+            {
+                Stance_Cooldown stance = new Stance_Cooldown(waitTicks, new LocalTargetInfo(plan.entry.parent), null)
+                {
+                    neverAimWeapon = true,
+                };
+                pawn.stances.SetStance(stance);
+                HoldAtSeam(pather);
+                return TeleportStepDecision.Waiting;
+            }
+
+            // Final check before teleporting the pawn.
+            if (!plan.IsStillAccessible() ||
+                !plan.IsStillPathableFromExitToDest(map, SkipNetUtils.JankyTraverseParmsFor(pawn)))
+            {
+                plan.DisposeCancelled();
+                pather.ResetToCurrentPosition();
+                seams.Remove(pawn);
+                return TeleportStepDecision.BlockedDead;
+            }
+
+            return TeleportStepDecision.Approved;
+        }
+
+        public void CompleteTeleportStep(Pawn pawn, SeamInfo seam)
+        {
+            // Move was probably blocked this tick. Let the next TryEnterNextPathCell prefix attempt.
+            if (pawn.Position != seam.exitCell) { return; }
+
+            SkipNetPlan plan = seam.plan;
+
+            // Do the thing.
+            // Teleport, cancel the tween, fire the effects, and notify the skipdoors that the pawn teleported.
+            pawn.Drawer.tweener.Notify_Teleported();
+
+            FxUtil.PlaySkip(seam.entryCell, map, false);
+            FxUtil.PlaySkip(seam.exitCell, map, false);
+
+            plan.entry.Notify_PawnTeleported(pawn, plan, SkipdoorType.Entry);
+            plan.exit.Notify_PawnTeleported(pawn, plan, SkipdoorType.Exit);
+
+            // Everything from this point is just vanilla walking to the destination.
+            // Tear down the plan and seams.
+            plan.DisposeCompleted();
+            seams.Remove(pawn);
+
+            SkiptechUtil.Message($"[Splicer] {pawn.LabelShort} skipped {seam.entryCell}→{seam.exitCell}. {DebugTally()}", LogLevel.Verbose);
+        }
+
+        // Cleanup active spliced paths.
+        private void RunSeamMaintenance()
+        {
+            if (seams.Count == 0) { return; }
+            tmpSeamCleanup.Clear();
+
+            // Pawn owned the path, so would have handled disposing the path.
+            foreach (KeyValuePair<Pawn, SeamInfo> kv in seams)
+            {
+                Pawn pawn = kv.Key;
+                SeamInfo seam = kv.Value;
+                Pawn_PathFollower pather = pawn?.pather;
+
+                
+                // Pawn is pawn't. Clean up the records.
+                if (pawn == null || !pawn.Spawned || pawn.Map != map || pather == null)
+                {
+                    seam.plan?.DisposeSuperseded();
+                    tmpSeamCleanup.Add(pawn);
+                    continue;
+                }
+
+                // Pawn got a new path from somewhere and replaced our spliced one.
+                if (pather.curPath != seam.installedPath)
+                {
+                    seam.plan?.DisposeSuperseded();
+                    tmpSeamCleanup.Add(pawn);
+                    continue;
+                }
+
+                // If we don't have a plan anymore, we shouldn't be teleporting.
+                // Ditch the seam and get the pawn to resume normal pathing.
+                if (seam.plan == null || seam.plan.IsDisposedOrInvalid)
+                {
+                    pather.ResetToCurrentPosition();
+                    tmpSeamCleanup.Add(pawn);
+                    continue;
+                }
+            }
+
+            for (int i = 0; i < tmpSeamCleanup.Count; i++)
+            {
+                seams.Remove(tmpSeamCleanup[i]);
+            }
+            tmpSeamCleanup.Clear();
         }
     }
 }

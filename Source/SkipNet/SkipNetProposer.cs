@@ -16,8 +16,8 @@ namespace MigCorp.Skiptech.SkipNet
         private readonly Dictionary<Pawn, SkipNetProposal> proposalsByPawn = new Dictionary<Pawn, SkipNetProposal>();
         private readonly Deque<Pawn> proposals = new Deque<Pawn>(); // Actually a list of pawns used as keys for proposals, but whatever.
 
-        private Pawn pawnHijacking = null;
-        public bool IsHijacking(Pawn pawn) => pawnHijacking == pawn;
+        //private Pawn pawnHijacking = null;
+        //public bool IsHijacking(Pawn pawn) => pawnHijacking == pawn;
 
         public struct SkipNetProposal
         {
@@ -92,6 +92,13 @@ namespace MigCorp.Skiptech.SkipNet
                     break;
                 }
 
+                // If the splicer is at capacity, give it another tick to free up.
+                if (skipNet.splicer.AtCapacity)
+                {
+                    proposals.AddFirst(pawn);
+                    break;
+                }
+
                 TryConvertSkipNetProposalIntoSkipNetPlan(pawn, proposal);
             }
 
@@ -158,6 +165,7 @@ namespace MigCorp.Skiptech.SkipNet
         {
             if (pawn == null || !proposalsByPawn.TryGetValue(pawn, out SkipNetProposal proposal)) { return false; }
             if (PopCapReached && !pawn.Drafted) { return false; }
+            if (skipNet.splicer.AtCapacity) { return false; }
             if (!IsValidProposal(proposal))
             {
                 proposalsByPawn.Remove(pawn);
@@ -176,11 +184,9 @@ namespace MigCorp.Skiptech.SkipNet
 
             if (skipNet.planner.TryFindEligibleSkipNetPlan(proposal, directPath, out SkipNetPlan plan))
             {
-                // Testing splicer.
-                skipNet.splicer.TryBeginDryRunSkipPaths(plan, directPath);
+                if (skipNet.splicer.TryBeginSkipPaths(plan, directPath)) { return true; }
 
-                StartPathToEntry(plan);
-                return true;
+                plan.DisposeSuperseded(); // Make sure the (failed) generated plan isn't accidentally used.
             }
             return false;
         }
@@ -197,6 +203,7 @@ namespace MigCorp.Skiptech.SkipNet
             return directPath != null;
         }
 
+        /*
         private void StartPathToEntry(SkipNetPlan plan)
         {
             try
@@ -209,6 +216,7 @@ namespace MigCorp.Skiptech.SkipNet
                 pawnHijacking = null;
             }
         }
+        */
 
         // Moved from SkipNetPlanner.
         public bool TryFilterSettings(Pawn pawn)

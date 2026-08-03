@@ -2,6 +2,7 @@
 using MigCorp.Skiptech.SkipNet;
 using Verse;
 using Verse.AI;
+using static MigCorp.Skiptech.SkipNet.SkipNetPathSplicer;
 
 namespace MigCorp.Skiptech
 {
@@ -11,44 +12,40 @@ namespace MigCorp.Skiptech
         // Nuke any current SkipNetPlan for the pawn since we're doing a whole new StartPath request.
         [HarmonyPrefix]
         [HarmonyPatch(nameof(Pawn_PathFollower.StartPath))]
-        static bool StartPath_Prefix(
+        static void StartPath_Prefix(
             LocalTargetInfo dest,
             PathEndMode peMode,
+            Pawn_PathFollower __instance,
             Pawn ___pawn)
         {
             MapComponent_SkipNet skipNet =
                 ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
 
-            if (skipNet == null) { return true; }
+            if (skipNet == null) { return; }
 
             // There are some real weird mod decisions out there that specifically try to path
-            // to exacly nowhere.
-            if (!dest.IsValid || peMode == PathEndMode.None) { return true; }
+            // to exacly nowhere. Let vanilla fail it.
+            if (!dest.IsValid || peMode == PathEndMode.None) { return; }
 
-            // Preserve StartPath calls made by proposer.
-            if (skipNet.proposer.IsHijacking(___pawn)) { return true; }
+            // If there isn't a current plan, carry on. GenerateNewPathRequest will make a new proposal for us.
+            if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
 
             // If a valid plan already exists, and it's going to the same location,
             // it's probably GetNewPathRequest refreshing the path. Skip proposing a new plan
             // and re-establish the hijack.
-            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
+            if (plan.originalDest == dest && plan.originalPeMode == peMode &&
+                __instance.Moving && __instance.curPath != null)
             {
-                if (plan.State == SkipNetPlanState.ExecutingEntry &&
-                plan.originalDest == dest && plan.originalPeMode == peMode &&
-                ___pawn.pather.Moving)
-                {
-                    return false;
-                }
-
-                plan.DisposeSuperseded();
+                return;
             }
 
-            return true;
+            // New StartPath request while there's an ongoing plan.
+            // Dispose it as superseded so it doesn't fight being overwritten.
+            plan.DisposeSuperseded();
         }
 
-        // We need to intercept and cancel if we arrived at an entry portal as part of a SkipNetPlan.
-        // If we CanExit the exit, and the path from exit to dest is valid, ignore.
-        // Otherwise, pass onto vanilla job.
+        /*
+        // No longer needed since we only have one destination now (the original)
         [HarmonyPrefix]
         [HarmonyPatch(typeof(Pawn_PathFollower), "PatherArrived")]
         static bool PatherArrived_Prefix(
@@ -74,24 +71,24 @@ namespace MigCorp.Skiptech
 
             return true;
         }
+        */
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(Pawn_PathFollower), "PatherFailed")]
-        static bool PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
+        static void PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
         {
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            if (skipNet == null) { return true; }
+            if (skipNet == null) { return; }
 
-            // If we weren't running on a plan, let the PatherFailed notification pass.
-            if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
-
-            // We had a plan and it failed. Let it try again or reset pathing rather than failing the original task.
-            plan.DisposeCancelled();
-            return false;
+            // If we were running on a plan, clean it up and let the PatherFailed notification pass.
+            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
+            {
+                plan.DisposeCancelled();
+            }
         }
 
-        // Usually called from StartPath (occasionally from the PatherTick).
-        // Re-affirms good plans, nuke's bad ones.
+        /*
+        // No longer needed since we're no longer hijacking dest.
         [HarmonyPrefix]
         [HarmonyPatch("GenerateNewPathRequest")]
         static void GenerateNewPathRequest_Prefix(
@@ -133,6 +130,7 @@ namespace MigCorp.Skiptech
                 }
             }
         }
+        */
 
         // Now handles the proposing of new plans.
         [HarmonyPostfix]
@@ -148,15 +146,82 @@ namespace MigCorp.Skiptech
 
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
             if (skipNet == null) { return; }
-            if (skipNet.proposer.IsHijacking(___pawn)) { return; }
+            // if (skipNet.proposer.IsHijacking(___pawn)) { return; }
 
             // Already serving an active plan (hijack re-applied in the prefix), or attempted (and failed) a plan this tic.
-            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
+            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { plan.DisposeSuperseded(); }
 
             skipNet.proposer.TryMakeSkipNetProposal(___pawn, ___destination, ___peMode, __result.TraverseParms);
         }
 
-        // Make sure the save data holds the original destination and peMode, not the SkipNetPlan replacement.
+        public struct SkipNetPathSeamStepState
+        {
+            public SkipNetPathSplicer splicer;
+            public SkipNetPathSplicer.SeamInfo seam;
+            public bool approved;
+        }
+
+        [HarmonyPrefix]
+        [HarmonyPatch("TryEnterNextPathCell")]
+        static bool TryEnterNextPathCell_Prefix(
+            Pawn_PathFollower __instance,
+            Pawn ___pawn,
+            out SkipNetPathSeamStepState __state)
+        {
+            __state = default;
+
+            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            if (skipNet == null) { return true; }
+            if (!skipNet.splicer.TryGetSeam(___pawn, out SkipNetPathSplicer.SeamInfo seam)) { return true; }
+
+            __state.splicer = skipNet.splicer;
+            __state.seam = seam;
+
+            // Still walking the entry path. Ignore.
+            if (___pawn.Position != seam.entryCell || __instance.nextCell != seam.exitCell) { return true; }
+
+            // If the exit skipdoor has pawns standing on it blocking it, freeze the pawn's sprite at the spot (to stop tweening).
+            if (__instance.WillCollideNextCell)
+            {
+                SkipNetPathSplicer.HoldAtSeam(__instance);
+                return true;
+            }
+
+            switch (skipNet.splicer.DecideTeleportStep(___pawn, seam))
+            {
+                case TeleportStepDecision.Approved:
+                    __state.approved = true;
+                    return true; // Green to go!
+
+                case TeleportStepDecision.Waiting:
+                case TeleportStepDecision.BlockedDead:
+                default:
+                    return false; // no move this tick
+            }
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch("TryEnterNextPathCell")]
+        static void TryEnterNextPathCell_Postfix(Pawn ___pawn, SkipNetPathSeamStepState __state)
+        {
+            if (__state.seam == null) { return; }
+
+            if (__state.approved)
+            {
+                __state.splicer.CompleteTeleportStep(___pawn, __state.seam);
+                return;
+            }
+
+            // If the seam is still waiting, freeze the pawn's sprite at the spot (to stop tweening).
+            Pawn_PathFollower pather = ___pawn.pather;
+            if (___pawn.Position == __state.seam.entryCell && pather.nextCell == __state.seam.exitCell)
+            {
+                SkipNetPathSplicer.HoldAtSeam(pather);
+            }
+        }
+
+        /*
+        // Don't think this is needed anymore, since we aren't hijacking the dest / peMode any more.
         public struct SwappedSaveState
         {
             public bool swapped;
@@ -220,5 +285,6 @@ namespace MigCorp.Skiptech
                 __instance.curPathJobIsStale = __state.swappedCurPathJobIsStale;
             }
         }
+        */
     }
 }
