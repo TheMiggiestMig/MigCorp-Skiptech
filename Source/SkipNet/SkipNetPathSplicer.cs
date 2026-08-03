@@ -22,8 +22,6 @@ namespace MigCorp.Skiptech.SkipNet
         private const int skipPathTimeoutTicks = 600;
         private const int MaxConcurrentSplicesHard = 8;
 
-        private const bool spliceDryRun = false; // Dev test mode
-
         public enum TeleportStepDecision
         {
             Approved,
@@ -139,14 +137,14 @@ namespace MigCorp.Skiptech.SkipNet
                 // we nuke it ourselves.
                 if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map || pawn.pather == null)
                 {
-                    AbortPair(i, pair, "pawn gone :(");
+                    AbortPair(i, pair);
                     continue;
                 }
 
                 // Mark and sweep style, just like granny used to make.
                 if (plan == null || plan.IsDisposedOrInvalid)
                 {
-                    AbortPair(i, pair, "plan retired");
+                    AbortPair(i, pair);
                     continue;
                 }
 
@@ -156,7 +154,7 @@ namespace MigCorp.Skiptech.SkipNet
                 // then the plan is already invalid (since we assume it's supposed to be moving on the direct path for now).
                 if (pather.curPathRequest != null || !pather.Moving || pather.curPath == null)
                 {
-                    AbortPair(i, pair, "pather state changed");
+                    AbortPair(i, pair);
                     continue;
                 }
 
@@ -165,7 +163,7 @@ namespace MigCorp.Skiptech.SkipNet
                 if (SkipNetUtils.PatherDest(pather) != plan.originalDest ||
                     SkipNetUtils.PatherPeMode(pather) != plan.originalPeMode)
                 {
-                    AbortPair(i, pair, "trip changed");
+                    AbortPair(i, pair);
                     continue;
                 }
 
@@ -174,7 +172,7 @@ namespace MigCorp.Skiptech.SkipNet
                     if (GenTicks.TicksGame - pair.tickStarted > skipPathTimeoutTicks)
                     {
                         SkiptechUtil.Warning($"[Splicer] skip paths for {pawn.LabelShort} timed out after {skipPathTimeoutTicks} ticks.");
-                        AbortPair(i, pair, "timeout");
+                        AbortPair(i, pair);
                     }
                     continue;
                 }
@@ -184,7 +182,7 @@ namespace MigCorp.Skiptech.SkipNet
                     !pair.pathToEntry.TryGetPath(out PawnPath entryPath) || entryPath == null || !entryPath.Found ||
                     !pair.pathToDest.TryGetPath(out PawnPath destPath) || destPath == null || !destPath.Found)
                 {
-                    AbortPair(i, pair, "no path");
+                    AbortPair(i, pair);
                     continue;
                 }
 
@@ -199,31 +197,18 @@ namespace MigCorp.Skiptech.SkipNet
                 PawnPath spliced = BuildSplicedPath(entryPath, destPath);
                 debugMergedCount++;
 
-                // DEBUG testing only
-                if (spliceDryRun)
-                {
-                    SkiptechUtil.Message($"[Splicer] {pawn.LabelShort}: {plan.entry.Position}→{plan.exit.Position}," +
-                    $"skip paths {entryCost}+{destCost}+skip {MigcorpSkiptechMod.Settings.skipCost} = spliced {spliced.TotalCost} ({spliced.NodesLeftCount} nodes) vs direct {pair.directCost} ({pair.directNodes} nodes). {DebugTally()}",
-                    LogLevel.Verbose);
-
-                    spliced.Dispose();          // still safe since it hasn't been passed off to the pawn yet.
-                    plan.DisposeSuperseded();
-                    continue;
-                }
-
                 // Swap the pawn's direct path with our spliced one.
                 Install(pawn, plan, spliced);
             }
         }
 
-        private void AbortPair(int index, SkipPathPair pair, string reason)
+        private void AbortPair(int index, SkipPathPair pair)
         {
             pair.plan?.DisposeSuperseded();
 
             DisposeRequests(pair);
             pendingPairs.RemoveAt(index);
             debugAbortedCount++;
-            SkiptechUtil.Message($"[Splicer] pair for {pair.pawn?.LabelShort ?? "???"} aborted ({reason}). {DebugTally()}", LogLevel.Verbose);
         }
 
         private static void DisposeRequests(SkipPathPair pair)
@@ -250,10 +235,6 @@ namespace MigCorp.Skiptech.SkipNet
             return destPath;
         }
 
-        private string DebugTally()
-        {
-            return $"[begun:{debugBegunCount} merged:{debugMergedCount} aborted:{debugAbortedCount} pending:{pendingPairs.Count}]";
-        }
         public void DropAll()
         {
             for (int i = pendingPairs.Count - 1; i >= 0; i--) { DisposeRequests(pendingPairs[i]); }
@@ -277,8 +258,6 @@ namespace MigCorp.Skiptech.SkipNet
                 entryCell = plan.entry.Position,
                 exitCell = plan.exit.Position,
             };
-
-            SkiptechUtil.Message($"[Splicer] installed spliced path for {pawn.LabelShort} ({plan.entry.Position}→{plan.exit.Position}, {spliced.NodesLeftCount} nodes). {DebugTally()}", LogLevel.Verbose);
         }
 
         public bool TryGetSeam(Pawn pawn, out SeamInfo seam)
@@ -363,8 +342,6 @@ namespace MigCorp.Skiptech.SkipNet
             // Tear down the plan and seams.
             plan.DisposeCompleted();
             seams.Remove(pawn);
-
-            SkiptechUtil.Message($"[Splicer] {pawn.LabelShort} skipped {seam.entryCell}→{seam.exitCell}. {DebugTally()}", LogLevel.Verbose);
         }
 
         // Cleanup active spliced paths.
