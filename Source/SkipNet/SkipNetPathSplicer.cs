@@ -36,10 +36,6 @@ namespace MigCorp.Skiptech.SkipNet
             public PathRequest pathToEntry;
             public PathRequest pathToDest;
             public int tickStarted;
-
-            // Snapshots for the comparison log (never hold the direct path itself).
-            public float directCost;
-            public int directNodes;
         }
 
         private readonly List<SkipPathPair> pendingPairs = new List<SkipPathPair>();
@@ -55,10 +51,6 @@ namespace MigCorp.Skiptech.SkipNet
 
         private readonly Dictionary<Pawn, SeamInfo> seams = new Dictionary<Pawn, SeamInfo>();
         private static readonly List<Pawn> tmpSeamCleanup = new List<Pawn>();
-
-        private int debugBegunCount;
-        private int debugMergedCount;
-        private int debugAbortedCount;
 
         public Map map { get { return skipNet.map; } }
 
@@ -82,7 +74,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         public bool AtCapacity { get { return pendingPairs.Count >= MaxPendingPairs; } }
 
-        public bool TryBeginSkipPaths(SkipNetPlan plan, PawnPath directPath)
+        public bool TryBeginSkipPaths(SkipNetPlan plan)
         {
             if (AtCapacity) { return false; }
 
@@ -107,11 +99,8 @@ namespace MigCorp.Skiptech.SkipNet
                 plan = plan,
                 pathToEntry = skipPathToEntry,
                 pathToDest = skipPathToDest,
-                tickStarted = GenTicks.TicksGame,
-                directCost = directPath?.TotalCost ?? -1f,
-                directNodes = directPath?.NodesLeftCount ?? -1,
+                tickStarted = GenTicks.TicksGame
             });
-            debugBegunCount++;
 
             // The splicer owns this trip now.
             plan.State = SkipNetPlanState.SkipPathsPending;
@@ -178,9 +167,8 @@ namespace MigCorp.Skiptech.SkipNet
                 }
 
                 // Check if the requests finished with no path for either skip path.
-                if (pair.pathToEntry.Found != true || pair.pathToDest.Found != true ||
-                    !pair.pathToEntry.TryGetPath(out PawnPath entryPath) || entryPath == null || !entryPath.Found ||
-                    !pair.pathToDest.TryGetPath(out PawnPath destPath) || destPath == null || !destPath.Found)
+                if (!HasUsablePath(pair.pathToEntry, out PawnPath entryPath)
+                    || !HasUsablePath(pair.pathToDest, out PawnPath destPath))
                 {
                     AbortPair(i, pair);
                     continue;
@@ -192,14 +180,16 @@ namespace MigCorp.Skiptech.SkipNet
                 DisposeRequests(pair);
                 pendingPairs.RemoveAt(i);
 
-                float entryCost = entryPath.TotalCost;
-                float destCost = destPath.TotalCost;
                 PawnPath spliced = BuildSplicedPath(entryPath, destPath);
-                debugMergedCount++;
 
                 // Swap the pawn's direct path with our spliced one.
                 Install(pawn, plan, spliced);
             }
+        }
+        private static bool HasUsablePath(PathRequest request, out PawnPath path)
+        {
+            path = null;
+            return request.Found == true && request.TryGetPath(out path) && path != null && path.Found;
         }
 
         private void AbortPair(int index, SkipPathPair pair)
@@ -208,7 +198,6 @@ namespace MigCorp.Skiptech.SkipNet
 
             DisposeRequests(pair);
             pendingPairs.RemoveAt(index);
-            debugAbortedCount++;
         }
 
         private static void DisposeRequests(SkipPathPair pair)
@@ -357,7 +346,7 @@ namespace MigCorp.Skiptech.SkipNet
                 SeamInfo seam = kv.Value;
                 Pawn_PathFollower pather = pawn?.pather;
 
-                
+
                 // Pawn is pawn't. Clean up the records.
                 if (pawn == null || !pawn.Spawned || pawn.Map != map || pather == null)
                 {

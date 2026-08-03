@@ -18,7 +18,7 @@ namespace MigCorp.Skiptech.SkipNet
         private readonly Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
 
         // Plan management
-        public readonly Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
+        private readonly Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
         private readonly Deque<Pawn> plans = new Deque<Pawn>(); // Stealing this idea from the SkipNetProposer. Trust me, they're plans, not pawns.
 
         public List<CompSkipdoor> skipdoors { get { return skipNet.skipdoors; } }
@@ -35,7 +35,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         public void Run()
         {
-            ResolveActivePlans();
+            CleanupPlans();
             RebuildRegionDoorIndex();
         }
 
@@ -80,13 +80,11 @@ namespace MigCorp.Skiptech.SkipNet
         /// <summary>
         /// Returns a SkipNetPlan if it exists.
         /// </summary>
-        /// <param name="force">Include "disposed" plans</param>
         /// <returns>Returns <see langword="true"/> if a plan existed or <see langword="false"/> otherwise.</returns>
-        public bool TryGetSkipNetPlan(Pawn pawn, out SkipNetPlan plan, bool force = false)
+        public bool TryGetSkipNetPlan(Pawn pawn, out SkipNetPlan plan)
         {
             if (pawn == null ||
-                !pawnSkipNetPlans.TryGetValue(pawn, out plan) ||
-                !force && plan.IsDisposed
+                !pawnSkipNetPlans.TryGetValue(pawn, out plan) || plan.IsDisposed
                 )
             {
                 plan = default;
@@ -109,10 +107,9 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         /// <summary>
-        /// Loops through all active plans and attempts to resolve them.
-        /// The plan itself handles the resolution; this method just tells it to try.
+        /// Loops through all active plans removes disposed and invalid plans.
         /// </summary>
-        public void ResolveActivePlans()
+        public void CleanupPlans()
         {
             int numPlansToResolve = plans.Count;
 
@@ -126,10 +123,10 @@ namespace MigCorp.Skiptech.SkipNet
                 if (!pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan)) { continue; }
 
                 // Check if the plan is bad or invalid
-                TryDisposeBadOrInvalidPlan(pawn, plan);
+                DisposeBadOrInvalidPlan(pawn, plan);
 
                 // Check if the plan is still able to perform
-                TryValidatePlan(pawn, plan);
+                ValidatePlan(pawn, plan);
 
                 // Check if the plan is disposed
                 if (plan.IsDisposed)
@@ -138,7 +135,7 @@ namespace MigCorp.Skiptech.SkipNet
                     continue;
                 }
 
-                // If we can't resolve the plan this tick, put the pawn back on the list to be tried again next tick.
+                // Not yet disposed, hold onto it.
                 plans.AddLast(pawn);
             }
         }
@@ -159,17 +156,16 @@ namespace MigCorp.Skiptech.SkipNet
             }
         }
 
-        public bool TryDisposeBadOrInvalidPlan(Pawn pawn, SkipNetPlan plan)
+        private void DisposeBadOrInvalidPlan(Pawn pawn, SkipNetPlan plan)
         {
             if (plan.IsInvalid || pawn?.Map != map || !pawn.Spawned)
             {
                 plan.DisposeSuperseded(); // Janky, but Superseded should prevent it from retrying.
-                return true;
             }
-            return false;
+            return;
         }
 
-        public bool TryValidatePlan(Pawn pawn, SkipNetPlan plan)
+        private void ValidatePlan(Pawn pawn, SkipNetPlan plan)
         {
             if (!plan.IsDisposedOrInvalid)
             {
@@ -183,7 +179,7 @@ namespace MigCorp.Skiptech.SkipNet
                     if (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp))
                     {
                         plan.DisposeCancelled();
-                        return true;
+                        return;
                     }
                 }
 
@@ -192,10 +188,9 @@ namespace MigCorp.Skiptech.SkipNet
                 if (pawn.IsHashIntervalTick(180) && !plan.IsStillAccessible())
                 {
                     plan.DisposeCancelled();
-                    return true;
                 }
             }
-            return false;
+            return;
         }
 
         /// <summary>
@@ -255,7 +250,7 @@ namespace MigCorp.Skiptech.SkipNet
             {
                 plan = new SkipNetPlan(skipNet, pawn, dest, peMode, tickLastRegionSkipdoorRebuild);
                 plan.Initialize(entry, exit);
-            };
+            }
 
             skipNet.proposer.ConsumePopBudget(popCost);
 

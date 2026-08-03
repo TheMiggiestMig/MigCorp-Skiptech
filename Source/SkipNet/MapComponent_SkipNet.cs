@@ -49,9 +49,11 @@ namespace MigCorp.Skiptech.SkipNet
 
         public override void MapRemoved()
         {
-            if (cachedMap == map) {
+            if (cachedMap == map)
+            {
                 cachedMap = null;
-                cachedComp = null; }
+                cachedComp = null;
+            }
             splicer.DropAll();
             base.MapRemoved();
         }

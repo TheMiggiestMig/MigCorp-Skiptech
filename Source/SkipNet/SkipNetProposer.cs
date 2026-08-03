@@ -30,13 +30,6 @@ namespace MigCorp.Skiptech.SkipNet
                 this.peMode = peMode;
                 this.tp = tp;
             }
-
-            public void Update(LocalTargetInfo dest, PathEndMode peMode, TraverseParms tp)
-            {
-                this.dest = dest;
-                this.peMode = peMode;
-                this.tp = tp;
-            }
         }
 
         public SkipNetProposer(MapComponent_SkipNet skipNet)
@@ -111,7 +104,6 @@ namespace MigCorp.Skiptech.SkipNet
             if (!IsValidProposal(proposal)) { return false; }
             if (pawn.Dead || !pawn.Spawned || pawn.Map != skipNet.map || pawn.pather == null) { return false; }
             if (pawn.Downed && !pawn.health.CanCrawl) { return false; }
-            if (!TryFilterSettings(pawn)) { return false; }
 
             if (SkipNetUtils.PatherDest(pawn.pather) != proposal.dest ||
                 SkipNetUtils.PatherPeMode(pawn.pather) != proposal.peMode)
@@ -126,20 +118,19 @@ namespace MigCorp.Skiptech.SkipNet
         {
             if (!IsValidProposal(pawn, ref dest, peMode)) { return false; }
 
-            if (proposalsByPawn.TryGetValue(pawn, out SkipNetProposal existingProposal))
-            {
-                proposalsByPawn[pawn] = new SkipNetProposal(pawn, dest, peMode, tp);
-                return true;
-            }
-
+            bool isNewProposal = !proposalsByPawn.ContainsKey(pawn);
             proposalsByPawn[pawn] = new SkipNetProposal(pawn, dest, peMode, tp);
-            if (pawn.Drafted) // Drafted pawns have priority.
+
+            if (isNewProposal)
             {
-                proposals.AddFirst(pawn);
-            }
-            else
-            {
-                proposals.AddLast(pawn);
+                if (pawn.Drafted) // Drafted pawns have priority.
+                {
+                    proposals.AddFirst(pawn);
+                }
+                else
+                {
+                    proposals.AddLast(pawn);
+                }
             }
 
             return true;
@@ -149,6 +140,7 @@ namespace MigCorp.Skiptech.SkipNet
             if (pawn == null || !dest.IsValid || peMode == PathEndMode.None) { return false; }
 
             if (skipNet.skipdoors.Count < 2) { return false; }
+            if (!TryFilterSettings(pawn)) { return false; }
 
             return true;
         }
@@ -180,7 +172,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             if (skipNet.planner.TryFindEligibleSkipNetPlan(proposal, directPath, out SkipNetPlan plan))
             {
-                if (skipNet.splicer.TryBeginSkipPaths(plan, directPath)) { return true; }
+                if (skipNet.splicer.TryBeginSkipPaths(plan)) { return true; }
 
                 plan.DisposeSuperseded(); // Make sure the (failed) generated plan isn't accidentally used.
             }
