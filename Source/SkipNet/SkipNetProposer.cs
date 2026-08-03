@@ -16,9 +16,6 @@ namespace MigCorp.Skiptech.SkipNet
         private readonly Dictionary<Pawn, SkipNetProposal> proposalsByPawn = new Dictionary<Pawn, SkipNetProposal>();
         private readonly Deque<Pawn> proposals = new Deque<Pawn>(); // Actually a list of pawns used as keys for proposals, but whatever.
 
-        //private Pawn pawnHijacking = null;
-        //public bool IsHijacking(Pawn pawn) => pawnHijacking == pawn;
-
         public struct SkipNetProposal
         {
             public Pawn pawn;
@@ -179,7 +176,6 @@ namespace MigCorp.Skiptech.SkipNet
         {
             proposalsByPawn.Remove(pawn);
 
-            // This will be needed for the Dijkstra implementation.
             if (!TryExtractPawnPath(pawn, out PawnPath directPath)) { return false; }
 
             if (skipNet.planner.TryFindEligibleSkipNetPlan(proposal, directPath, out SkipNetPlan plan))
@@ -203,22 +199,6 @@ namespace MigCorp.Skiptech.SkipNet
             return directPath != null;
         }
 
-        /*
-        private void StartPathToEntry(SkipNetPlan plan)
-        {
-            try
-            {
-                pawnHijacking = plan.pawn;
-                plan.pawn.pather.StartPath(new LocalTargetInfo(plan.entry.parent), PathEndMode.OnCell);
-            }
-            finally
-            {
-                pawnHijacking = null;
-            }
-        }
-        */
-
-        // Moved from SkipNetPlanner.
         public bool TryFilterSettings(Pawn pawn)
         {
             if (MigcorpSkiptechMod.Settings.accessMode == AccessMode.Colonists && pawn.Faction != Faction.OfPlayer)

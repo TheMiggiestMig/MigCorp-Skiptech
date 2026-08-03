@@ -30,9 +30,7 @@ namespace MigCorp.Skiptech
             // If there isn't a current plan, carry on. GenerateNewPathRequest will make a new proposal for us.
             if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
 
-            // If a valid plan already exists, and it's going to the same location,
-            // it's probably GetNewPathRequest refreshing the path. Skip proposing a new plan
-            // and re-establish the hijack.
+            // If a valid plan already exists, and it's going to the same location, let it.
             if (plan.originalDest == dest && plan.originalPeMode == peMode &&
                 __instance.Moving && __instance.curPath != null)
             {
@@ -40,38 +38,9 @@ namespace MigCorp.Skiptech
             }
 
             // New StartPath request while there's an ongoing plan.
-            // Dispose it as superseded so it doesn't fight being overwritten.
+            // Dispose or the current plan as superseded so it doesn't fight being overwritten.
             plan.DisposeSuperseded();
         }
-
-        /*
-        // No longer needed since we only have one destination now (the original)
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(Pawn_PathFollower), "PatherArrived")]
-        static bool PatherArrived_Prefix(
-            Pawn_PathFollower __instance,
-            Pawn ___pawn
-            )
-        {
-            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            if (skipNet == null) { return true; }
-
-            if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) || plan.IsInvalid) { return true; }
-
-            if (plan.State == SkipNetPlanState.ExecutingEntry && ___pawn.CanReachImmediate(new LocalTargetInfo(plan.entry.parent), PathEndMode.OnCell))
-            {
-                plan.Notify_SkipNetPlanEntryReached();
-                return false;
-            }
-            else if (___pawn.CanReachImmediate(plan.originalDest, plan.originalPeMode))
-            {
-                plan.DisposeSuperseded();
-                return true;
-            }
-
-            return true;
-        }
-        */
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(Pawn_PathFollower), "PatherFailed")]
@@ -87,51 +56,6 @@ namespace MigCorp.Skiptech
             }
         }
 
-        /*
-        // No longer needed since we're no longer hijacking dest.
-        [HarmonyPrefix]
-        [HarmonyPatch("GenerateNewPathRequest")]
-        static void GenerateNewPathRequest_Prefix(
-            Pawn_PathFollower __instance,
-            Pawn ___pawn)
-        {
-            Map map = ___pawn?.Map;
-            MapComponent_SkipNet skipNet = map?.GetComponent<MapComponent_SkipNet>();
-            if (skipNet == null) { return; }
-
-            ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
-            ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);
-
-            TraverseParms tp = SkipNetUtils.JankyTraverseParmsFor(___pawn);
-
-            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
-            {
-                // This path request is for a plan that was just created. Don't bother doing the checks, it's good... trust.
-                if (skipNet.proposer.IsHijacking(___pawn)) { return; }
-
-                // Check if we need to nuke the plan or just reapply the hijack.
-                if (plan.State == SkipNetPlanState.ExecutingEntry)
-                {
-
-                    if (!plan.IsStillAccessible() ||
-                        !plan.IsStillPathableFromEntryToExit(map, tp))
-                    {
-
-                        dest = plan.originalDestPostition;
-                        peMode = plan.originalPeMode;
-
-                        plan.DisposeSuperseded();
-                        return;
-                    }
-
-                    // Re-apply the hijack.
-                    dest = plan.entry.parent;
-                    peMode = PathEndMode.OnCell;
-                }
-            }
-        }
-        */
-
         // Now handles the proposing of new plans.
         [HarmonyPostfix]
         [HarmonyPatch("GenerateNewPathRequest")]
@@ -146,9 +70,8 @@ namespace MigCorp.Skiptech
 
             MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
             if (skipNet == null) { return; }
-            // if (skipNet.proposer.IsHijacking(___pawn)) { return; }
 
-            // Already serving an active plan (hijack re-applied in the prefix), or attempted (and failed) a plan this tic.
+            // Assuming StartPath was just re-executing an existing plan, now's the time to dispose of it and try again.
             if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { plan.DisposeSuperseded(); }
 
             skipNet.proposer.TryMakeSkipNetProposal(___pawn, ___destination, ___peMode, __result.TraverseParms);
@@ -219,72 +142,5 @@ namespace MigCorp.Skiptech
                 SkipNetPathSplicer.HoldAtSeam(pather);
             }
         }
-
-        /*
-        // Don't think this is needed anymore, since we aren't hijacking the dest / peMode any more.
-        public struct SwappedSaveState
-        {
-            public bool swapped;
-            public LocalTargetInfo swappedDestination;
-            public PathEndMode swappedPeMode;
-            public bool swappedCurPathJobIsStale;
-        }
-
-        [HarmonyPrefix]
-        [HarmonyPatch(nameof(Pawn_PathFollower.ExposeData))]
-        static void ExposeData_Prefix(
-            Pawn_PathFollower __instance,
-            Pawn ___pawn,
-            LocalTargetInfo ___destination,
-            PathEndMode ___peMode,
-            bool ___curPathJobIsStale,
-            out SwappedSaveState __state
-            )
-        {
-            __state = new SwappedSaveState();
-            __state.swapped = false;
-            __state.swappedDestination = ___destination;
-            __state.swappedPeMode = ___peMode;
-            __state.swappedCurPathJobIsStale = ___curPathJobIsStale;
-
-            if (Scribe.mode != LoadSaveMode.Saving) { return; }
-
-            Map map = ___pawn.Map;
-
-            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
-            if (skipNet == null) { return; }
-
-            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
-            {
-                ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
-                ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);
-
-                __state.swapped = true;
-
-                dest = plan.originalDest;
-                peMode = plan.originalPeMode;
-                __instance.curPathJobIsStale = true; // Force the game to repath on load.
-            }
-        }
-
-        [HarmonyFinalizer]
-        [HarmonyPatch(nameof(Pawn_PathFollower.ExposeData))]
-        static void ExposeData_Finalizer(
-            Pawn_PathFollower __instance,
-            Pawn ___pawn,
-            ref SwappedSaveState __state
-            )
-        {
-            if (__state.swapped)
-            {
-                ref LocalTargetInfo dest = ref SkipNetUtils._patherDestRef(___pawn.pather);
-                ref PathEndMode peMode = ref SkipNetUtils._patherPeModeRef(___pawn.pather);
-
-                dest = __state.swappedDestination;
-                peMode = __state.swappedPeMode;
-                __instance.curPathJobIsStale = __state.swappedCurPathJobIsStale;
-            }
-        }
-        */
     }
 }

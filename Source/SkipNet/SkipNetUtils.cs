@@ -11,12 +11,12 @@ namespace MigCorp.Skiptech.SkipNet
     {
         // Special accessors to dig into a given Pawn_PathFollower's private fields.
         // Moved to SkipNetUtils since I'm now using it for more than just the patches.
-        public static readonly AccessTools.FieldRef<Pawn_PathFollower, LocalTargetInfo>
+        private static readonly AccessTools.FieldRef<Pawn_PathFollower, LocalTargetInfo>
         _patherDestRef = AccessTools.FieldRefAccess<Pawn_PathFollower, LocalTargetInfo>("destination");
-        public static readonly AccessTools.FieldRef<Pawn_PathFollower, PathEndMode>
+        private static readonly AccessTools.FieldRef<Pawn_PathFollower, PathEndMode>
         _patherPeModeRef = AccessTools.FieldRefAccess<Pawn_PathFollower, PathEndMode>("peMode");
 
-        // Read-only views.
+        // Read-only views. We're not hijacking anymore.
         public static LocalTargetInfo PatherDest(Pawn_PathFollower pather) => _patherDestRef(pather);
         public static PathEndMode PatherPeMode(Pawn_PathFollower pather) => _patherPeModeRef(pather);
 
@@ -37,14 +37,6 @@ namespace MigCorp.Skiptech.SkipNet
             int dx = Math.Abs(d.x);
             int dz = Math.Abs(d.z);
             return Math.Max(dx, dz) * 10 + Math.Min(dx, dz) * 4;
-        }
-
-        internal static void TeleportPawn(Pawn pawn, IntVec3 position)
-        {
-            FxUtil.PlaySkip(pawn.Position, pawn.Map, false);
-            pawn.Position = position;
-            pawn.Drawer.tweener.Notify_Teleported();
-            FxUtil.PlaySkip(pawn.Position, pawn.Map, false);
         }
     }
 

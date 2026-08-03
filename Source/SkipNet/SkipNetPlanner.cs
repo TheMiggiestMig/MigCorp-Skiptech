@@ -134,7 +134,6 @@ namespace MigCorp.Skiptech.SkipNet
                 // Check if the plan is disposed
                 if (plan.IsDisposed)
                 {
-                    //RecoverPawnIfNeeded(plan);
                     pawnSkipNetPlans.Remove(pawn);
                     continue;
                 }
@@ -142,39 +141,7 @@ namespace MigCorp.Skiptech.SkipNet
                 // If we can't resolve the plan this tick, put the pawn back on the list to be tried again next tick.
                 plans.AddLast(pawn);
             }
-            //SkiptechUtil.Message($"Plans - Pawn Keys {plans.Count}, Pawn Plans {pawnSkipNetPlans.Count}");
         }
-
-        // DEBUG This basically takes the role of the old SkipNetPlan.Notify_SkipNetPlanFailedOrCancelled.
-        // Not sure if needed in the end, but for the mark-and-sweep refactor, I'll add it here instead.
-        /*
-        private void RecoverPawnIfNeeded(SkipNetPlan plan)
-        {
-            if (plan.DisposeState != SkipNetPlanDisposeState.Cancelled) { return; }
-
-            // If pawn't, then plan't
-            Pawn pawn = plan.pawn;
-            if (pawn == null || pawn.Dead || !pawn.Spawned || pawn.Map != map || pawn.pather == null) { return; }
-
-            Thing entryThing = plan.entry?.parent;
-            if (entryThing == null) { return; }
-
-            // Trying to remove things from the harmony patches where possible.
-            LocalTargetInfo patherDest = SkipNetUtils.PatherDest(pawn.pather);
-            bool stillOnHijackedLeg = patherDest.HasThing
-                ? patherDest.Thing == entryThing
-                : patherDest.Cell == entryThing.Position;
-            if (!stillOnHijackedLeg) { return; }
-
-            plan.ResetPawnMoveState();
-
-            if (plan.originalDest.IsValid && plan.originalPeMode != PathEndMode.None &&
-                !plan.originalDest.ThingDestroyed)
-            {
-                pawn.pather.StartPath(plan.originalDest, plan.originalPeMode);
-            }
-        }
-        */
 
         /// <summary>
         /// Cancels all active SkipNetPlans that use <see langword="skipdoor"/>
@@ -191,17 +158,6 @@ namespace MigCorp.Skiptech.SkipNet
                 }
             }
         }
-        /*
-        private bool TryRemovePlan(Pawn pawn, SkipNetPlan plan)
-        {
-            if (pawnSkipNetPlans.TryGetValue(pawn, out var current) && current == plan)
-            {
-                pawnSkipNetPlans.Remove(pawn);
-                return true;
-            }
-            return false;
-        }
-        */
 
         public bool TryDisposeBadOrInvalidPlan(Pawn pawn, SkipNetPlan plan)
         {
@@ -281,10 +237,6 @@ namespace MigCorp.Skiptech.SkipNet
         /// <returns></returns>
         public bool TryFindEligibleSkipNetPlan(SkipNetProposal proposal, PawnPath directPath, out SkipNetPlan plan)
         {
-            // Keeping this here for performance testing once I make the search harnesses.
-            // Stopwatch stopwatch = Stopwatch.StartNew();
-            // stopwatch.ElapsedTicks;
-
             Pawn pawn = proposal.pawn;
             LocalTargetInfo dest = proposal.dest;
             PathEndMode peMode = proposal.peMode;
@@ -305,7 +257,6 @@ namespace MigCorp.Skiptech.SkipNet
                 plan.Initialize(entry, exit);
             };
 
-            //SkiptechUtil.Message($"{pawn.LabelShort} performed a search (bfs_time:{(bfs_time * 1_000_000.0) / Stopwatch.Frequency}us, dijkstra_time:{(dijkstra_time * 1_000_000.0) / Stopwatch.Frequency}us, diff:{((dijkstra_time * 1_000_000.0) / Stopwatch.Frequency) - ((bfs_time * 1_000_000.0) / Stopwatch.Frequency)}us)");
             skipNet.proposer.ConsumePopBudget(popCost);
 
             return found;
