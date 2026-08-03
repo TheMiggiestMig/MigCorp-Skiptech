@@ -67,6 +67,7 @@
     <Compile Include="GameComponent_Skiptech.cs" />
     <Compile Include="MigcorpSkiptechSettings.cs" />
     <Compile Include="SkipNet\SkipdoorCustomPower.cs" />
+    <Compile Include="SkipNet\SkipNetPathSplicer.cs" />
     <Compile Include="SkipNet\SkipNetSearcher.cs" />
     <Compile Include="SkipNet\SkipNetSearcherBFS.cs" />
     <Compile Include="SkipNet\SkipNetProposer.cs" />

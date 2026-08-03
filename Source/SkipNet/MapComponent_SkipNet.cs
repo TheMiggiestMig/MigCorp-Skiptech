@@ -13,13 +13,14 @@ namespace MigCorp.Skiptech.SkipNet
         // SkipNetPlans
         public SkipNetProposer proposer;
         public SkipNetPlanner planner;
-        //public SkipNetPathSplicer splicer;
+        public SkipNetPathSplicer splicer;
 
         public MapComponent_SkipNet(Map map) : base(map)
         {
             skipdoors = new List<CompSkipdoor>();
 
             proposer = new SkipNetProposer(this);
+            splicer = new SkipNetPathSplicer(this);
             planner = new SkipNetPlanner(this);
         }
 
@@ -27,7 +28,14 @@ namespace MigCorp.Skiptech.SkipNet
         {
             base.MapComponentTick();
             proposer.ProcessQueue();
+            splicer.Run(); // Should run before planner, otherwise we'll get churn from plans that definitely won't be ready.
             planner.Run();
+        }
+
+        public override void MapRemoved()
+        {
+            splicer.DropAll();
+            base.MapRemoved();
         }
 
         /// <summary>

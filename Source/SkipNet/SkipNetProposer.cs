@@ -176,6 +176,9 @@ namespace MigCorp.Skiptech.SkipNet
 
             if (skipNet.planner.TryFindEligibleSkipNetPlan(proposal, directPath, out SkipNetPlan plan))
             {
+                // Testing splicer.
+                skipNet.splicer.TryBeginDryRunSkipPaths(plan, directPath);
+
                 StartPathToEntry(plan);
                 return true;
             }
