@@ -18,8 +18,7 @@ namespace MigCorp.Skiptech
             Pawn_PathFollower __instance,
             Pawn ___pawn)
         {
-            MapComponent_SkipNet skipNet =
-                ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
 
             if (skipNet == null) { return; }
 
@@ -46,7 +45,7 @@ namespace MigCorp.Skiptech
         [HarmonyPatch(typeof(Pawn_PathFollower), "PatherFailed")]
         static void PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
         {
-            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
             if (skipNet == null) { return; }
 
             // If we were running on a plan, clean it up and let the PatherFailed notification pass.
@@ -68,7 +67,7 @@ namespace MigCorp.Skiptech
             // Just in case another mod kills GenerateNewPathRequest.
             if (__result == null) { return; }
 
-            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
             if (skipNet == null) { return; }
 
             // Assuming StartPath was just re-executing an existing plan, now's the time to dispose of it and try again.
@@ -93,7 +92,7 @@ namespace MigCorp.Skiptech
         {
             __state = default;
 
-            MapComponent_SkipNet skipNet = ___pawn?.Map?.GetComponent<MapComponent_SkipNet>();
+            MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
             if (skipNet == null) { return true; }
             if (!skipNet.splicer.TryGetSeam(___pawn, out SkipNetPathSplicer.SeamInfo seam)) { return true; }
 

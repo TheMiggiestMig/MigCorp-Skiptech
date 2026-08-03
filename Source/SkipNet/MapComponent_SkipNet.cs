@@ -7,6 +7,21 @@ namespace MigCorp.Skiptech.SkipNet
 {
     public class MapComponent_SkipNet : MapComponent
     {
+        // Caching lookup, since we're operating in a hot-path now i.e. TryEnterNextPathCell
+        private static Map cachedMap;
+        private static MapComponent_SkipNet cachedComp;
+
+        public static MapComponent_SkipNet For(Map map)
+        {
+            if (map == null) { return null; }
+            if (map != cachedMap)
+            {
+                cachedMap = map;
+                cachedComp = map.GetComponent<MapComponent_SkipNet>();
+            }
+            return cachedComp;
+        }
+
         // Skipdoors and Regions
         public List<CompSkipdoor> skipdoors;
 
@@ -34,6 +49,9 @@ namespace MigCorp.Skiptech.SkipNet
 
         public override void MapRemoved()
         {
+            if (cachedMap == map) {
+                cachedMap = null;
+                cachedComp = null; }
             splicer.DropAll();
             base.MapRemoved();
         }
