@@ -123,7 +123,7 @@ namespace MigCorp.Skiptech
                         dest = plan.originalDestPostition;
                         peMode = plan.originalPeMode;
 
-                        plan.DisposeCancelled();
+                        plan.DisposeSuperseded();
                         return;
                     }
 

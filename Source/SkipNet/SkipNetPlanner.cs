@@ -97,6 +97,13 @@ namespace MigCorp.Skiptech.SkipNet
 
         public void RegisterPlan(Pawn pawn, SkipNetPlan plan)
         {
+            if (pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan existing))
+            {
+                if (existing != plan) { existing.DisposeSuperseded(); }
+                pawnSkipNetPlans[pawn] = plan;
+                return;
+            }
+
             pawnSkipNetPlans[pawn] = plan;
             plans.AddLast(pawn);
         }
