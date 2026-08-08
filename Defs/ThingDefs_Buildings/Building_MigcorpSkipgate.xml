@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Defs>
+    <ThingDef ParentName="BuildingBase">
+        <defName>MigCorp_Skipgate</defName>
+        <label>skipgate</label>
+        <description>A large-scale skipfield generator capable of linking distant locations through folded space.</description>
+
+        <thingClass>MigCorp.Skiptech.Skipgate.Building_Skipgate</thingClass>
+        <category>Building</category>
+
+        <graphicData>
+            <texPath>Things/Building/Misc/migcorp_Skipgate_base</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <shaderType>CutoutComplex</shaderType>
+            <drawSize>(7.5,7.5)</drawSize>
+            <damageData>
+                <cornerTL>Damage/Corner</cornerTL>
+                <cornerTR>Damage/Corner</cornerTR>
+                <cornerBL>Damage/Corner</cornerBL>
+                <cornerBR>Damage/Corner</cornerBR>
+            </damageData>
+        </graphicData>
+        <size>(7,7)</size>
+
+        <altitudeLayer>DoorMoveable</altitudeLayer>
+        <passability>Standable</passability>
+        <pathCost>10</pathCost>
+        <fillPercent>0</fillPercent>
+        <rotatable>false</rotatable>
+        <selectable>true</selectable>
+        <tickerType>Normal</tickerType>
+
+        <designationCategory>Misc</designationCategory>
+        <constructionSkillPrerequisite>0</constructionSkillPrerequisite>
+
+        <statBases>
+            <MaxHitPoints>1000</MaxHitPoints>
+            <WorkToBuild>1000</WorkToBuild>
+            <Mass>100</Mass>
+            <Flammability>0</Flammability>
+            <Beauty>5</Beauty>
+        </statBases>
+
+        <!-- No idea what will be a fair cost. -->
+        <costList>
+            <Steel>1</Steel>
+        </costList>
+
+        <building>
+            <isEdifice>true</isEdifice>
+            <ai_chillDestination>false</ai_chillDestination>
+            <ai_neverTrashThis>true</ai_neverTrashThis> <!-- I plan on having hostiles potentially use this as an raid point to the base. -->
+        </building>
+
+        <inspectorTabs>
+            <li>ITab_ContentsMapPortal</li>
+        </inspectorTabs>
+
+        <comps>
+            <li Class="MigCorp.Skiptech.Skipgate.Comps.CompProperties_Skipgate">
+            </li>
+            <li Class="MigCorp.Skiptech.Skipgate.Comps.CompProperties_SkipgateCapacitor">
+            </li>
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>200</basePowerConsumption>
+                <shortCircuitInRain>false</shortCircuitInRain>
+            </li>
+            <li Class="CompProperties_Flickable" />
+            <li Class="MigCorp.Skiptech.Skipgate.Comps.CompProperties_SkipgateCapacitor">
+            </li>
+        </comps>
+    </ThingDef>
+</Defs>
