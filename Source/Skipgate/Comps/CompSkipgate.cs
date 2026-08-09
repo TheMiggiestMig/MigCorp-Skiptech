@@ -67,6 +67,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             postLoadValidationPending = respawningAfterLoad && currentOperation != null;
         }
 
+        public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
+        {
+            base.PostDeSpawn(map, mode);
+            currentOperation?.TryCancel();
+        }
+
         public override void CompTickInterval(int delta)
         {
             base.CompTickInterval(delta);
