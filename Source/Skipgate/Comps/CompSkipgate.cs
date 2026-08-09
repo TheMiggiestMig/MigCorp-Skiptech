@@ -198,7 +198,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             };
         }
 
-        private Command_Action Skipgate_Command_Action(string defaultLabel, string defaultDesc, System.Action action)
+        private Command_Action Skipgate_Command_Operation(string defaultLabel, string defaultDesc, System.Action action)
         {
             Command_Action command = new Command_Action();
             if (CoolingDown)
@@ -216,12 +216,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_SendLoad()
         {
-            Command_Action command = Skipgate_Command_Action(
+            Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Send",
                 defaultDesc: "Send a load to a remote location in the world.",
                 action: delegate
                 {
-                    Messages.Message("It was never about the journey.", MessageTypeDefOf.PositiveEvent);
+                    TryStartOperation(new SkipgateOperation_SendLoad(this, "Sending a load!"));
                 }
                 );
 
@@ -230,12 +230,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_SendCaravan()
         {
-            Command_Action command = Skipgate_Command_Action(
+            Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Send",
                 defaultDesc: "Send a caravan to a remote location in the world.",
                 action: delegate
                 {
-                    Messages.Message("It was never about the journey.", MessageTypeDefOf.PositiveEvent);
+                    TryStartOperation(new SkipgateOperation_SendCaravan(this, "Sending some pawns!"));
                 }
                 );
 
@@ -244,13 +244,13 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_EmergencyRecall()
         {
-            Command_Action command = Skipgate_Command_Action(
+            Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Emergency Recall",
                 defaultDesc: "Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, consuming the skip beacon.\n\n" +
                     "WARNING: Will cause damage and breakdowns around the map!".Colorize(Color.yellow),
                 action: delegate
                 {
-                    Messages.Message("Get me outta here!", MessageTypeDefOf.NegativeEvent);
+                    TryStartOperation(new SkipgateOperation_Recall(this, "Emergency Recalling some poor schmucks!", SkipgateRecallMode.Emergency));
                 }
                 );
 
@@ -259,12 +259,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_Recall()
         {
-            Command_Action command = Skipgate_Command_Action(
+            Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Recall",
                 defaultDesc: $"Targets a pawn or caravan equipped with a skip beacon and teleports them to this skipgate{(!linkResearchFinished ? ", consuming the skip beacon" : null)}.",
                 action: delegate
                 {
-                    Messages.Message("Home sweet home.", MessageTypeDefOf.PositiveEvent);
+                    TryStartOperation(new SkipgateOperation_Recall(this, "Bring home the pawns!"));
                 }
                 );
 
@@ -273,12 +273,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_Link()
         {
-            Command_Action command = Skipgate_Command_Action(
+            Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Link",
                 defaultDesc: "Create a skip portal connecting two skipgates.",
                 action: delegate
                 {
-                    Messages.Message("I know a shortcut.", MessageTypeDefOf.PositiveEvent);
+                    TryStartOperation(new SkipgateOperation_Recall(this, "Neighbors just around the corner!"));
                 }
                 );
 

@@ -1,4 +1,7 @@
 ﻿using MigCorp.Skiptech.Skipgate.Comps;
+using RimWorld;
+using System;
+using Verse;
 
 namespace MigCorp.Skiptech.Skipgate.Operations
 {
@@ -19,8 +22,9 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         {
         }
 
-        public SkipgateOperation_Recall(CompSkipgate gate, SkipgateRecallMode mode) : this(gate)
+        public SkipgateOperation_Recall(CompSkipgate gate, string welcome, SkipgateRecallMode mode = SkipgateRecallMode.Normal) : this(gate)
         {
+            Messages.Message(welcome, MessageTypeDefOf.NeutralEvent);
             this.mode = mode;
         }
 
@@ -34,7 +38,8 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         protected override void Execute()
         {
-            throw new System.NotImplementedException();
+            Messages.Message($"{gate} successfully performed {Type}.", MessageTypeDefOf.NeutralEvent);
+            CompleteOperation(66f);
         }
     }
 }
