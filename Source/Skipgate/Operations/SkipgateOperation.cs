@@ -35,7 +35,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         protected int dialingTicksLeft;
 
         // Prevent completion/cancellation being performed twice in one tick.
-        private bool ending;
+        protected bool ending;
 
         public abstract SkipgateOperationType Type { get; }
         public SkipgateOperationPhase Phase => phase;
@@ -173,7 +173,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             ending = true;
             OnFailed(reason);
 
-            gate.EndOperation(this, SkipgateOperationEnd.Failed, heatGenerated: 0f);
+            gate.EndOperation(this, SkipgateOperationEnd.Failed, heatGenerated: CancelHeat);
         }
 
         protected virtual void OnCompleted() { }

@@ -53,9 +53,11 @@
             <ai_neverTrashThis>true</ai_neverTrashThis> <!-- I plan on having hostiles potentially use this as an raid point to the base. -->
         </building>
 
+        <!-- Move to Building_SkipgatePortal
         <inspectorTabs>
             <li>ITab_ContentsMapPortal</li>
         </inspectorTabs>
+        -->
 
         <comps>
             <li Class="MigCorp.Skiptech.Skipgate.Comps.CompProperties_Skipgate">

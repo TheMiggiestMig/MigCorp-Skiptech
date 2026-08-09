@@ -283,7 +283,29 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 defaultDesc: "Create a skip portal connecting two skipgates.",
                 action: delegate
                 {
-                    TryStartOperation(new SkipgateOperation_Link(this, "Neighbors just around the corner!", 34f));
+                    // DEV Temp targeting. OR... I could reuse it for a right-click alternative with RightClickFloatMenuOptions :O
+                    List<FloatMenuOption> options = new List<FloatMenuOption>();
+
+                    foreach (Map map in Find.Maps)
+                    {
+                        foreach (Building_Skipgate target in map.listerBuildings.AllBuildingsColonistOfClass<Building_Skipgate>())
+                        {
+                            if (target == parent) { continue; }
+
+                            float cost = SkipgateOperation_Link.CalculateLinkCost(this, target);
+                            options.Add(new FloatMenuOption(
+                                $"{target.RenamableLabel} ({target.Map.Parent.Label}) — cost {cost:F0}",
+                                () => TryStartOperation(new SkipgateOperation_Link(this, target))));
+                        }
+                    }
+
+                    if (options.Count == 0)
+                    {
+                        Messages.Message("No other skipgates to link to.", MessageTypeDefOf.RejectInput, historical: false);
+                        return;
+                    }
+
+                    Find.WindowStack.Add(new FloatMenu(options));
                 }
                 );
 
