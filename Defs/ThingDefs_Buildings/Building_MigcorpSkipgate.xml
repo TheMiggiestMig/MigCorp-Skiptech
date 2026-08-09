@@ -68,8 +68,6 @@
                 <shortCircuitInRain>false</shortCircuitInRain>
             </li>
             <li Class="CompProperties_Flickable" />
-            <li Class="MigCorp.Skiptech.Skipgate.Comps.CompProperties_SkipgateCapacitor">
-            </li>
         </comps>
     </ThingDef>
 </Defs>

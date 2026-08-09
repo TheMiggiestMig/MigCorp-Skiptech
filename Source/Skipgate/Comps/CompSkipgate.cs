@@ -1,12 +1,8 @@
 ﻿using MigCorp.Skiptech.Skipgate.Actions;
 using RimWorld;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 using Verse;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace MigCorp.Skiptech.Skipgate.Comps
 {
@@ -23,7 +19,17 @@ namespace MigCorp.Skiptech.Skipgate.Comps
     public class CompProperties_Skipgate : CompProperties
     {
         public CompProperties_Skipgate() => compClass = typeof(CompSkipgate);
-        public int heatDissipationRate = 1;
+
+        public float heatPerCost = 1f;
+        public float heatDissipationPerSecond = 1f;
+
+        // Dialing time (10/64 glyph dialing phase after charging completes and pawns / load is ready).
+        public int dialingTicks = 300; //5s
+
+        public float linkCostBase = 25f;
+        public float linkCostPerTile = 1f;
+        public float linkBufferSeconds = 250f;
+        public float linkRebuildWatts = 200f;
     }
     public class CompSkipgate : ThingComp
     {
@@ -40,15 +46,14 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             get
             {
-                if (heatRemaining > 0) { return SkipgateState.Cooldown; }
+                if (state == SkipgateState.Idle && heatRemaining > 0) { return SkipgateState.Cooldown; }
                 return state;
             }
         }
 
-        private int heatRemaining;
-        public int HeatRemaining;
-        private int CooldownTicksLeft() =>
-            Mathf.CeilToInt(heatRemaining / Props.heatDissipationRate);
+        private float heatRemaining;
+        public float HeatRemaining => heatRemaining;
+        private int CooldownTicksLeft() => Mathf.CeilToInt(heatRemaining / Props.heatDissipationPerSecond * 60);
 
 
         //public bool recallResearchFinished = DefDatabase<ResearchProjectDef>.GetNamed("MigCorpSkipTech_SkipgateRecall").IsFinished;
@@ -59,7 +64,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public override void PostExposeData()
         {
             base.PostExposeData();
-            Scribe_Values.Look(ref heatRemaining, "heatRemaining", defaultValue: 0);
+            Scribe_Values.Look(ref heatRemaining, "heatRemaining", defaultValue: 0f);
             Scribe_Values.Look(ref state, "state", defaultValue: SkipgateState.Idle);
         }
 
@@ -78,8 +83,9 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             base.CompTickInterval(delta);
 
-            if (State == SkipgateState.Cooldown) {
-                heatRemaining -= delta * Props.heatDissipationRate;
+            if (State == SkipgateState.Cooldown)
+            {
+                heatRemaining -= delta * Props.heatDissipationPerSecond / 60f;
 
                 if (heatRemaining <= 0)
                 {
@@ -104,10 +110,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             else
             {
                 // Send
-                if (recallResearchFinished)
-                {
-                    yield return Gizmo_Send();
-                }
+                yield return Gizmo_Send();
 
                 // Emergency Recall
                 if (recallResearchFinished)
@@ -127,20 +130,20 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "DEV: Add +100 heat",
-                    action = delegate
-                    {
-                        heatRemaining += 100;
-                    }
+                    defaultLabel = "DEV: Add +10s heat",
+                    action = delegate { heatRemaining += 10; }
+                };
+
+                yield return new Command_Action
+                {
+                    defaultLabel = "DEV: Remove -10s heat",
+                    action = delegate { heatRemaining -= 10; }
                 };
 
                 yield return new Command_Action
                 {
                     defaultLabel = "DEV: Reset heat",
-                    action = delegate
-                    {
-                        heatRemaining = 0;
-                    }
+                    action = delegate { heatRemaining = 0; }
                 };
 
                 // Test switching state
