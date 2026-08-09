@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+    <ThingDef ParentName="BuildingBase">
+        <defName>MigCorp_SkipgatePortal</defName>
+        <label>skip portal</label>
+        <description>An active skipfield aperture. Step through to emerge at the linked skipgate.</description>
+
+        <thingClass>MigCorp.Skiptech.Skipgate.Building_SkipgatePortal</thingClass>
+        <category>Building</category>
+
+        <graphicData>
+            <texPath>Things/Building/Misc/migcorp_Skipgate_portal</texPath>
+            <graphicClass>Graphic_Single</graphicClass>
+            <shaderType>Transparent</shaderType>
+            <drawSize>(3,3)</drawSize>
+        </graphicData>
+        <size>(3,3)</size>
+
+        <altitudeLayer>DoorMoveable</altitudeLayer>
+        <passability>Standable</passability>
+        <pathCost>0</pathCost>
+        <fillPercent>0</fillPercent>
+        <rotatable>false</rotatable>
+        <selectable>true</selectable>
+        <tickerType>Normal</tickerType>
+        <useHitPoints>false</useHitPoints>
+
+        <statBases>
+            <Flammability>0</Flammability>
+        </statBases>
+
+        <building>
+            <isEdifice>false</isEdifice>
+            <deconstructible>false</deconstructible>
+            <claimable>false</claimable>
+            <ai_chillDestination>false</ai_chillDestination>
+        </building>
+
+        <inspectorTabs>
+            <li>ITab_ContentsMapPortal</li>
+        </inspectorTabs>
+    </ThingDef>
+</Defs>

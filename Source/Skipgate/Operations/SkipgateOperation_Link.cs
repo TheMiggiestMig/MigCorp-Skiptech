@@ -128,12 +128,14 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             EnterActive();
             responder.EnterActive();
+
+            // Now we're thinking with portals!s
+            gate.SpawnPortal();
+            responder.gate.SpawnPortal();
         }
 
         protected override void ApplyRuntimeState()
         {
-            // Full replacement of the base version — the responder must NOT inherit the
-            // base's "set target while Preparing/Dialing" (it would start charging mid-dial).
             switch (phase)
             {
                 case SkipgateOperationPhase.Preparing:
@@ -142,8 +144,6 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                     break;
 
                 case SkipgateOperationPhase.Active:
-                    // Symmetric sustain: powered = net pays upkeep + trickle rebuilds the buffer
-                    // toward link cost; unpowered = buffer bleeds; dry = collapse (next chunk).
                     gate.Capacitor.SetTarget(requiredCharge, gate.Props.linkRebuildWatts);
                     gate.Capacitor.SetLoad(requiredCharge / gate.Props.linkBufferSeconds);
                     break;
@@ -195,6 +195,8 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             {
                 FailOperation("Link state mismatch after load.");
             }
+
+            if (phase == SkipgateOperationPhase.Active) { gate.SpawnPortal(); }
         }
 
         public override void ExposeData()

@@ -33,11 +33,19 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private ThingOwner innerContainer;
         public ThingOwner SearchableContents => innerContainer;
 
+        private Building_SkipgatePortal portal;
+        public Building_SkipgatePortal Portal => portal;
+
 
         private float heatRemaining;
         public float HeatRemaining => heatRemaining;
         public bool CoolingDown => heatRemaining > 0f;
         private int CooldownTicksLeft() => Mathf.CeilToInt(heatRemaining / Props.heatDissipationPerSecond * 60);
+
+        public CompSkipgate LinkedFarGate => CurrentOperation is SkipgateOperation_Link link
+                                && link.Phase == SkipgateOperationPhase.Active
+                                ? link.OtherGate
+                                : null;
 
 
         //public bool recallResearchFinished = DefDatabase<ResearchProjectDef>.GetNamed("MigCorpSkipTech_SkipgateRecall").IsFinished;
@@ -53,6 +61,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             Scribe_Values.Look(ref heatRemaining, "heatRemaining", defaultValue: 0f);
             Scribe_Deep.Look(ref currentOperation, "currentOperation", this);
             Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
+            Scribe_References.Look(ref portal, "portal");
         }
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
@@ -64,13 +73,14 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (currentOperation != null) { currentOperation.RestoreAfterLoad(); }
 
             // Need to perform gate-to-gate linking checks after *everything* is spawned... which means, on the next tick.
-            postLoadValidationPending = respawningAfterLoad && currentOperation != null;
+            postLoadValidationPending = respawningAfterLoad;
         }
 
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
             base.PostDeSpawn(map, mode);
             currentOperation?.TryCancel();
+            DespawnPortal(); // Just in case the message wasn't clear <.<
         }
 
         public override void CompTickInterval(int delta)
@@ -82,6 +92,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 postLoadValidationPending = false;
                 currentOperation?.ResumeAfterLoad();
+                if (LinkedFarGate == null) { DespawnPortal(); }
             }
 
             currentOperation?.Tick(delta);
@@ -127,6 +138,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (currentOperation != operation) { return; }
 
             capacitor.ClearDemand();
+            //if (currentOperation is SkipgateOperation_Link) { DespawnPortal(); }
+            DespawnPortal();
 
             heatRemaining += heatGenerated;
             currentOperation = null;
@@ -134,6 +147,27 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public bool TrySpendCharge(float amount)
         {
             return capacitor.TrySpend(amount);
+        }
+        public void SpawnPortal()
+        {
+            if (portal != null && portal.Spawned) { return; }
+
+            portal = (Building_SkipgatePortal)ThingMaker.MakeThing(SkiptechDefOf.MigCorp_SkipgatePortal);
+            portal.SetOwningSkipgate(this);
+            GenSpawn.Spawn(portal, parent.Position, parent.Map);
+        }
+
+        public void DespawnPortal()
+        {
+            if (portal == null) { return; }
+
+            if (portal.Spawned)
+            {
+                if (portal.LoadInProgress) { portal.CancelLoad(); }
+                portal.Destroy(DestroyMode.Vanish);
+            }
+
+            portal = null;
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()

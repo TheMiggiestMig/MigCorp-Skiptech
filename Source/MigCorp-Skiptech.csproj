@@ -81,6 +81,7 @@
     <Compile Include="SkipNet\SkipNetSearcherBFS.cs" />
     <Compile Include="SkipNet\SkipNetProposer.cs" />
     <Compile Include="SkipNet\SkipNetSearcherDijkstra.cs" />
+    <Compile Include="SkiptechDefOf.cs" />
     <Compile Include="Utils\SkiptechUtil.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_Delayed.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_IndicatorOverlay.cs" />
