@@ -1,4 +1,4 @@
-﻿using MigCorp.Skiptech.Skipgate.Actions;
+﻿using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,16 +6,6 @@ using Verse;
 
 namespace MigCorp.Skiptech.Skipgate.Comps
 {
-    public enum SkipgateState
-    {
-        Idle,
-        Charging,
-        Pending, // Fully charged, but pawns still gathering. May be skipped if pawns are ready before charging is done.
-        Dialing,
-        LinkActive,
-        Cooldown
-    }
-
     public class CompProperties_Skipgate : CompProperties
     {
         public CompProperties_Skipgate() => compClass = typeof(CompSkipgate);
@@ -31,28 +21,22 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public float linkBufferSeconds = 250f;
         public float linkRebuildWatts = 200f;
     }
-    public class CompSkipgate : ThingComp
+    public class CompSkipgate : ThingComp, IThingHolder, ISearchableContents
     {
         public CompProperties_Skipgate Props => (CompProperties_Skipgate)props;
-        public CompSkipgateCapacitor capacitor;
+        private CompSkipgateCapacitor capacitor;
+        public CompSkipgateCapacitor Capacitor { get { return capacitor; } }
 
-        public SkipgateAction_Send sendAction;
-        public SkipgateAction_Recall recallAction;
-        public SkipgateAction_Link linkAction;
+        private SkipgateOperation currentOperation;
+        public SkipgateOperation CurrentOperation { get { return currentOperation; } }
 
-        public SkipgateAction action;
-        private SkipgateState state = SkipgateState.Idle;
-        public SkipgateState State
-        {
-            get
-            {
-                if (state == SkipgateState.Idle && heatRemaining > 0) { return SkipgateState.Cooldown; }
-                return state;
-            }
-        }
+        private ThingOwner innerContainer;
+        public ThingOwner SearchableContents => innerContainer;
+
 
         private float heatRemaining;
         public float HeatRemaining => heatRemaining;
+        public bool CoolingDown => heatRemaining > 0f;
         private int CooldownTicksLeft() => Mathf.CeilToInt(heatRemaining / Props.heatDissipationPerSecond * 60);
 
 
@@ -61,38 +45,85 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public bool recallResearchFinished = true; // true for testing
         public bool linkResearchFinished = true; // true for testing
 
+        private bool postLoadValidationPending;
+
         public override void PostExposeData()
         {
             base.PostExposeData();
             Scribe_Values.Look(ref heatRemaining, "heatRemaining", defaultValue: 0f);
-            Scribe_Values.Look(ref state, "state", defaultValue: SkipgateState.Idle);
+            Scribe_Deep.Look(ref currentOperation, "currentOperation", this);
+            Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
         }
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
             capacitor = parent.GetComp<CompSkipgateCapacitor>();
+            innerContainer = new ThingOwner<Thing>(this);
 
-            sendAction = new SkipgateAction_Send(this);
-            recallAction = new SkipgateAction_Recall(this);
-            linkAction = new SkipgateAction_Link(this);
+            if (currentOperation != null)
+            {
+                currentOperation.RestoreAfterLoad();
+            }
 
+            // Need to perform gate-to-gate linking checks after *everything* is spawned... which means, on the next tick.
+            postLoadValidationPending = respawningAfterLoad && currentOperation != null;
         }
 
         public override void CompTickInterval(int delta)
         {
             base.CompTickInterval(delta);
 
-            if (State == SkipgateState.Cooldown)
+            // Might move this to a GameComponent to do during FinalizeInit.
+            if (postLoadValidationPending)
+            {
+                postLoadValidationPending = false;
+                currentOperation?.ResumeAfterLoad();
+            }
+
+            currentOperation?.Tick(delta);
+
+            TickCooldown(delta);
+        }
+
+        private void TickCooldown(int delta)
+        {
+            if (CoolingDown)
             {
                 heatRemaining -= delta * Props.heatDissipationPerSecond / 60f;
 
-                if (heatRemaining <= 0)
+                if (!CoolingDown)
                 {
-                    heatRemaining = 0;
+                    heatRemaining = 0f;
                     Messages.Message($"Skipgate {(parent as Building_Skipgate).RenamableLabel} is ready to be used again.", MessageTypeDefOf.NeutralEvent);
                 }
             }
+        }
+
+        public bool TryStartOperation(SkipgateOperation operation)
+        {
+            if (operation == null || currentOperation != null) { return false; }
+            if (HeatRemaining > 0f) { return false; }
+
+            currentOperation = operation;
+            currentOperation.Start();
+
+            return true;
+        }
+
+        public void EndOperation(SkipgateOperation operation, SkipgateOperationEnd result, float heatGenerated)
+        {
+            // Make sure we're only ending our own operation.
+            if (currentOperation != operation) { return; }
+
+            capacitor.ClearDemand();
+
+            heatRemaining += heatGenerated;
+            currentOperation = null;
+        }
+        public bool TrySpendCharge(float amount)
+        {
+            return capacitor.TrySpend(amount);
         }
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
@@ -103,14 +134,17 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             }
 
             // Cancel Action
-            if (State != SkipgateState.Idle && State != SkipgateState.Cooldown)
+            if (CurrentOperation != null && HeatRemaining <= 0f)
             {
                 yield return Gizmo_Cancel();
             }
             else
             {
                 // Send
-                yield return Gizmo_Send();
+                yield return Gizmo_SendLoad();
+
+                // Send
+                yield return Gizmo_SendCaravan();
 
                 // Emergency Recall
                 if (recallResearchFinished)
@@ -145,25 +179,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     defaultLabel = "DEV: Reset heat",
                     action = delegate { heatRemaining = 0; }
                 };
-
-                // Test switching state
-                /*
-                List<FloatMenuOption> list = new List<FloatMenuOption>();
-                Command_Action command = new Command_Action();
-                command.defaultLabel = $"DEV: Switch state (current: {State})";
-                command.action = delegate
-                {
-                    foreach (SkipgateState st in Enum.GetValues(typeof(SkipgateState)).Cast<SkipgateState>().ToList())
-                    {
-                        list.Add(new FloatMenuOption($"Set state to {st}.", delegate
-                        {
-                            state = st;
-                        }));
-                    }
-                    Find.WindowStack.Add(new FloatMenu(list));
-                };
-                yield return command;
-                */
             }
         }
 
@@ -177,10 +192,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 icon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel"),
                 action = delegate
                 {
-                    if (action == null || action.TryCancelAction())
-                    {
-                        state = SkipgateState.Idle;
-                    }
+                    EndOperation(CurrentOperation, SkipgateOperationEnd.Cancelled, 0f);
                     Messages.Message("Let me think about it.", MessageTypeDefOf.NeutralEvent);
                 }
             };
@@ -189,7 +201,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private Command_Action Skipgate_Command_Action(string defaultLabel, string defaultDesc, System.Action action)
         {
             Command_Action command = new Command_Action();
-            if (State == SkipgateState.Cooldown)
+            if (CoolingDown)
             {
                 command = new Command_Action();
                 command.Disabled = true;
@@ -202,11 +214,25 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             return command;
         }
 
-        public Gizmo Gizmo_Send()
+        public Gizmo Gizmo_SendLoad()
         {
             Command_Action command = Skipgate_Command_Action(
                 defaultLabel: "Send",
                 defaultDesc: "Send a load to a remote location in the world.",
+                action: delegate
+                {
+                    Messages.Message("It was never about the journey.", MessageTypeDefOf.PositiveEvent);
+                }
+                );
+
+            return command;
+        }
+
+        public Gizmo Gizmo_SendCaravan()
+        {
+            Command_Action command = Skipgate_Command_Action(
+                defaultLabel: "Send",
+                defaultDesc: "Send a caravan to a remote location in the world.",
                 action: delegate
                 {
                     Messages.Message("It was never about the journey.", MessageTypeDefOf.PositiveEvent);
@@ -263,9 +289,19 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             string text = "";
 
-            if (State == SkipgateState.Cooldown) { text += $"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"; }
+            if (CoolingDown) { text += $"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"; }
 
             return text + base.CompInspectStringExtra();
+        }
+
+        public ThingOwner GetDirectlyHeldThings()
+        {
+            return innerContainer;
+        }
+
+        public void GetChildHolders(List<IThingHolder> outChildren)
+        {
+            ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, GetDirectlyHeldThings());
         }
     }
 }

@@ -63,10 +63,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
-    <Compile Include="Skipgate\Actions\SkipgateAction.cs" />
-    <Compile Include="Skipgate\Actions\SkipgateAction_Link.cs" />
-    <Compile Include="Skipgate\Actions\SkipgateAction_Recall.cs" />
-    <Compile Include="Skipgate\Actions\SkipgateAction_Send.cs" />
+    <Compile Include="Skipgate\Operations\SkipgateOperation.cs" />
+    <Compile Include="Skipgate\Operations\SkipgateOperation_Link.cs" />
+    <Compile Include="Skipgate\Operations\SkipgateOperation_Recall.cs" />
+    <Compile Include="Skipgate\Operations\SkipgateOperation_SendLoad.cs" />
+    <Compile Include="Skipgate\Operations\SkipgateOperation_SendCaravan.cs" />
     <Compile Include="Skipgate\Building_Skipgate.cs" />
     <Compile Include="Skipgate\Building_SkipgatePortal.cs" />
     <Compile Include="Skipgate\Comps\CompSkipgate.cs" />

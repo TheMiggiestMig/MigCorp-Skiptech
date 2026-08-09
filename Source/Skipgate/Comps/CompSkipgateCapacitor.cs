@@ -27,7 +27,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private float currentCharge;
         private float targetCharge;
         private float loadPerSecond;
-        private float activeChargingWatts;
+        //private float activeChargingWatts;
+        private float requestedChargingWatts;
 
         private CompPowerTrader powerComp;
 
@@ -36,67 +37,105 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public float Charge => currentCharge;
         public float Target => targetCharge;
-        public float ActiveChargingWatts => activeChargingWatts;
+        public float LoadPerSecond => loadPerSecond;
+        public float RequestedChargingWatts => requestedChargingWatts;
         public bool HasTarget => targetCharge > 0f;
-        public bool TargetReached => HasTarget && currentCharge >= targetCharge - 0.0001f;
+        public bool TargetReached => HasTarget && currentCharge >= targetCharge;
         public bool Powered => powerComp == null || powerComp.PowerOn;
-        private float ChargePerSecond => activeChargingWatts / Props.wattsPerCharge;
-
-        public bool IsWithinCapacity(float cost) => Props.maxCharge < 0f || cost <= Props.maxCharge;
-
-        public void SetTarget(float cost)
-        {
-            targetCharge = Mathf.Max(cost, 0f);
-            activeChargingWatts = Props.chargingWatts;
-        }
-        public void SetTarget(float cost, float rate)
-        {
-            targetCharge = Mathf.Max(cost, 0f);
-            activeChargingWatts = rate;
-        }
-
-        public void ClearTarget() => targetCharge = 0f;
-
-        public void SetLoad(float chargePerSecond) => loadPerSecond = Mathf.Max(chargePerSecond, 0f);
-
-        public float Spend(float amount, bool keepTarget = false)
-        {
-            amount = Mathf.Clamp(amount, 0f, currentCharge);
-            currentCharge -= amount;
-            if (!keepTarget) { targetCharge = 0f; }
-
-            return amount;
-        }
-
-        public float SpendAll() { return Spend(currentCharge); }
+        public bool WantsToCharge => HasTarget && currentCharge < targetCharge;
+        private float ChargePerSecond => Props.wattsPerCharge <= 0f ? 0f : requestedChargingWatts / Props.wattsPerCharge;
+        public bool IsWithinCapacity(float cost) => cost >= 0f && (Props.maxCharge < 0f || cost <= Props.maxCharge);
+        public bool HasCharge(float amount) => amount >= 0f && currentCharge >= amount;
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
             powerComp = parent.GetComp<CompPowerTrader>();
+
+            if (powerComp == null)
+            {
+                Log.Error(parent + " has CompSkipgateCapacitor but no CompPowerTrader.");
+            }
         }
 
         public override void PostExposeData()
         {
             base.PostExposeData();
             Scribe_Values.Look(ref currentCharge, "capacitorCharge");
-            Scribe_Values.Look(ref targetCharge, "capacitorTarget");
-            Scribe_Values.Look(ref activeChargingWatts, "capacitorChargingWatts");
-            Scribe_Values.Look(ref loadPerSecond, "capacitorLoad");
+
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                currentCharge = Mathf.Max(currentCharge, 0f);
+
+                // These will be reapplied by the loaded operation during save/load.
+                targetCharge = 0f;
+                requestedChargingWatts = 0f;
+                loadPerSecond = 0f;
+            }
+        }
+
+        public bool TrySetTarget(float cost, float rate)
+        {
+            cost = Mathf.Max(cost, 0f);
+
+            if (!IsWithinCapacity(cost)) { return false; }
+
+            targetCharge = cost;
+            requestedChargingWatts = Mathf.Max(Props.chargingWatts, 0f);
+
+            return true;
+        }
+        public bool TrySetTarget(float cost) => TrySetTarget(cost, Props.chargingWatts);
+
+        public void ClearTarget()
+        {
+            targetCharge = 0f;
+            requestedChargingWatts = 0f;
+        }
+
+        public void SetLoad(float chargePerSecond) => loadPerSecond = Mathf.Max(chargePerSecond, 0f);
+
+        public void ClearDemand()
+        {
+            ClearTarget();
+            loadPerSecond = 0f;
+        }
+        public bool TrySpend(float amount, bool keepTarget = false)
+        {
+            amount = Mathf.Max(amount, 0f);
+
+            if (!HasCharge(amount)) { return false; }
+
+            currentCharge = Mathf.Max(currentCharge - amount, 0f);
+
+            if (!keepTarget) { ClearTarget(); }
+
+            return true;
+        }
+
+        public float SpendAll()
+        {
+            float spent = currentCharge;
+
+            currentCharge = 0f;
+            ClearTarget();
+
+            return spent;
         }
 
         public override void CompTickInterval(int delta)
         {
-            float dt = delta / 60f;
+            base.CompTickInterval(delta);
+
+            float seconds = delta / 60f;
 
             bool powered = Powered;
-            bool charging = powered && HasTarget && currentCharge < targetCharge;
+            bool wantsToCharge = WantsToCharge;
+            bool charging = Powered && wantsToCharge;
 
             if (charging)
             {
-                currentCharge = Mathf.Min(currentCharge + ChargePerSecond * dt, targetCharge);
-
-                if (activeChargingWatts <= 0) { activeChargingWatts = Props.chargingWatts; }
+                currentCharge = Mathf.Min(currentCharge + ChargePerSecond * seconds, targetCharge);
             }
 
             // A load is paid by the power net while powered.
@@ -105,34 +144,36 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 if (!powered)
                 {
-                    currentCharge = Mathf.Max(currentCharge - loadPerSecond * dt, 0f);
+                    currentCharge = Mathf.Max(currentCharge - loadPerSecond * seconds, 0f);
                 }
             }
 
-            // Slowly drain if there's nothing to charge toward, or we lost power before being fully charged.
-            else if (currentCharge > 0f
-                && (!HasTarget || (!powered && currentCharge < targetCharge)))
+            // Slowly drain if there's nothing to charge toward.
+            else if (currentCharge > 0f && !HasTarget)
             {
-                currentCharge = Mathf.Max(currentCharge - Props.decayPerSecond * dt, 0f);
+                currentCharge = Mathf.Max(currentCharge - Props.decayPerSecond * seconds, 0f);
             }
 
             // Set power draw.
-            if (powerComp != null)
-            {
-                float powerDraw = loadPerSecond * Props.wattsPerCharge;
+            UpdatePowerDraw(wantsToCharge);
+        }
 
-                if (charging) { powerDraw += activeChargingWatts; }
+        private void UpdatePowerDraw(bool wantsToCharge)
+        {
+            if (powerComp == null) { return; }
 
-                // Only add the base idle power consumption if its not doing anything
-                // i.e. has no target, or reached its target with no load.
-                if (!HasTarget
-                    || currentCharge >= targetCharge && loadPerSecond <= 0f)
-                {
-                    powerDraw += powerComp.Props.PowerConsumption;
-                }
+            float powerDraw = 0f;
 
-                powerComp.PowerOutput = -powerDraw;
-            }
+            if (wantsToCharge) { powerDraw += requestedChargingWatts; }
+
+            if (loadPerSecond > 0f) { powerDraw += loadPerSecond * Props.wattsPerCharge; }
+
+            // Only add the base idle power consumption if its not doing anything
+            // i.e. has no target, or reached its target with no load.
+            bool idle = !wantsToCharge && loadPerSecond <= 0f;
+            if (idle) { powerDraw += powerComp.Props.PowerConsumption; }
+
+            powerComp.PowerOutput = -powerDraw;
         }
 
         public override string CompInspectStringExtra()
@@ -152,7 +193,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 if (Powered)
                 {
                     int ticksLeft = Mathf.CeilToInt((targetCharge - currentCharge) / ChargePerSecond * 60f);
-                    sb.Append(activeChargingWatts < Props.chargingWatts
+                    sb.Append(requestedChargingWatts < Props.chargingWatts
                         ? $" (slow-charging, {ticksLeft.ToStringTicksToPeriod()})"
                         : $" (charging, {ticksLeft.ToStringTicksToPeriod()})");
                 }
@@ -195,7 +236,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             yield return new Command_Action
             {
                 defaultLabel = "DEV: Target 66",
-                action = () => SetTarget(66f)
+                action = () => TrySetTarget(66f)
             };
             yield return new Command_Action
             {
@@ -222,7 +263,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             yield return new Command_Action
             {
                 defaultLabel = "DEV: Slow target 66 (200W)",
-                action = () => SetTarget(66f, 200f)
+                action = () => TrySetTarget(66f, 200f)
             };
         }
     }
