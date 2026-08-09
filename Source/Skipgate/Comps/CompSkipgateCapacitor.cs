@@ -73,19 +73,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 loadPerSecond = 0f;
             }
         }
-
-        public bool TrySetTarget(float cost, float rate)
+        public void SetTarget(float cost, float rate)
         {
-            cost = Mathf.Max(cost, 0f);
-
-            if (!IsWithinCapacity(cost)) { return false; }
-
-            targetCharge = cost;
-            requestedChargingWatts = Mathf.Max(Props.chargingWatts, 0f);
-
-            return true;
+            targetCharge = Mathf.Max(cost, 0f);
+            requestedChargingWatts = Mathf.Max(rate, 0f);
         }
-        public bool TrySetTarget(float cost) => TrySetTarget(cost, Props.chargingWatts);
+        public void SetTarget(float cost) => SetTarget(cost, Props.chargingWatts);
 
         public void ClearTarget()
         {
@@ -236,7 +229,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             yield return new Command_Action
             {
                 defaultLabel = "DEV: Target 66",
-                action = () => TrySetTarget(66f)
+                action = () => SetTarget(66f)
             };
             yield return new Command_Action
             {
@@ -263,7 +256,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             yield return new Command_Action
             {
                 defaultLabel = "DEV: Slow target 66 (200W)",
-                action = () => TrySetTarget(66f, 200f)
+                action = () => SetTarget(66f, 200f)
             };
         }
     }

@@ -59,12 +59,9 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             base.PostSpawnSetup(respawningAfterLoad);
             capacitor = parent.GetComp<CompSkipgateCapacitor>();
-            innerContainer = new ThingOwner<Thing>(this);
 
-            if (currentOperation != null)
-            {
-                currentOperation.RestoreAfterLoad();
-            }
+            if (innerContainer == null) { innerContainer = new ThingOwner<Thing>(this); }
+            if (currentOperation != null) { currentOperation.RestoreAfterLoad(); }
 
             // Need to perform gate-to-gate linking checks after *everything* is spawned... which means, on the next tick.
             postLoadValidationPending = respawningAfterLoad && currentOperation != null;
@@ -105,6 +102,13 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (operation == null || currentOperation != null) { return false; }
             if (HeatRemaining > 0f) { return false; }
 
+            AcceptanceReport canStart = operation.CanStart();
+            if (!canStart.Accepted)
+            {
+                Messages.Message(canStart.Reason, parent, MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
             currentOperation = operation;
             currentOperation.Start();
 
@@ -134,7 +138,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             }
 
             // Cancel Action
-            if (CurrentOperation != null && HeatRemaining <= 0f)
+            if (CurrentOperation != null)
             {
                 yield return Gizmo_Cancel();
             }
@@ -192,8 +196,10 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 icon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel"),
                 action = delegate
                 {
-                    EndOperation(CurrentOperation, SkipgateOperationEnd.Cancelled, 0f);
-                    Messages.Message("Let me think about it.", MessageTypeDefOf.NeutralEvent);
+                    if (currentOperation != null && currentOperation.TryCancel())
+                    {
+                        Messages.Message("Let me think about it.", MessageTypeDefOf.NeutralEvent);
+                    }
                 }
             };
         }
@@ -203,7 +209,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             Command_Action command = new Command_Action();
             if (CoolingDown)
             {
-                command = new Command_Action();
                 command.Disabled = true;
                 command.disabledReason = "Skipgate cannot be used while dispersing heat.";
             }
@@ -217,11 +222,11 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public Gizmo Gizmo_SendLoad()
         {
             Command_Action command = Skipgate_Command_Operation(
-                defaultLabel: "Send",
+                defaultLabel: "Send Load",
                 defaultDesc: "Send a load to a remote location in the world.",
                 action: delegate
                 {
-                    TryStartOperation(new SkipgateOperation_SendLoad(this, "Sending a load!"));
+                    TryStartOperation(new SkipgateOperation_SendLoad(this, "Sending a load!", 66f));
                 }
                 );
 
@@ -231,11 +236,11 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public Gizmo Gizmo_SendCaravan()
         {
             Command_Action command = Skipgate_Command_Operation(
-                defaultLabel: "Send",
+                defaultLabel: "Send Caravan",
                 defaultDesc: "Send a caravan to a remote location in the world.",
                 action: delegate
                 {
-                    TryStartOperation(new SkipgateOperation_SendCaravan(this, "Sending some pawns!"));
+                    TryStartOperation(new SkipgateOperation_SendCaravan(this, "Sending some pawns!", 42f));
                 }
                 );
 
@@ -250,7 +255,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     "WARNING: Will cause damage and breakdowns around the map!".Colorize(Color.yellow),
                 action: delegate
                 {
-                    TryStartOperation(new SkipgateOperation_Recall(this, "Emergency Recalling some poor schmucks!", SkipgateRecallMode.Emergency));
+                    TryStartOperation(new SkipgateOperation_Recall(this, "Emergency Recalling some poor schmucks!", 69f, SkipgateRecallMode.Emergency));
                 }
                 );
 
@@ -264,7 +269,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 defaultDesc: $"Targets a pawn or caravan equipped with a skip beacon and teleports them to this skipgate{(!linkResearchFinished ? ", consuming the skip beacon" : null)}.",
                 action: delegate
                 {
-                    TryStartOperation(new SkipgateOperation_Recall(this, "Bring home the pawns!"));
+                    TryStartOperation(new SkipgateOperation_Recall(this, "Bring home the pawns!", 37f));
                 }
                 );
 
@@ -278,7 +283,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 defaultDesc: "Create a skip portal connecting two skipgates.",
                 action: delegate
                 {
-                    TryStartOperation(new SkipgateOperation_Recall(this, "Neighbors just around the corner!"));
+                    TryStartOperation(new SkipgateOperation_Link(this, "Neighbors just around the corner!", 34f));
                 }
                 );
 

@@ -14,23 +14,18 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         {
         }
 
-        public SkipgateOperation_SendLoad(CompSkipgate gate, string cya) : this(gate)
+        public SkipgateOperation_SendLoad(CompSkipgate gate, string cya, float requiredCharge) : this(gate)
         {
             Messages.Message(cya, MessageTypeDefOf.NeutralEvent);
-        }
-
-        public override void Start()
-        {
-            base.Start();
-
-            // TODO Calculate how much charge is needed based on the load.
-            gate.Capacitor.TrySetTarget(66f); // testing
+            this.requiredCharge = requiredCharge;
         }
 
         protected override void Execute()
         {
+            if (!TrySpendRequiredCharge()) { return; }
+
             Messages.Message($"{gate} successfully performed {Type}.", MessageTypeDefOf.NeutralEvent);
-            CompleteOperation(66f);
+            CompleteOperation(requiredCharge);
         }
     }
 }

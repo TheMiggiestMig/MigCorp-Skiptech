@@ -40,6 +40,8 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         public abstract SkipgateOperationType Type { get; }
         public SkipgateOperationPhase Phase => phase;
         public float RequiredCharge => requiredCharge;
+        protected virtual bool ChecksCapacityPolicy => true;
+        protected virtual float CancelHeat => 0f; // The heat applied on cancel. Will usually be 0f, but Unlinking changes that.
         protected virtual bool UsesCapacitor => true;
         protected virtual bool PreparationReady => true;
         protected bool ChargeReady => !UsesCapacitor || gate.Capacitor.Charge >= requiredCharge;
@@ -56,6 +58,16 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         {
             phase = SkipgateOperationPhase.Preparing;
             ApplyRuntimeState();
+        }
+
+        public virtual AcceptanceReport CanStart()
+        {
+            if (ChecksCapacityPolicy && !gate.Capacitor.IsWithinCapacity(requiredCharge))
+            {
+                return "Charge cost exceeds the capacitor's safe operating limit.";
+            }
+
+            return true;
         }
 
         public void Tick(int delta)
@@ -85,6 +97,12 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         protected virtual void TickDialing(int delta)
         {
+            if (UsesCapacitor && !gate.Capacitor.Powered)
+            {
+                dialingTicksLeft = gate.Props.dialingTicks;
+                return;
+            }
+
             dialingTicksLeft -= delta;
 
             if (dialingTicksLeft <= 0)
@@ -122,7 +140,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             ending = true;
             OnCancelled();
 
-            gate.EndOperation(this, SkipgateOperationEnd.Cancelled, heatGenerated: 0f);
+            gate.EndOperation(this, SkipgateOperationEnd.Cancelled, heatGenerated: CancelHeat);
 
             return true;
         }
@@ -181,8 +199,16 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                 && (phase == SkipgateOperationPhase.Preparing
                     || phase == SkipgateOperationPhase.Dialing))
             {
-                gate.Capacitor.TrySetTarget(requiredCharge);
+                gate.Capacitor.SetTarget(requiredCharge);
             }
+        }
+
+        protected bool TrySpendRequiredCharge()
+        {
+            if (!UsesCapacitor || gate.TrySpendCharge(requiredCharge)) { return true; }
+
+            FailOperation("Insufficient charge at execution.");
+            return false;
         }
 
         public virtual void ExposeData()
