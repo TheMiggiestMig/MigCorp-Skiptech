@@ -1,7 +1,6 @@
 ﻿using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using UnityEngine;
 using Verse;
@@ -351,36 +350,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_Link()
         {
-            Command_Action command = Skipgate_Command_Operation(
-                defaultLabel: "Link",
-                defaultDesc: "Create a skip portal connecting two skipgates.",
-                action: delegate
-                {
-                    // DEV Temp targeting. OR... I could reuse it for a right-click alternative with RightClickFloatMenuOptions :O
-                    List<FloatMenuOption> options = new List<FloatMenuOption>();
-
-                    foreach (Building_Skipgate target in Find.Maps
-                                .SelectMany(m => m.listerBuildings.AllBuildingsColonistOfClass<Building_Skipgate>())
-                                .Where(t => t != parent)
-                                .OrderBy(t => SkipgateOperation_Link.CalculateLinkCost(this, t)))
-                    {
-                        float cost = SkipgateOperation_Link.CalculateLinkCost(this, target);
-                        options.Add(new FloatMenuOption(
-                            $"{target.RenamableLabel} ({target.Map.Parent.Label}) — cost {cost:F0}",
-                            () => TryStartOperation(new SkipgateOperation_Link(this, target))));
-                    }
-
-                    if (options.Count == 0)
-                    {
-                        Messages.Message("No other skipgates to link to.", MessageTypeDefOf.RejectInput, historical: false);
-                        return;
-                    }
-
-                    Find.WindowStack.Add(new FloatMenu(options));
-                }
-                );
-
-            return command;
+            // Custom Command (so that the right-click could be overridden to produce a list while left click opens world map targeting).
+            return new Command_LinkSkipgate(this);
         }
 
         public override string CompInspectStringExtra()

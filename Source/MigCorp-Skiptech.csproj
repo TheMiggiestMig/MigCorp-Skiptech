@@ -64,6 +64,7 @@
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
     <Compile Include="Skipgate\Alert_SkipgateLinkFailing.cs" />
+    <Compile Include="Skipgate\Command_LinkSkipgate.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation_Link.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation_Recall.cs" />
@@ -73,6 +74,7 @@
     <Compile Include="Skipgate\Building_SkipgatePortal.cs" />
     <Compile Include="Skipgate\Comps\CompSkipgate.cs" />
     <Compile Include="Skipgate\Comps\CompSkipgateCapacitor.cs" />
+    <Compile Include="Skipgate\SkipgateTargetingUtil.cs" />
     <Compile Include="SkipNet\DijkstraSearchStepper.cs" />
     <Compile Include="GameComponent_Skiptech.cs" />
     <Compile Include="MigcorpSkiptechSettings.cs" />
