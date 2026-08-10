@@ -51,6 +51,15 @@ namespace MigCorp.Skiptech.Skipgate
             base.ExposeData();
             Scribe_References.Look(ref owningGate, "owningGate");
         }
+
+        public override string GetInspectString()
+        {
+            Building_Skipgate far = FarGate?.parent as Building_Skipgate;
+            string mine = far != null ? $"Leads to: {far.RenamableLabel}" : "Link unstable.";
+
+            string baseStr = base.GetInspectString();
+            return baseStr.NullOrEmpty() ? mine : mine + "\n" + baseStr;
+        }
     }
 
     // If the link died with a delivery in flight, drop the item beside the gate instead of onto a null map.

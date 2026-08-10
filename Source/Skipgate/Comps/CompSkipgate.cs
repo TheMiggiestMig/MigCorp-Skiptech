@@ -1,6 +1,8 @@
 ﻿using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using UnityEngine;
 using Verse;
 
@@ -21,8 +23,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public float linkBufferSeconds = 250f;
         public float linkRebuildWatts = 200f;
     }
+
+    [StaticConstructorOnStartup]
     public class CompSkipgate : ThingComp, IThingHolder, ISearchableContents
     {
+        private static readonly Texture2D ViewLinkedGateIcon = ContentFinder<Texture2D>.Get("UI/Commands/ViewCave");
+        private static readonly Texture2D CancelIcon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel");
         public CompProperties_Skipgate Props => (CompProperties_Skipgate)props;
         private CompSkipgateCapacitor capacitor;
         public CompSkipgateCapacitor Capacitor { get { return capacitor; } }
@@ -141,7 +147,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             //if (currentOperation is SkipgateOperation_Link) { DespawnPortal(); }
             DespawnPortal();
 
-            heatRemaining += heatGenerated;
+            heatRemaining += heatGenerated * Props.heatPerCost;
             currentOperation = null;
         }
         public bool TrySpendCharge(float amount)
@@ -181,6 +187,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (CurrentOperation != null)
             {
                 yield return Gizmo_Cancel();
+                if (LinkedFarGate != null) { yield return Gizmo_ViewLinkedGate(); }
             }
             else
             {
@@ -228,19 +235,45 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_Cancel()
         {
+            bool isLiveLink = CurrentOperation is SkipgateOperation_Link
+                                && CurrentOperation.Phase == SkipgateOperationPhase.Active;
+
             return new Command_Action
             {
-                defaultLabel = "Cancel Action",
-                defaultDesc = "Cancel the current action.\n\n" +
-                    "The current charge will remain but slowly drain.",
-                icon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel"),
+                defaultLabel = isLiveLink ? "Unlink"
+                    : CurrentOperation.Phase == SkipgateOperationPhase.Dialing ? "Cancel Dialing"
+                    : "Cancel Charging",
+                defaultDesc = isLiveLink
+                    ? "Close the link.\n\nWARNING: Both skipgates will generate heat and must cool down."
+                    : "Cancel the current action.\n\nThe current charge will remain but slowly drain.",
+                icon = CancelIcon,
                 action = delegate
                 {
-                    if (currentOperation != null && currentOperation.TryCancel())
+                    if (isLiveLink)
                     {
-                        Messages.Message("Let me think about it.", MessageTypeDefOf.NeutralEvent);
+                        Building_Skipgate far = LinkedFarGate?.parent as Building_Skipgate;
+                        Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
+                            $"Unlink from {far?.RenamableLabel}?\n\nBoth skipgates will take heat and must cool down before they can be used again.",
+                            () => currentOperation?.TryCancel(),
+                            destructive: true));
+                        return;
                     }
+
+                    currentOperation?.TryCancel();
                 }
+            };
+        }
+
+        public Gizmo Gizmo_ViewLinkedGate()
+        {
+            Building_Skipgate far = (Building_Skipgate)LinkedFarGate.parent;
+
+            return new Command_Action
+            {
+                defaultLabel = "View linked skipgate",
+                defaultDesc = $"Jump the camera to {far.RenamableLabel}.",
+                icon = ViewLinkedGateIcon,
+                action = () => CameraJumper.TryJumpAndSelect(far)
             };
         }
 
@@ -326,17 +359,15 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     // DEV Temp targeting. OR... I could reuse it for a right-click alternative with RightClickFloatMenuOptions :O
                     List<FloatMenuOption> options = new List<FloatMenuOption>();
 
-                    foreach (Map map in Find.Maps)
+                    foreach (Building_Skipgate target in Find.Maps
+                                .SelectMany(m => m.listerBuildings.AllBuildingsColonistOfClass<Building_Skipgate>())
+                                .Where(t => t != parent)
+                                .OrderBy(t => SkipgateOperation_Link.CalculateLinkCost(this, t)))
                     {
-                        foreach (Building_Skipgate target in map.listerBuildings.AllBuildingsColonistOfClass<Building_Skipgate>())
-                        {
-                            if (target == parent) { continue; }
-
-                            float cost = SkipgateOperation_Link.CalculateLinkCost(this, target);
-                            options.Add(new FloatMenuOption(
-                                $"{target.RenamableLabel} ({target.Map.Parent.Label}) — cost {cost:F0}",
-                                () => TryStartOperation(new SkipgateOperation_Link(this, target))));
-                        }
+                        float cost = SkipgateOperation_Link.CalculateLinkCost(this, target);
+                        options.Add(new FloatMenuOption(
+                            $"{target.RenamableLabel} ({target.Map.Parent.Label}) — cost {cost:F0}",
+                            () => TryStartOperation(new SkipgateOperation_Link(this, target))));
                     }
 
                     if (options.Count == 0)
@@ -354,11 +385,43 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public override string CompInspectStringExtra()
         {
-            string text = "";
+            StringBuilder sb = new StringBuilder();
 
-            if (CoolingDown) { text += $"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"; }
+            if (CurrentOperation is SkipgateOperation_Link activeLink
+                && activeLink.Phase == SkipgateOperationPhase.Active)
+            {
+                sb.AppendLine($"Linked to: {(LinkedFarGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
 
-            return text + base.CompInspectStringExtra();
+                if (!capacitor.Powered && capacitor.LoadPerSecond > 0f)
+                {
+                    int collapseTicks = Mathf.CeilToInt(capacitor.Charge / capacitor.LoadPerSecond * 60f);
+                    sb.AppendLine($"WARNING: no power — link collapse in {collapseTicks.ToStringTicksToPeriod()}");
+                }
+            }
+            else if (CurrentOperation != null)
+            {
+                switch (CurrentOperation.Phase)
+                {
+                    case SkipgateOperationPhase.Preparing:
+                        sb.AppendLine($"Preparing: {CurrentOperation.Type}");
+                        break;
+
+                    case SkipgateOperationPhase.Dialing:
+                        if (CurrentOperation is SkipgateOperation_Link incoming && incoming.Role == LinkRole.Responder)
+                        {
+                            sb.AppendLine($"Incoming link from: {(incoming.OtherGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
+                        }
+                        else
+                        {
+                            sb.AppendLine($"Dialing: {CurrentOperation.Type} ({CurrentOperation.DialingTicksLeft.ToStringTicksToPeriod()})");
+                        }
+                        break;
+                }
+            }
+
+            if (CoolingDown) { sb.AppendLine($"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"); }
+
+            return sb.ToString().TrimEndNewlines();
         }
 
         public ThingOwner GetDirectlyHeldThings()

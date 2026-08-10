@@ -40,6 +40,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         public abstract SkipgateOperationType Type { get; }
         public SkipgateOperationPhase Phase => phase;
         public float RequiredCharge => requiredCharge;
+        public int DialingTicksLeft => dialingTicksLeft;
         protected virtual bool ChecksCapacityPolicy => true;
         protected virtual float CancelHeat => 0f; // The heat applied on cancel. Will usually be 0f, but Unlinking changes that.
         protected virtual bool UsesCapacitor => true;

@@ -158,7 +158,20 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         protected override void OnFailed(string reason)
         {
-            Messages.Message(reason, gate.parent, MessageTypeDefOf.NegativeEvent, historical: false);
+            if (phase == SkipgateOperationPhase.Active)
+            {
+                // A live link dying (collapse or sever) is letter-worthy since both ends take heat.
+                Find.LetterStack.ReceiveLetter(
+                    "Skipgate link lost",
+                    $"{reason}\n\nBoth skipgates absorbed the collapsing skipfield and must disperse the heat before they can be used again.",
+                    LetterDefOf.NegativeEvent,
+                    new LookTargets(gate.parent, otherGateBuilding));
+            }
+            else
+            {
+                Messages.Message(reason, gate.parent, MessageTypeDefOf.NegativeEvent, historical: false);
+            }
+
             MutualOther()?.EndLinkFromRemote(SkipgateOperationEnd.Failed);
         }
 
