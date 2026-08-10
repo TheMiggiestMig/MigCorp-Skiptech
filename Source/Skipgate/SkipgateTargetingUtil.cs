@@ -15,13 +15,16 @@ namespace MigCorp.Skiptech.Skipgate
         {
             foreach (Map map in Find.Maps)
             {
-                if (map.IsPocketMap) { continue; } // To be handled later.
+                if (map.IsPocketMap) { continue; }
 
                 foreach (Building_Skipgate gate in map.listerBuildings.AllBuildingsColonistOfClass<Building_Skipgate>())
                 {
-                    // Busy/linked gates stay in the list (annotated) — the claim happens at
-                    // dial start, so a gate that's busy NOW may be free by then.
-                    if (gate != source.parent) { yield return gate; }
+                    CompSkipgate comp = gate.skipgateComp;
+
+                    if (gate == source.parent || comp == null) { continue; }
+                    if (comp.CurrentOperation != null || comp.CoolingDown) { continue; }
+
+                    yield return gate;
                 }
             }
         }
@@ -39,32 +42,19 @@ namespace MigCorp.Skiptech.Skipgate
             return true;
         }
 
-        private static string StatusSuffix(Building_Skipgate gate)
-        {
-            CompSkipgate comp = gate.skipgateComp;
-
-            if (comp == null) { return null; }
-            if (comp.LinkedFarGate != null) { return " (linked)"; }
-            if (comp.CurrentOperation != null) { return " (busy)"; }
-            if (comp.CoolingDown) { return " (cooling)"; }
-
-            return null;
-        }
-
         private static string OptionLabel(CompSkipgate source, Building_Skipgate gate)
         {
             float cost = SkipgateOperation_Link.CalculateLinkCost(source, gate);
-            string status = StatusSuffix(gate);
 
             if (gate.Map == source.parent.Map)
             {
-                return $"{gate.RenamableLabel} (this map) — cost {cost:F0}{status}";
+                return $"{gate.RenamableLabel} (this map) — cost {cost:F0}";
             }
 
             string where = gate.Map.Parent?.LabelCap ?? "unknown location";
             float tiles = Find.WorldGrid.ApproxDistanceInTiles(source.parent.Map.Tile, gate.Map.Tile);
 
-            return $"{gate.RenamableLabel} ({where}, {Mathf.RoundToInt(tiles)} tiles) — cost {cost:F0}{status}";
+            return $"{gate.RenamableLabel} ({where}, {Mathf.RoundToInt(tiles)} tiles) — cost {cost:F0}";
         }
 
         // Right-click targeting.

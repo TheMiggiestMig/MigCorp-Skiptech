@@ -28,8 +28,6 @@ namespace MigCorp.Skiptech.Skipgate
             CompSkipgate far = FarGate;
 
             if (own == null || far == null) { reason = "Skipgate is not linked."; return false; }
-            if (!own.Capacitor.Powered) { reason = "Skipgate is unpowered."; return false; }
-            if (!far.Capacitor.Powered) { reason = "The far skipgate is unpowered."; return false; }
             if (!far.parent.Position.Standable(far.parent.Map)) { reason = "The far skipgate is obstructed."; return false; }
 
             return base.IsEnterable(out reason);

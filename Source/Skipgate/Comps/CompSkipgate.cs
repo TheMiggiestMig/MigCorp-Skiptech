@@ -134,7 +134,9 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             currentOperation = operation;
             currentOperation.Start();
 
-            return true;
+            // Link reservation can actually fail to start, so success depends on if it could actually start (if it's still the currentOperation).
+            // Everything else should be fine :)
+            return currentOperation == operation;
         }
 
         public void EndOperation(SkipgateOperation operation, SkipgateOperationEnd result, float heatGenerated)
@@ -186,7 +188,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (CurrentOperation != null)
             {
                 yield return Gizmo_Cancel();
-                if (LinkedFarGate != null) { yield return Gizmo_ViewLinkedGate(); }
+                if (CurrentOperation is SkipgateOperation_Link) { yield return Gizmo_ViewLinkedGate(); }
             }
             else
             {
@@ -234,14 +236,18 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_Cancel()
         {
-            bool isLiveLink = CurrentOperation is SkipgateOperation_Link
-                                && CurrentOperation.Phase == SkipgateOperationPhase.Active;
+            bool isLiveLink = CurrentOperation is SkipgateOperation_Link && CurrentOperation.Phase == SkipgateOperationPhase.Active;
+            bool isIncomingLink = !isLiveLink && CurrentOperation is SkipgateOperation_Link incomingLink && incomingLink.Role == LinkRole.Responder;
+
+            string label;
+            if (isLiveLink) { label = "Unlink"; }
+            else if (isIncomingLink) { label = "Cancel Link"; }
+            else if (CurrentOperation.Phase == SkipgateOperationPhase.Dialing) { label = "Cancel Dialing"; }
+            else { label = "Cancel Charging"; }
 
             return new Command_Action
             {
-                defaultLabel = isLiveLink ? "Unlink"
-                    : CurrentOperation.Phase == SkipgateOperationPhase.Dialing ? "Cancel Dialing"
-                    : "Cancel Charging",
+                defaultLabel = label,
                 defaultDesc = isLiveLink
                     ? "Close the link.\n\nWARNING: Both skipgates will generate heat and must cool down."
                     : "Cancel the current action.\n\nThe current charge will remain but slowly drain.",
@@ -265,11 +271,13 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_ViewLinkedGate()
         {
-            Building_Skipgate far = (Building_Skipgate)LinkedFarGate.parent;
+            Building_Skipgate far = (Building_Skipgate)((SkipgateOperation_Link)CurrentOperation).OtherGate.parent;
 
             return new Command_Action
             {
-                defaultLabel = "View linked skipgate",
+                defaultLabel = CurrentOperation.Phase == SkipgateOperationPhase.Active
+                    ? "View linked skipgate"
+                    : "View linking skipgate",
                 defaultDesc = $"Jump the camera to {far.RenamableLabel}.",
                 icon = ViewLinkedGateIcon,
                 action = () => CameraJumper.TryJumpAndSelect(far)
@@ -369,6 +377,10 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     sb.AppendLine($"WARNING: no power — link collapse in {collapseTicks.ToStringTicksToPeriod()}");
                 }
             }
+            else if (CurrentOperation is SkipgateOperation_Link incoming && incoming.Role == LinkRole.Responder)
+            {
+                sb.AppendLine($"Incoming link from: {(incoming.OtherGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
+            }
             else if (CurrentOperation != null)
             {
                 switch (CurrentOperation.Phase)
@@ -378,14 +390,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                         break;
 
                     case SkipgateOperationPhase.Dialing:
-                        if (CurrentOperation is SkipgateOperation_Link incoming && incoming.Role == LinkRole.Responder)
-                        {
-                            sb.AppendLine($"Incoming link from: {(incoming.OtherGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
-                        }
-                        else
-                        {
-                            sb.AppendLine($"Dialing: {CurrentOperation.Type} ({CurrentOperation.DialingTicksLeft.ToStringTicksToPeriod()})");
-                        }
+                        sb.AppendLine($"Dialing: {CurrentOperation.Type} ({CurrentOperation.DialingTicksLeft.ToStringTicksToPeriod()})");
                         break;
                 }
             }

@@ -34,8 +34,8 @@ namespace MigCorp.Skiptech
         }
 
         public override TaggedString GetExplanation() =>
-            "An unpowered skipgate is draining its skip buffer to keep its link open. " +
-            "If the buffer runs dry, the link will collapse and BOTH gates will overheat.\n\n" +
+            "An unpowered skipgate is draining its capacitor to keep the link open. " +
+            "If the capacitor runs dry, the link will collapse and BOTH gates will overheat.\n\n" +
             "Restore power, or unlink deliberately to control when the heat hits.";
 
         public override AlertReport GetReport()

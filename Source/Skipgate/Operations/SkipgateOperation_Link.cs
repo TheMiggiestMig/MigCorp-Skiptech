@@ -55,6 +55,15 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             if (otherGateBuilding == null || !otherGateBuilding.Spawned) { return "No valid target skipgate."; }
             if (otherGateBuilding == gate.parent) { return "Cannot link a skipgate to itself."; }
 
+            if (role == LinkRole.Initiator)
+            {
+                CompSkipgate otherGate = OtherGate;
+                if (otherGate == null || otherGate.CurrentOperation != null || otherGate.CoolingDown)
+                {
+                    return "Target skipgate is unavailable.";
+                }
+            }
+
             return base.CanStart();
         }
 
@@ -62,29 +71,26 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         {
             if (role == LinkRole.Responder)
             {
-                // Responder starts at dial phase when it begins this operation.
-                phase = SkipgateOperationPhase.Dialing;
+                phase = SkipgateOperationPhase.Preparing;
                 ApplyRuntimeState();
                 return;
             }
 
             base.Start();
+
+            // Reserve the other gate by having it perform a Link operation as a Responder.
+            if (!OtherGate.TryStartOperation(new SkipgateOperation_Link(OtherGate, (Building_Skipgate)gate.parent, requiredCharge)))
+            {
+                FailOperation($"Link failed: {otherGateBuilding.RenamableLabel} is unavailable.");
+            }
         }
 
         protected override void TickPreparing(int delta)
         {
-            if (!ReadyToDial) { return; }
+            // Only the Initiator prepares (...typical). Responder waits to be told when to dial.
+            if (role == LinkRole.Responder) { return; }
 
-            // Try to claim the far gate at dial start, or fail.
-            CompSkipgate other = OtherGate;
-            if (other == null || !otherGateBuilding.Spawned
-                || !other.TryStartOperation(new SkipgateOperation_Link(other, (Building_Skipgate)gate.parent, requiredCharge)))
-            {
-                FailOperation($"Link failed: {otherGateBuilding?.RenamableLabel ?? "far gate"} is unavailable.");
-                return;
-            }
-
-            BeginDialing(gate.Props.dialingTicks);
+            base.TickPreparing(delta);
         }
 
         protected override void TickDialing(int delta)
@@ -124,7 +130,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             if (!TrySpendRequiredCharge()) { return; }
 
-            Messages.Message($"Link established: {(gate.parent as Building_Skipgate).RenamableLabel} <-> {otherGateBuilding.RenamableLabel}", MessageTypeDefOf.PositiveEvent);
+            Messages.Message($"Link established: {(gate.parent as Building_Skipgate).RenamableLabel} is now linked to {otherGateBuilding.RenamableLabel}", MessageTypeDefOf.PositiveEvent);
 
             EnterActive();
             responder.EnterActive();
@@ -198,15 +204,13 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         }
         public override void ResumeAfterLoad()
         {
-            // A preparing initiator hasn't claimed the far end yet, so nothing to do.
-            if (phase == SkipgateOperationPhase.Preparing) { return; }
-
+            //if (phase == SkipgateOperationPhase.Preparing) { return; }
             SkipgateOperation_Link other = MutualOther();
 
-            // Both halves must exist and agree on whether the link is live.
             if (other == null || (phase == SkipgateOperationPhase.Active) != (other.phase == SkipgateOperationPhase.Active))
             {
                 FailOperation("Link state mismatch after load.");
+                return;
             }
 
             if (phase == SkipgateOperationPhase.Active) { gate.SpawnPortal(); }
