@@ -145,7 +145,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (currentOperation != operation) { return; }
 
             capacitor.ClearDemand();
-            //if (currentOperation is SkipgateOperation_Link) { DespawnPortal(); }
             DespawnPortal();
 
             heatRemaining += heatGenerated * Props.heatPerCost;

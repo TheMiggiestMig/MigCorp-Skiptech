@@ -93,13 +93,6 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             base.TickPreparing(delta);
         }
 
-        protected override void TickDialing(int delta)
-        {
-            if (role == LinkRole.Responder) { return; }
-
-            base.TickDialing(delta);
-        }
-
         protected override void TickActive(int delta)
         {
             // The other end vanished (destroyed gate, broken state). Break the link.
@@ -135,7 +128,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             EnterActive();
             responder.EnterActive();
 
-            // Now we're thinking with portals!s
+            // Now we're thinking with portals!
             gate.SpawnPortal();
             responder.gate.SpawnPortal();
         }
