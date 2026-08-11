@@ -24,19 +24,16 @@ namespace MigCorp.Skiptech.Skipgate.Comps
     }
 
     [StaticConstructorOnStartup]
-    public class CompSkipgate : ThingComp, IThingHolder, ISearchableContents
+    public class CompSkipgate : ThingComp
     {
         private static readonly Texture2D ViewLinkedGateIcon = ContentFinder<Texture2D>.Get("UI/Commands/ViewCave");
         private static readonly Texture2D CancelIcon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel");
         public CompProperties_Skipgate Props => (CompProperties_Skipgate)props;
         private CompSkipgateCapacitor capacitor;
-        public CompSkipgateCapacitor Capacitor { get { return capacitor; } }
+        public CompSkipgateCapacitor Capacitor => capacitor;
 
         private SkipgateOperation currentOperation;
-        public SkipgateOperation CurrentOperation { get { return currentOperation; } }
-
-        private ThingOwner innerContainer;
-        public ThingOwner SearchableContents => innerContainer;
+        public SkipgateOperation CurrentOperation => currentOperation;
 
         private Building_SkipgatePortal portal;
         public Building_SkipgatePortal Portal => portal;
@@ -65,7 +62,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             base.PostExposeData();
             Scribe_Values.Look(ref heatRemaining, "heatRemaining", defaultValue: 0f);
             Scribe_Deep.Look(ref currentOperation, "currentOperation", this);
-            Scribe_Deep.Look(ref innerContainer, "innerContainer", this);
             Scribe_References.Look(ref portal, "portal");
         }
 
@@ -74,7 +70,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             base.PostSpawnSetup(respawningAfterLoad);
             capacitor = parent.GetComp<CompSkipgateCapacitor>();
 
-            if (innerContainer == null) { innerContainer = new ThingOwner<Thing>(this); }
             if (currentOperation != null) { currentOperation.RestoreAfterLoad(); }
 
             // Need to perform gate-to-gate linking checks after *everything* is spawned... which means, on the next tick.
@@ -397,16 +392,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (CoolingDown) { sb.AppendLine($"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"); }
 
             return sb.ToString().TrimEndNewlines();
-        }
-
-        public ThingOwner GetDirectlyHeldThings()
-        {
-            return innerContainer;
-        }
-
-        public void GetChildHolders(List<IThingHolder> outChildren)
-        {
-            ThingOwnerUtility.AppendThingHoldersFromThings(outChildren, GetDirectlyHeldThings());
         }
     }
 }

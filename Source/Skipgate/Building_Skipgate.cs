@@ -1,4 +1,5 @@
 ﻿using MigCorp.Skiptech.Skipgate.Comps;
+using RimWorld;
 using System.Text;
 using Verse;
 
@@ -9,6 +10,7 @@ namespace MigCorp.Skiptech.Skipgate
 
         public CompSkipgate skipgateComp;
         public CompSkipgateCapacitor capacitorComp;
+        public CompTransporter_Skipgate transporterComp;
 
         private string skipgateName;
         public string RenamableLabel
@@ -32,6 +34,7 @@ namespace MigCorp.Skiptech.Skipgate
             base.SpawnSetup(map, respawningAfterLoad);
             skipgateComp = GetComp<CompSkipgate>();
             capacitorComp = GetComp<CompSkipgateCapacitor>();
+            transporterComp = GetComp<CompTransporter_Skipgate>();
         }
 
         public override string GetInspectString()
