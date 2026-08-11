@@ -21,6 +21,10 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public float linkCostPerTile = 1f;
         public float linkBufferSeconds = 250f;
         public float linkRebuildWatts = 200f;
+
+        public float sendCostBase = 10f;
+        public float sendCostPerKg = 0.05f;
+        public float sendCostPerKgPerTile = 0.002f;
     }
 
     [StaticConstructorOnStartup]
@@ -30,7 +34,9 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private static readonly Texture2D CancelIcon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel");
         public CompProperties_Skipgate Props => (CompProperties_Skipgate)props;
         private CompSkipgateCapacitor capacitor;
-        public CompSkipgateCapacitor Capacitor => capacitor;
+        public CompSkipgateCapacitor Capacitor => capacitor ?? (capacitor = parent.GetComp<CompSkipgateCapacitor>());
+        private CompTransporter_Skipgate transporter;
+        public CompTransporter_Skipgate Transporter => transporter ?? (transporter = parent.GetComp<CompTransporter_Skipgate>());
 
         private SkipgateOperation currentOperation;
         public SkipgateOperation CurrentOperation => currentOperation;
@@ -68,7 +74,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
             base.PostSpawnSetup(respawningAfterLoad);
-            capacitor = parent.GetComp<CompSkipgateCapacitor>();
 
             if (currentOperation != null) { currentOperation.RestoreAfterLoad(); }
 
@@ -139,7 +144,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             // Make sure we're only ending our own operation.
             if (currentOperation != operation) { return; }
 
-            capacitor.ClearDemand();
+            Capacitor.ClearDemand();
             DespawnPortal();
 
             heatRemaining += heatGenerated * Props.heatPerCost;
@@ -147,7 +152,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         }
         public bool TrySpendCharge(float amount)
         {
-            return capacitor.TrySpend(amount);
+            return Capacitor.TrySpend(amount);
         }
         public void SpawnPortal()
         {
@@ -183,6 +188,11 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 yield return Gizmo_Cancel();
                 if (CurrentOperation is SkipgateOperation_Link) { yield return Gizmo_ViewLinkedGate(); }
+                if (CurrentOperation is SkipgateOperation_SendLoad sendLoad
+                    && sendLoad.Phase == SkipgateOperationPhase.Preparing)
+                {
+                    yield return Gizmo_SelectSendDestination(sendLoad);
+                }
             }
             else
             {
@@ -297,14 +307,28 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Send Load",
-                defaultDesc: "Send a load to a remote location in the world.",
+                defaultDesc: "Send a load to a map or caravan anywhere in the world.\n\nCharge cost scales with mass and distance.",
                 action: delegate
                 {
-                    TryStartOperation(new SkipgateOperation_SendLoad(this, "Sending a load!", 66f));
+                    SkipgateOperation_SendLoad op = new SkipgateOperation_SendLoad(this);
+                    if (TryStartOperation(op)) { SkipgateTargetingUtil.BeginSendDestinationTargeting(op, this); }
                 }
                 );
 
             return command;
+        }
+
+        public Gizmo Gizmo_SelectSendDestination(SkipgateOperation_SendLoad op)
+        {
+            return new Command_Action
+            {
+                defaultLabel = op.HasDestination ? "Change destination" : "Select destination",
+                defaultDesc = op.HasDestination
+                    ? $"Currently sending to {op.Destination.Label}. Retargeting recalculates the charge cost."
+                    : "Choose where to send this load. Charging begins once a destination is set.",
+                icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchShip"),
+                action = () => SkipgateTargetingUtil.BeginSendDestinationTargeting(op, this)
+            };
         }
 
         public Gizmo Gizmo_SendCaravan()
@@ -365,15 +389,22 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 sb.AppendLine($"Linked to: {(LinkedFarGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
 
-                if (!capacitor.Powered && capacitor.LoadPerSecond > 0f)
+                if (!Capacitor.Powered && Capacitor.LoadPerSecond > 0f)
                 {
-                    int collapseTicks = Mathf.CeilToInt(capacitor.Charge / capacitor.LoadPerSecond * 60f);
+                    int collapseTicks = Mathf.CeilToInt(Capacitor.Charge / Capacitor.LoadPerSecond * 60f);
                     sb.AppendLine($"WARNING: no power — link collapse in {collapseTicks.ToStringTicksToPeriod()}");
                 }
             }
             else if (CurrentOperation is SkipgateOperation_Link incoming && incoming.Role == LinkRole.Responder)
             {
                 sb.AppendLine($"Incoming link from: {(incoming.OtherGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
+            }
+            else if (CurrentOperation is SkipgateOperation_SendLoad send
+                && send.Phase == SkipgateOperationPhase.Preparing)
+            {
+                sb.AppendLine(send.HasDestination
+                    ? $"Sending to: {send.Destination.Label}"
+                    : "Send load: awaiting destination");
             }
             else if (CurrentOperation != null)
             {

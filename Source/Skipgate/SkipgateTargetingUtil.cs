@@ -72,7 +72,7 @@ namespace MigCorp.Skiptech.Skipgate
         }
 
         // World targeting (left-click).
-        public static void BeginTargeting(CompSkipgate source)
+        public static void BeginLinkTargeting(CompSkipgate source)
         {
             CameraJumper.TryJump(CameraJumper.GetWorldTarget(source.parent));
 
@@ -159,6 +159,75 @@ namespace MigCorp.Skiptech.Skipgate
                     0.018f, // below the hover marker's 0.05 so hover draws on top
                     WorldMaterials.CurTargetingMat);
             }
+        }
+
+        public static void BeginSendDestinationTargeting(SkipgateOperation_SendLoad op, CompSkipgate source)
+        {
+            CameraJumper.TryJump(CameraJumper.GetWorldTarget(source.parent));
+
+            Find.WorldTargeter.BeginTargeting(
+                (GlobalTargetInfo t) => TrySelectSendDestination(op, source, t),
+                canTargetTiles: true,
+                closeWorldTabWhenFinished: true,
+                extraLabelGetter: t => SendHoverLabel(op, source, t),
+                canSelectTarget: t => SendDestinationAt(t).HasWorldObject,
+                showCancelButton: true);
+        }
+
+        // Resolve whatever the player points at into a sendable destination
+        // i.e. a player caravan, or any world object with a live map (incl. this gate's own map).
+        private static GlobalTargetInfo SendDestinationAt(GlobalTargetInfo target)
+        {
+            if (target.WorldObject is Caravan caravan && caravan.IsPlayerControlled) { return caravan; }
+
+            MapParent mapParent = target.WorldObject as MapParent ?? Find.WorldObjects.MapParentAt(target.Tile);
+            if (mapParent != null && mapParent.HasMap) { return mapParent; }
+
+            return GlobalTargetInfo.Invalid;
+        }
+
+        private static bool TrySelectSendDestination(SkipgateOperation_SendLoad op, CompSkipgate source, GlobalTargetInfo target)
+        {
+            // The op may have ended (cancelled, gate destroyed etc.) while the targeter was open.
+            if (source.CurrentOperation != op) { return true; }
+
+            GlobalTargetInfo dest = SendDestinationAt(target);
+
+            if (!dest.HasWorldObject)
+            {
+                Messages.Message("Cannot send there: no colony map or caravan.", MessageTypeDefOf.RejectInput, historical: false);
+                return false; // keep the targeter open
+            }
+
+            AcceptanceReport report = op.TrySetDestination(dest);
+            if (!report.Accepted)
+            {
+                Messages.Message(report.Reason, MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
+            Messages.Message(
+                $"{(source.parent as Building_Skipgate).RenamableLabel} is charging to send a load to {dest.Label}.",
+                source.parent, MessageTypeDefOf.TaskCompletion, historical: false);
+
+            return true; // close the targeter
+        }
+
+        private static TaggedString SendHoverLabel(SkipgateOperation_SendLoad op, CompSkipgate source, GlobalTargetInfo target)
+        {
+            GlobalTargetInfo dest = SendDestinationAt(target);
+
+            if (!dest.HasWorldObject) { return null; }
+
+            float tiles = Find.WorldGrid.ApproxDistanceInTiles(source.parent.Map.Tile, dest.Tile);
+            float cost = SkipgateOperation_SendLoad.CalculateSendCost(source, dest, op.ManifestMass());
+
+            CompSkipgateCapacitor capacitor = source.Capacitor;
+            float chargeRate = Mathf.Max(capacitor.Props.chargingWatts / capacitor.Props.wattsPerCharge, 0.001f);
+            int chargeSeconds = Mathf.CeilToInt(Mathf.Max(cost - capacitor.Charge, 0f) / chargeRate);
+            int cooldownSeconds = Mathf.CeilToInt(cost * source.Props.heatPerCost / source.Props.heatDissipationPerSecond);
+
+            return $"Send to {dest.Label} ({Mathf.RoundToInt(tiles)} tiles)\nCost {cost:F0} — charge {chargeSeconds}s, cooldown {cooldownSeconds}s";
         }
     }
 }
