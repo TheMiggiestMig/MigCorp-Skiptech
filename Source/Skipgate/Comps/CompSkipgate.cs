@@ -1,9 +1,11 @@
 ﻿using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using Verse;
+using Verse.AI.Group;
 
 namespace MigCorp.Skiptech.Skipgate.Comps
 {
@@ -225,6 +227,37 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     defaultLabel = "DEV: Reset heat",
                     action = delegate { heatRemaining = 0; }
                 };
+
+                if (CurrentOperation == null)
+                {
+                    yield return new Command_Action
+                    {
+                        defaultLabel = "DEV: Form skipgate caravan",
+                        defaultDesc = "Starts the forming lord with the selected free colonists (all free colonists if none are selected) and up to 10 simple meals as cargo.",
+                        action = delegate
+                        {
+                            List<Pawn> pawns = Find.Selector.SelectedPawns
+                                .Where(p => p.IsFreeColonist && p.Spawned && p.Map == parent.Map && !p.Downed && !p.InMentalState)
+                                .ToList();
+
+                            if (pawns.Count == 0)
+                            {
+                                pawns = parent.Map.mapPawns.FreeColonistsSpawned
+                                    .Where(p => !p.Downed && !p.InMentalState)
+                                    .ToList();
+                            }
+
+                            if (pawns.Count == 0)
+                            {
+                                Messages.Message("DEV: no free colonists available.", MessageTypeDefOf.RejectInput, historical: false);
+                                return;
+                            }
+
+                            SkipgateCaravanUtil.StartFormingSkipgateCaravan(pawns, new List<Pawn>(), DEV_MealTransferables(), this);
+                            Messages.Message($"DEV: forming skipgate caravan with {pawns.Count} colonist(s).", parent, MessageTypeDefOf.NeutralEvent, historical: false);
+                        }
+                    };
+                }
             }
         }
 
@@ -333,6 +366,25 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             return new Command_LinkSkipgate(this);
         }
 
+        // DEV Just gather (up to) 10 simple meals for the DEV Form skipgate caravan test.
+        private List<TransferableOneWay> DEV_MealTransferables()
+        {
+            List<Thing> meals = parent.Map.listerThings.ThingsOfDef(ThingDefOf.MealSimple)
+                .Where(t => t.Spawned && !t.IsForbidden(Faction.OfPlayer))
+                .ToList();
+
+            if (meals.Count == 0) { return new List<TransferableOneWay>(); }
+
+            TransferableOneWay transferable = new TransferableOneWay();
+            foreach (Thing meal in meals)
+            {
+                transferable.things.Add(meal);
+            }
+            transferable.AdjustTo(Mathf.Min(10, transferable.MaxCount));
+
+            return new List<TransferableOneWay> { transferable };
+        }
+
         public override string CompInspectStringExtra()
         {
             StringBuilder sb = new StringBuilder();
@@ -365,6 +417,19 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                         break;
                 }
             }
+
+            // DEV visibility for cycle-A testing; the real Send inspect line arrives with the operation.
+            if (DebugSettings.ShowDevGizmos)
+            {
+                Lord formingLord = parent.Map?.lordManager.lords
+                    .FirstOrDefault(l => l.LordJob is LordJob_FormSkipgateCaravan);
+
+                if (formingLord?.LordJob is LordJob_FormSkipgateCaravan formingJob)
+                {
+                    sb.AppendLine($"DEV caravan: {formingJob.Status} — holding: {formingJob.Holding}, assembled: {formingJob.AllAssembled}");
+                }
+            }
+
 
             if (CoolingDown) { sb.AppendLine($"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"); }
 
