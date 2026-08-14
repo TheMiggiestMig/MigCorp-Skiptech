@@ -1,6 +1,7 @@
 ﻿using MigCorp.Skiptech.Skipgate.Comps;
 using System.Text;
 using Verse;
+using Verse.Grammar;
 
 namespace MigCorp.Skiptech.Skipgate
 {
@@ -34,6 +35,17 @@ namespace MigCorp.Skiptech.Skipgate
             skipgateComp = GetComp<CompSkipgate>();
             capacitorComp = GetComp<CompSkipgateCapacitor>();
             transporterComp = GetComp<CompTransporter_Skipgate>();
+
+            if (respawningAfterLoad && skipgateName.NullOrEmpty())
+            {
+                GenerateName();
+            }
+        }
+
+        public override void PostMake()
+        {
+            base.PostMake();
+            GenerateName();
         }
 
         public override string GetInspectString()
@@ -42,7 +54,15 @@ namespace MigCorp.Skiptech.Skipgate
 
             if (!skipgateName.NullOrEmpty()) { sb.AppendLine($"ID: {skipgateName}"); }
 
-            return sb.ToString().TrimEndNewlines() + base.GetInspectString();
+            return sb.ToString() + base.GetInspectString();
+        }
+
+        private void GenerateName()
+        {
+            GrammarRequest request = default;
+
+            request.Includes.Add(SkiptechDefOf.MigCorp_SkipgateNameMaker);
+            skipgateName = GrammarResolver.Resolve("root", request);
         }
     }
 }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Defs>
+    <RulePackDef>
+        <defName>MigCorp_SkipgateNameMaker</defName>
+        <rulePack>
+            <rulesStrings>
+                <li>root->SG-[prefix]-[numbers]</li>
+                <li>prefix->QEEU</li>
+                <li>prefix->NSWE</li>
+                <li>prefix->ATSU</li>
+                <li>prefix->VTCI</li>
+                <li>prefix->TMSA</li>
+                <li>prefix->STUO</li>
+                <li>prefix->NTRO</li>
+                <li>prefix->WTSE</li>
+                <li>prefix->BSIR</li>
+                <li>prefix->SNDY</li>
+                <li>prefix->CBNA</li>
+                <li>prefix->MBLE</li>
+                <li>prefix->HABO</li>
+                <li>prefix->ALED</li>
+                <li>prefix->DWRA</li>
+                <li>prefix->PTRE</li>
+                <li>numbers->[Digit][Digit]</li>
+            </rulesStrings>
+        </rulePack>
+    </RulePackDef>
+
+</Defs>

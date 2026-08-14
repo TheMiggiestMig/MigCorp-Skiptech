@@ -44,8 +44,17 @@
 
         <!-- No idea what will be a fair cost. -->
         <costList>
-            <Steel>1</Steel>
+            <Steel>500</Steel>
+            <Plasteel>150</Plasteel>
+            <ComponentIndustrial>12</ComponentIndustrial>
+            <ComponentSpacer>4</ComponentSpacer>
+            <Uranium>50</Uranium>
+
+            <!-- <MigCorp_SkipBeacon>1</MigCorp_SkipBeacon> -->
         </costList>
+
+        <WorkToBuild>45000</WorkToBuild>
+        <constructionSkillPrerequisite>8</constructionSkillPrerequisite>
 
         <building>
             <isEdifice>true</isEdifice>
