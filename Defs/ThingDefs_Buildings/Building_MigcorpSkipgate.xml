@@ -36,7 +36,7 @@
 
         <statBases>
             <MaxHitPoints>1000</MaxHitPoints>
-            <WorkToBuild>1000</WorkToBuild>
+            <WorkToBuild>45000</WorkToBuild>
             <Mass>100</Mass>
             <Flammability>0</Flammability>
             <Beauty>5</Beauty>
@@ -53,7 +53,6 @@
             <!-- <MigCorp_SkipBeacon>1</MigCorp_SkipBeacon> -->
         </costList>
 
-        <WorkToBuild>45000</WorkToBuild>
         <constructionSkillPrerequisite>8</constructionSkillPrerequisite>
 
         <building>
@@ -67,13 +66,6 @@
             </li>
             <li Class="MigCorp.Skiptech.Skipgate.Comps.CompProperties_SkipgateCapacitor">
             </li>
-            <li Class="CompProperties_Transporter">
-                <compClass>MigCorp.Skiptech.Skipgate.Comps.CompTransporter_Skipgate</compClass>
-                <massCapacity>999999</massCapacity>
-                <max1PerGroup>true</max1PerGroup>
-                <shouldTickContents>false</shouldTickContents>
-                <showOverallStats>false</showOverallStats>
-            </li>
             <li Class="CompProperties_Power">
                 <compClass>CompPowerTrader</compClass>
                 <basePowerConsumption>200</basePowerConsumption>
@@ -81,8 +73,5 @@
             </li>
             <li Class="CompProperties_Flickable" />
         </comps>
-        <inspectorTabs>
-            <li>RimWorld.ITab_ContentsTransporter</li>
-        </inspectorTabs>
     </ThingDef>
 </Defs>

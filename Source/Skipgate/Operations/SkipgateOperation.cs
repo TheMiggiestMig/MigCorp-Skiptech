@@ -12,8 +12,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
     public enum SkipgateOperationType
     {
-        SendLoad,
-        SendCaravan,
+        Send,
         Recall,
         Link
     }

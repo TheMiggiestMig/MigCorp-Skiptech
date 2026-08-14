@@ -35,8 +35,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public CompProperties_Skipgate Props => (CompProperties_Skipgate)props;
         private CompSkipgateCapacitor capacitor;
         public CompSkipgateCapacitor Capacitor => capacitor ?? (capacitor = parent.GetComp<CompSkipgateCapacitor>());
-        private CompTransporter_Skipgate transporter;
-        public CompTransporter_Skipgate Transporter => transporter ?? (transporter = parent.GetComp<CompTransporter_Skipgate>());
 
         private SkipgateOperation currentOperation;
         public SkipgateOperation CurrentOperation => currentOperation;
@@ -188,19 +186,11 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 yield return Gizmo_Cancel();
                 if (CurrentOperation is SkipgateOperation_Link) { yield return Gizmo_ViewLinkedGate(); }
-                if (CurrentOperation is SkipgateOperation_SendLoad sendLoad
-                    && sendLoad.Phase == SkipgateOperationPhase.Preparing)
-                {
-                    yield return Gizmo_SelectSendDestination(sendLoad);
-                }
             }
             else
             {
                 // Send
-                yield return Gizmo_SendLoad();
-
-                // Send
-                yield return Gizmo_SendCaravan();
+                //yield return Gizmo_Send();
 
                 // Emergency Recall
                 if (recallResearchFinished)
@@ -303,46 +293,9 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             return command;
         }
 
-        public Gizmo Gizmo_SendLoad()
+        public Gizmo Gizmo_Send()
         {
-            Command_Action command = Skipgate_Command_Operation(
-                defaultLabel: "Send Load",
-                defaultDesc: "Send a load to a map or caravan anywhere in the world.\n\nCharge cost scales with mass and distance.",
-                action: delegate
-                {
-                    SkipgateOperation_SendLoad op = new SkipgateOperation_SendLoad(this);
-                    if (TryStartOperation(op)) { SkipgateTargetingUtil.BeginSendDestinationTargeting(op, this); }
-                }
-                );
-
-            return command;
-        }
-
-        public Gizmo Gizmo_SelectSendDestination(SkipgateOperation_SendLoad op)
-        {
-            return new Command_Action
-            {
-                defaultLabel = op.HasDestination ? "Change destination" : "Select destination",
-                defaultDesc = op.HasDestination
-                    ? $"Currently sending to {op.Destination.Label}. Retargeting recalculates the charge cost."
-                    : "Choose where to send this load. Charging begins once a destination is set.",
-                icon = ContentFinder<Texture2D>.Get("UI/Commands/LaunchShip"),
-                action = () => SkipgateTargetingUtil.BeginSendDestinationTargeting(op, this)
-            };
-        }
-
-        public Gizmo Gizmo_SendCaravan()
-        {
-            Command_Action command = Skipgate_Command_Operation(
-                defaultLabel: "Send Caravan",
-                defaultDesc: "Send a caravan to a remote location in the world.",
-                action: delegate
-                {
-                    TryStartOperation(new SkipgateOperation_SendCaravan(this, "Sending some pawns!", 42f));
-                }
-                );
-
-            return command;
+            return new Command_Action { };
         }
 
         public Gizmo Gizmo_EmergencyRecall()
@@ -398,13 +351,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             else if (CurrentOperation is SkipgateOperation_Link incoming && incoming.Role == LinkRole.Responder)
             {
                 sb.AppendLine($"Incoming link from: {(incoming.OtherGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
-            }
-            else if (CurrentOperation is SkipgateOperation_SendLoad send
-                && send.Phase == SkipgateOperationPhase.Preparing)
-            {
-                sb.AppendLine(send.HasDestination
-                    ? $"Sending to: {send.Destination.Label}"
-                    : "Send load: awaiting destination");
             }
             else if (CurrentOperation != null)
             {
