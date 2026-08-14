@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Defs>
+    <DutyDef>
+        <defName>MigCorp_SkipgateHold</defName>
+        <thinkNode Class="ThinkNode_Priority">
+            <subNodes>
+                <!-- Strayed too far from my anchor? Jog straight back onto it. -->
+                <li Class="ThinkNode_ConditionalCloseToDutyTarget">
+                    <invert>true</invert>
+                    <maxDistToDutyTarget>3</maxDistToDutyTarget>
+                    <subNodes>
+                        <li Class="JobGiver_GotoTravelDestination">
+                            <exactCell>true</exactCell>
+                            <locomotionUrgency>Jog</locomotionUrgency>
+                        </li>
+                    </subNodes>
+                </li>
+
+
+                <!-- Basic needs -->
+                <li Class="ThinkNode_Subtree">
+                    <treeDef>SatisfyVeryUrgentNeeds</treeDef>
+                </li>
+
+                <!-- Make em wander close to the skipgate's center (WanderAnywhere makes them wander too far)
+                 Radius comes from PawnDuty.wanderRadius, set by the hold toil. -->
+                <li Class="JobGiver_WanderNearDutyLocation">
+                    <wanderRadius>2.5</wanderRadius>
+                    <expiryInterval>120</expiryInterval>
+                </li>
+            </subNodes>
+        </thinkNode>
+    </DutyDef>
+</Defs>
