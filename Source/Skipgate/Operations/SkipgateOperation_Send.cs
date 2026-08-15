@@ -19,6 +19,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         private GlobalTargetInfo destination = GlobalTargetInfo.Invalid;
         private TransportersArrivalAction arrivalAction; // The cell (when there is one) lives inside the arrival action itself (TransportersArrivalAction_LandInSpecificCell), so don't track it separately.
         private int validityTicks;
+        private bool sendPressed;
 
         // LordManager.RemoveLord only does lords.Remove(lord) + lord.Cleanup().
         // It never nulls lord.lordManager, so a cancelled lord is still a perfectly live object holding a valid map reference.
@@ -29,7 +30,16 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         // Null whenever the caravan is gone.
         public LordJob_FormSkipgateCaravan FormingCaravan => LordAlive ? lord.LordJob as LordJob_FormSkipgateCaravan : null;
+        public bool SendPressed => sendPressed;
+        public bool SendOrdered => gate.AutoSend || sendPressed;
 
+        // Everything is charged and gathered, we're just waiting on the player to say go.
+        public bool AwaitingSendOrder => ReadyToDial && !SendOrdered;
+
+        public void ToggleSendOrder()
+        {
+            sendPressed = !sendPressed;
+        }
         public bool HasDestination => destination.IsValid;
         public GlobalTargetInfo Destination => destination;
         public TransportersArrivalAction ArrivalAction => arrivalAction;
@@ -212,8 +222,14 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             TickDestinationValidity(delta);
 
-            // One-shot recost, immediately before the base decides to start dialing.
-            if (ReadyToDial) { Recost(CarriedMass()); }
+            if (!ReadyToDial || !SendOrdered) { return; }
+
+            // Final recost from what is ACTUALLY standing at the gate, rather than what the
+            // caravan intended to bring. Drops anything it never managed to gather.
+            Recost(CarriedMass());
+
+            // Just in case we're no longer ready to dial after the Recost.
+            if (!ReadyToDial) { return; }
 
             base.TickPreparing(delta);
         }
@@ -309,6 +325,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             Scribe_TargetInfo.Look(ref destination, "destination", GlobalTargetInfo.Invalid);
             Scribe_Deep.Look(ref arrivalAction, "arrivalAction");
             Scribe_Values.Look(ref validityTicks, "validityTicks", 0);
+            Scribe_Values.Look(ref sendPressed, "sendPressed", false);
         }
     }
 }

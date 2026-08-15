@@ -60,6 +60,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public bool linkResearchFinished = true; // true for testing
 
         private bool postLoadValidationPending;
+        private bool autoSend;
+        public bool AutoSend => autoSend;
 
         public override void PostExposeData()
         {
@@ -67,6 +69,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             Scribe_Values.Look(ref heatRemaining, "heatRemaining", defaultValue: 0f);
             Scribe_Deep.Look(ref currentOperation, "currentOperation", this);
             Scribe_References.Look(ref portal, "portal");
+            Scribe_Values.Look(ref autoSend, "autoSend", defaultValue: false);
         }
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
@@ -193,12 +196,14 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     && sending.Phase == SkipgateOperationPhase.Preparing)
                 {
                     yield return Gizmo_SetSendDestination(sending);
+                    yield return Gizmo_SendOrder(sending);
+                    yield return Gizmo_AutoSend();
                 }
             }
             else
             {
                 // Send
-                //yield return Gizmo_Send();
+                yield return Gizmo_Send();
 
                 // Emergency Recall
                 if (recallResearchFinished)
@@ -233,7 +238,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     defaultLabel = "DEV: Reset heat",
                     action = delegate { heatRemaining = 0; }
                 };
-
+                /*
                 if (CurrentOperation == null)
                 {
                     yield return new Command_Action
@@ -246,7 +251,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                             Find.WindowStack.Add(new Dialog_FormSkipgateCaravan(this));
                         }
                     };
-                }
+                }*/
             }
         }
 
@@ -317,7 +322,52 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_Send()
         {
-            return new Command_Action { };
+            Command_Action command = Skipgate_Command_Operation(
+                defaultLabel: "Send",
+                defaultDesc: "Form a caravan at this skipgate and skip it somewhere else.\n\n" +
+                    "Pawns gather at the gate exactly as they would for an ordinary caravan, and the gate charges while they do.",
+                action: delegate { Find.WindowStack.Add(new Dialog_FormSkipgateCaravan(this)); }
+                );
+
+            command.icon = CompLaunchable.LaunchCommandTex;
+
+            return command;
+        }
+
+        // Arms the gate to fire a Send as soon as it's ready (like AutoSend, except only for this instance).
+        public Gizmo Gizmo_SendOrder(SkipgateOperation_Send send)
+        {
+            Command_Toggle command = new Command_Toggle
+            {
+                defaultLabel = "Send",
+                defaultDesc = "Order this caravan to skip as soon as the gate is charged and everyone has gathered.\n\n" +
+                    "Leave it off to keep holding at the gate. A full charge latches, so waiting costs nothing.",
+                icon = CompLaunchable.LaunchCommandTex,
+                isActive = () => send.SendPressed,
+                toggleAction = delegate { send.ToggleSendOrder(); }
+            };
+
+            if (AutoSend)
+            {
+                command.Disabled = true;
+                command.disabledReason = "Auto-send is on, so this caravan will leave on its own.";
+            }
+
+            return command;
+        }
+
+        // Toggles auto-firing Send (when ready)
+        public Gizmo Gizmo_AutoSend()
+        {
+            return new Command_Toggle
+            {
+                defaultLabel = "Auto-send",
+                defaultDesc = "Send every caravan the moment this skipgate is charged and the caravan has gathered, without waiting for a send order.\n\n" +
+                    "This is a setting on the gate: it stays on for future sends.",
+                icon = TexCommand.ReleaseAnimals,
+                isActive = () => autoSend,
+                toggleAction = delegate { autoSend = !autoSend; }
+            };
         }
 
         public Gizmo Gizmo_SetSendDestination(SkipgateOperation_Send send)
@@ -406,6 +456,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 sb.AppendLine(sendOp.HasDestination
                     ? $"Destination: {sendOp.DestinationLabel} (cost {sendOp.RequiredCharge:F0})"
                     : "Destination: none set");
+
+                if (sendOp.AwaitingSendOrder) { sb.AppendLine("Ready — awaiting send order."); }
             }
 
             if (DebugSettings.ShowDevGizmos
