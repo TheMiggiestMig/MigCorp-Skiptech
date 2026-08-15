@@ -26,6 +26,7 @@ namespace MigCorp.Skiptech.Skipgate
         }
 
         // Swap all instances of the Leave toil with the custom Hold (at the skipgate) toil.
+        // I don't want the pawns to leave, I want them to wait for the skipgate to make them leave.
         public override StateGraph CreateGraph()
         {
             StateGraph graph = base.CreateGraph();

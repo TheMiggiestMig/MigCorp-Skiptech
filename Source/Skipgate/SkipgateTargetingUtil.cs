@@ -159,6 +159,6 @@ namespace MigCorp.Skiptech.Skipgate
                     0.018f, // below the hover marker's 0.05 so hover draws on top
                     WorldMaterials.CurTargetingMat);
             }
-        }          
+        }
     }
 }

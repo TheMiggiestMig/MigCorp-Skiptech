@@ -63,6 +63,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
+    <Compile Include="Patches\Core\Patch_Dialog_FormCaravan.cs" />
+    <Compile Include="Patches\Core\Patch_WorldRoutePlanner.cs" />
+    <Compile Include="Skipgate\Dialog_FormSkipgateCaravan.cs" />
     <Compile Include="Skipgate\Alert_SkipgateLinkFailing.cs" />
     <Compile Include="Skipgate\Command_LinkSkipgate.cs" />
     <Compile Include="Skipgate\LordJob_FormSkipgateCaravan.cs" />
