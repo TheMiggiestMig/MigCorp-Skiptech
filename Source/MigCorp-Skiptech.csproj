@@ -79,6 +79,7 @@
     <Compile Include="Skipgate\Comps\CompSkipgateCapacitor.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation_Send.cs" />
     <Compile Include="Skipgate\SkipgateCaravanUtil.cs" />
+    <Compile Include="Skipgate\SkipgateRosterHolder.cs" />
     <Compile Include="Skipgate\SkipgateTargetingUtil.cs" />
     <Compile Include="SkipNet\DijkstraSearchStepper.cs" />
     <Compile Include="GameComponent_Skiptech.cs" />

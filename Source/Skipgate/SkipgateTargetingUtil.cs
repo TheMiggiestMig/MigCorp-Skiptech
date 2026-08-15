@@ -2,6 +2,7 @@
 using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
 using RimWorld.Planet;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -11,6 +12,9 @@ namespace MigCorp.Skiptech.Skipgate
 {
     public static class SkipgateTargetingUtil
     {
+
+        // LINK
+
         public static IEnumerable<Building_Skipgate> FindLinkCandidates(CompSkipgate source)
         {
             foreach (Map map in Find.Maps)
@@ -143,6 +147,149 @@ namespace MigCorp.Skiptech.Skipgate
             if (gates.Count == 1) { return $"Link to {gates[0].RenamableLabel}"; }
 
             return $"{gates.Count} skipgates";
+        }
+
+        // SEND
+
+        // Basically CompLaunchable.GetTransportersFloatMenuOptionsAt, except we give it our "definitely-not-fake-pods" to check against.
+        // Also, don't give the "invalid tile -> contents will be lost" option.
+        public static IEnumerable<FloatMenuOption> GetSendFloatMenuOptionsAt(SkipgateOperation_Send send, PlanetTile tile, Action<PlanetTile, TransportersArrivalAction> launchAction)
+        {
+            // bool anything = false; // Used by vanilla to determine if contents will be lost. We will always be sending pawns, so we don't even want that as an option.
+            IEnumerable<IThingHolder> definitely_not_fake_pods = send.RosterHolders();
+
+            if (TransportersArrivalAction_FormCaravan.CanFormCaravanAt(definitely_not_fake_pods, tile) && !Find.WorldObjects.AnySettlementBaseAt(tile) && !Find.WorldObjects.AnySiteAt(tile))
+            {
+                PlanetTile tileLocal = tile;
+                yield return new FloatMenuOption("FormCaravanHere".Translate(), () => launchAction(tileLocal, new TransportersArrivalAction_FormCaravan()));
+            }
+
+            List<WorldObject> worldObjects = Find.WorldObjects.AllWorldObjects;
+            for (int i = 0; i < worldObjects.Count; i++)
+            {
+                if (worldObjects[i].Tile != tile) { continue; }
+
+                foreach (FloatMenuOption option in worldObjects[i].GetTransportersFloatMenuOptions(definitely_not_fake_pods, launchAction))
+                {
+                    yield return option;
+                }
+            }
+
+            /*
+            // Yeah... don't do this.
+            if (!anything && !Find.World.Impassable(tile))
+            {
+                yield return new FloatMenuOption("TransportPodsContentsWillBeLost".Translate(), delegate
+                {
+                    launchAction(tile, null);
+                });
+            }
+            */
+        }
+
+        private static Action<PlanetTile, TransportersArrivalAction> SendLaunchAction(CompSkipgate source, SkipgateOperation_Send send)
+        {
+            return delegate (PlanetTile tile, TransportersArrivalAction action)
+            {
+                // We've committed by this point, so the targeting session is over either way.
+                Find.WorldTargeter.StopTargeting();
+
+                AcceptanceReport report = send.TrySetDestination(new GlobalTargetInfo(tile), action);
+                if (!report.Accepted)
+                {
+                    Messages.Message(report.Reason, source.parent, MessageTypeDefOf.RejectInput, historical: false);
+                    return;
+                }
+
+                Messages.Message(
+                    $"{(source.parent as Building_Skipgate).RenamableLabel} is charging to send to {send.DestinationLabel} — cost {send.RequiredCharge:F0}.",
+                    source.parent,
+                    MessageTypeDefOf.TaskCompletion,
+                    historical: false);
+            };
+        }
+
+        public static void BeginSendTargeting(CompSkipgate source, SkipgateOperation_Send send)
+        {
+            PlanetTile origin = source.parent.Map.Tile;
+
+            CameraJumper.TryJump(CameraJumper.GetWorldTarget(source.parent));
+            Find.WorldSelector.ClearSelection();
+
+            Find.WorldTargeter.BeginTargeting(
+                (GlobalTargetInfo t) => ChoseSendTarget(source, send, t),
+                canTargetTiles: true,
+                mouseAttachment: CompLaunchable.TargeterMouseAttachment,
+                closeWorldTabWhenFinished: true,
+                onUpdate: null,
+                extraLabelGetter: t => SendHoverLabel(source, send, t),
+                canSelectTarget: t => CanSelectSendTarget(source, send, t),
+                originForClosest: origin,
+                showCancelButton: true);
+        }
+
+        private static bool CanSelectSendTarget(CompSkipgate source, SkipgateOperation_Send send, GlobalTargetInfo target)
+        {
+            if (!target.IsValid) { return false; }
+            if (target.HasWorldObject && !target.WorldObject.def.validLaunchTarget) { return false; }
+
+            return GetSendFloatMenuOptionsAt(send, target.Tile, SendLaunchAction(source, send)).Any();
+        }
+
+        // Much simpler than CompLaunchable.ChoseWorldTarget
+        private static bool ChoseSendTarget(CompSkipgate source, SkipgateOperation_Send send, GlobalTargetInfo target)
+        {
+            if (!target.IsValid)
+            {
+                Messages.Message("MessageTransportPodsDestinationIsInvalid".Translate(), MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
+            if (target.HasWorldObject && !target.WorldObject.def.validLaunchTarget)
+            {
+                Messages.Message("MessageWorldObjectIsInvalid".Translate(target.WorldObject.Named("OBJECT")), MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
+            List<FloatMenuOption> options = GetSendFloatMenuOptionsAt(send, target.Tile, SendLaunchAction(source, send)).ToList();
+
+            if (options.Count == 0)
+            {
+                Messages.Message("MessageTransportPodsDestinationIsInvalid".Translate(), MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
+            if (options.Count == 1)
+            {
+                if (options[0].Disabled) { return false; }
+
+                // The option itself stops the targeter (see SendLaunchAction),
+                // so don't also return true here or a cell-picking option would be closed out from under us.
+                options[0].action();
+                return false;
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options) { vanishIfMouseDistant = false });
+            return false;
+        }
+
+        private static TaggedString SendHoverLabel(CompSkipgate source, SkipgateOperation_Send send, GlobalTargetInfo target)
+        {
+            if (!target.IsValid) { return null; }
+
+            List<FloatMenuOption> options = GetSendFloatMenuOptionsAt(send, target.Tile, SendLaunchAction(source, send)).ToList();
+            if (options.Count == 0) { return null; }
+
+            float cost = send.EstimateCostTo(target);
+
+            CompProperties_SkipgateCapacitor capacitorProps = source.Capacitor.Props;
+            float chargePerSecond = capacitorProps.wattsPerCharge <= 0f ? 0f : capacitorProps.chargingWatts / capacitorProps.wattsPerCharge;
+            float chargeSeconds = chargePerSecond <= 0f ? 0f : Mathf.Max(cost - source.Capacitor.Charge, 0f) / chargePerSecond;
+            float cooldownSeconds = source.Props.heatDissipationPerSecond <= 0f ? 0f : cost * source.Props.heatPerCost / source.Props.heatDissipationPerSecond;
+
+            string header = options.Count == 1 ? options[0].Label : "Click to see available orders";
+
+            return $"{header}\ncost {cost:F0} — charge {chargeSeconds:F0}s — cooldown {cooldownSeconds:F0}s";
         }
 
         private static void DrawCandidateHighlights(List<PlanetTile> tiles)

@@ -1,11 +1,9 @@
 ﻿using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using UnityEngine;
 using Verse;
-using Verse.AI.Group;
 
 namespace MigCorp.Skiptech.Skipgate.Comps
 {
@@ -190,6 +188,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 yield return Gizmo_Cancel();
                 if (CurrentOperation is SkipgateOperation_Link) { yield return Gizmo_ViewLinkedGate(); }
+
+                if (CurrentOperation is SkipgateOperation_Send sending
+                    && sending.Phase == SkipgateOperationPhase.Preparing)
+                {
+                    yield return Gizmo_SetSendDestination(sending);
+                }
             }
             else
             {
@@ -316,6 +320,19 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             return new Command_Action { };
         }
 
+        public Gizmo Gizmo_SetSendDestination(SkipgateOperation_Send send)
+        {
+            return new Command_Action
+            {
+                defaultLabel = send.HasDestination ? "Change destination" : "Set destination",
+                defaultDesc = send.HasDestination
+                    ? $"Currently sending to {send.DestinationLabel}. Picking a new destination recalculates the charge cost."
+                    : "Pick where this skipgate sends its caravan.\n\nThe gate won't start charging until a destination is set.",
+                icon = CompLaunchable.LaunchCommandTex,
+                action = delegate { SkipgateTargetingUtil.BeginSendTargeting(this, send); }
+            };
+        }
+
         public Gizmo Gizmo_EmergencyRecall()
         {
             Command_Action command = Skipgate_Command_Operation(
@@ -382,6 +399,13 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                         sb.AppendLine($"Dialing: {CurrentOperation.Type} ({CurrentOperation.DialingTicksLeft.ToStringTicksToPeriod()})");
                         break;
                 }
+            }
+
+            if (CurrentOperation is SkipgateOperation_Send sendOp)
+            {
+                sb.AppendLine(sendOp.HasDestination
+                    ? $"Destination: {sendOp.DestinationLabel} (cost {sendOp.RequiredCharge:F0})"
+                    : "Destination: none set");
             }
 
             if (DebugSettings.ShowDevGizmos
