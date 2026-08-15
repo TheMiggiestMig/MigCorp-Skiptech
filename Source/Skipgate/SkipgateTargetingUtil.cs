@@ -169,7 +169,7 @@ namespace MigCorp.Skiptech.Skipgate
             {
                 if (worldObjects[i].Tile != tile) { continue; }
 
-                foreach (FloatMenuOption option in worldObjects[i].GetTransportersFloatMenuOptions(definitely_not_fake_pods, launchAction))
+                foreach (FloatMenuOption option in SkipCellOptionsFor(worldObjects[i], definitely_not_fake_pods, launchAction))
                 {
                     yield return option;
                 }
@@ -185,6 +185,57 @@ namespace MigCorp.Skiptech.Skipgate
                 });
             }
             */
+        }
+
+        // Quick filter to strip out cell targeting options and replace them with our own,
+        // since Vanilla's TargetingParameters.ForDropPodsDestination() and DropCellFinder.CanPhysicallyDropInto dont let us choose
+        // overhead mountain or other "undrop-podable" tiles.
+        private static IEnumerable<FloatMenuOption> SkipCellOptionsFor(WorldObject worldObject, IEnumerable<IThingHolder> pods, Action<PlanetTile, TransportersArrivalAction> launchAction)
+        {
+            MapParent mapParent = worldObject as MapParent;
+            bool canLandInCell = mapParent != null && TransportersArrivalAction_LandInSpecificCell.CanLandInSpecificCell(pods, mapParent);
+
+            // Return all the options, but skip out on the "LandInExistingMap" ones (ones that target the cells in a map).
+            // Messy way to do it with "string matching" on the option Label, but not sure how else to do it without funky patches.
+            string vanillaLabel = canLandInCell ? ((string)"LandInExistingMap".Translate(mapParent.Label)).TrimEnd() : null;
+
+            foreach (FloatMenuOption option in worldObject.GetTransportersFloatMenuOptions(pods, launchAction))
+            {
+                if (vanillaLabel != null && option.Label == vanillaLabel) { continue; }
+
+                yield return option;
+            }
+
+            if (!canLandInCell) { yield break; }
+
+            // Since we've stripped out the "cell landing" options, replace them with our own.
+            MapParent mapParentLocal = mapParent;
+            yield return new FloatMenuOption(vanillaLabel, () => BeginSkipCellTargeting(mapParentLocal, launchAction));
+        }
+
+        // Basically the same option setup as MapParent.GetTransportersFloatMenuOptions', but with a less restrictive TargetingParameters.validator.
+        // Only checks if the cell is in bounds, standable, not fogged. More importantly, doesn't care about the (overhead mountain) roof.
+        private static void BeginSkipCellTargeting(MapParent mapParent, Action<PlanetTile, TransportersArrivalAction> launchAction)
+        {
+            Current.Game.CurrentMap = mapParent.Map;
+            CameraJumper.TryHideWorld();
+
+            TargetingParameters parameters = new TargetingParameters
+            {
+                canTargetLocations = true,
+                canTargetSelf = false,
+                canTargetPawns = false,
+                canTargetFires = false,
+                canTargetBuildings = false,
+                canTargetItems = false,
+                validator = (TargetInfo t) => t.Map != null && t.Cell.InBounds(t.Map) && t.Cell.Standable(t.Map) && !t.Cell.Fogged(t.Map)
+            };
+
+            MapParent mapParentLocal = mapParent;
+            Find.Targeter.BeginTargeting(parameters, delegate (LocalTargetInfo x)
+            {
+                launchAction(mapParentLocal.Tile, new TransportersArrivalAction_LandInSpecificCell(mapParentLocal, x.Cell, Rot4.North, landInShuttle: false));
+            }, null, null, CompLaunchable.TargeterMouseAttachment);
         }
 
         private static Action<PlanetTile, TransportersArrivalAction> SendLaunchAction(CompSkipgate source, SkipgateOperation_Send send)

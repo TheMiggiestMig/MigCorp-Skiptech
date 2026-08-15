@@ -10,7 +10,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
     // Sends a formed skipgate caravan to a world destination.
     public class SkipgateOperation_Send : SkipgateOperation
     {
-        private const int ValidityCheckInterval = 250; // mainly to check selected destination (did someone blow up a map tile? etc.)
+        private const int ValidityCheckInterval = 60; // mainly to check selected destination (did someone blow up a map tile? etc.)
 
         private Lord lord;
 
@@ -137,13 +137,10 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         }
 
         // Actually calculate and apply the cost changes back to the capacitor.
-        private void RecostFromActualMass()
+        private void Recost(float mass)
         {
-            float actual = CalculateSendCost(gate, CarriedMass(), TilesTo(destination));
+            requiredCharge = CalculateSendCost(gate, mass, TilesTo(destination));
 
-            //if (actual >= requiredCharge) { return; }
-
-            requiredCharge = actual;
             ApplyRuntimeState();
         }
 
@@ -197,6 +194,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             validityTicks = 0;
 
+            Recost(PlannedMass()); // Might as well do the check here. No need to maintain 2 separate tick timers.
             if (DestinationStillValid()) { return; }
 
             Messages.Message(
@@ -215,7 +213,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             TickDestinationValidity(delta);
 
             // One-shot recost, immediately before the base decides to start dialing.
-            if (ReadyToDial) { RecostFromActualMass(); }
+            if (ReadyToDial) { Recost(CarriedMass()); }
 
             base.TickPreparing(delta);
         }
