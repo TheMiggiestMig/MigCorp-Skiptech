@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using MigCorp.Skiptech.Skipgate;
 using MigCorp.Skiptech.Skipgate.Comps;
+using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
 using RimWorld.Planet;
 using System.Collections.Generic;
@@ -8,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using Verse;
 using Verse.AI;
+using Verse.AI.Group;
 
 namespace MigCorp.Skiptech.Patches.Core
 {
@@ -46,6 +48,21 @@ namespace MigCorp.Skiptech.Patches.Core
         private static bool TryFormAndSendSkipgateCaravan(Dialog_FormSkipgateCaravan dialog)
         {
             CompSkipgate gate = dialog.gate;
+
+            // If the gate is doing something else, we can't use it to Send.
+            if (gate.CurrentOperation != null)
+            {
+                Messages.Message("This skipgate is already busy.", gate.parent, MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
+            // If the gate is cooling down, we can't use it to Send.
+            if (gate.CoolingDown)
+            {
+                Messages.Message("This skipgate cannot be used while dispersing heat.", gate.parent, MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
             List<Pawn> pawns = TransferableUtility.GetPawnsFromTransferables(dialog.transferables);
 
             // Re-use vanilla's private Dialog_FormCaravan.CheckForErrors.
@@ -68,8 +85,21 @@ namespace MigCorp.Skiptech.Patches.Core
                 return false;
             }
 
-            SkipgateCaravanUtil.StartFormingSkipgateCaravan(pawns.Where(x => !x.Downed).ToList(), pawns.Where(x => x.Downed).ToList(), dialog.transferables, gate);
+            Lord lord = SkipgateCaravanUtil.StartFormingSkipgateCaravan(pawns.Where(x => !x.Downed).ToList(), pawns.Where(x => x.Downed).ToList(), dialog.transferables, gate);
+            if (lord == null) { return false; } // Already logged by StartFormingSkipgateCaravan.
+
+            // The Send operation drives the gate from here.
+            // The lord only gathers and holds.
+            if (!gate.TryStartOperation(new SkipgateOperation_Send(gate, lord)))
+            {
+                // Pre-checked above so this shouldn't fire, but just in case, never leave a op-less lord behind.
+                CaravanFormingUtility.StopFormingCaravan(lord);
+                return false;
+            }
+
             Messages.Message("CaravanFormationProcessStarted".Translate(), pawns[0], MessageTypeDefOf.PositiveEvent, historical: false);
+
+            // Don't skip out on vanilla lessons.
             if (ModsConfig.BiotechActive && pawns.Any(p => p.RaceProps.IsMechanoid))
             {
                 LessonAutoActivator.TeachOpportunity(ConceptDefOf.MechsInCaravans, OpportunityType.GoodToKnow);

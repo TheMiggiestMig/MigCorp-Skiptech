@@ -384,17 +384,13 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 }
             }
 
-            if (DebugSettings.ShowDevGizmos)
+            if (DebugSettings.ShowDevGizmos
+                && CurrentOperation is SkipgateOperation_Send send
+                && send.FormingCaravan != null)
             {
-                Lord formingLord = parent.Map?.lordManager.lords
-                    .FirstOrDefault(l => l.LordJob is LordJob_FormSkipgateCaravan);
-
-                if (formingLord?.LordJob is LordJob_FormSkipgateCaravan formingJob)
-                {
-                    sb.AppendLine($"DEV caravan: {formingJob.Status} — holding: {formingJob.Holding}, assembled: {formingJob.AllAssembled}");
-                }
+                LordJob_FormSkipgateCaravan caravan = send.FormingCaravan;
+                sb.AppendLine($"DEV caravan: {caravan.Status} — holding: {caravan.Holding}, assembled: {caravan.AllAssembled}");
             }
-
 
             if (CoolingDown) { sb.AppendLine($"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"); }
 
