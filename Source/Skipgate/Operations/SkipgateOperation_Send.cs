@@ -1,6 +1,8 @@
 ﻿using MigCorp.Skiptech.Skipgate.Comps;
+using MigCorp.Skiptech.Utils;
 using RimWorld;
 using RimWorld.Planet;
+using System;
 using System.Collections.Generic;
 using Verse;
 using Verse.AI.Group;
@@ -91,7 +93,16 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             things.AddRange(lord.ownedPawns);
 
             LordJob_FormSkipgateCaravan caravan = FormingCaravan;
-            if (caravan != null) { things.AddRange(caravan.downedPawns); }
+            if (caravan != null)
+            {
+                // Make sure we don't double up on downedPawns.
+                // Warnings happen in ownership transfer otherwise :/
+                for (int i = 0; i < caravan.downedPawns.Count; i++)
+                {
+                    Pawn downed = caravan.downedPawns[i];
+                    if (!things.Contains(downed)) { things.Add(downed); }
+                }
+            }
 
             return things;
         }
@@ -207,12 +218,23 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             Recost(PlannedMass()); // Might as well do the check here. No need to maintain 2 separate tick timers.
             if (DestinationStillValid()) { return; }
 
+            MessageDestinationLost();
+            ClearDestination();
+        }
+        private void MessageDestinationLost()
+        {
             Messages.Message(
                 $"{GateLabel} lost its destination. Pick a new one before it can dial.",
                 gate.parent,
                 MessageTypeDefOf.NegativeEvent,
                 historical: false);
+        }
+        private void ReArmAfterLostDestination()
+        {
+            phase = SkipgateOperationPhase.Preparing;
+            dialingTicksLeft = 0;
 
+            MessageDestinationLost();
             ClearDestination();
         }
 
@@ -259,38 +281,138 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         protected override void Execute()
         {
-            if (!TrySpendRequiredCharge()) { return; }
+            if (CheckCaravanLost()) { return; }
 
-            // TODO Actual teleport.
-            Messages.Message(
-                $"{GateLabel} completed a send to {DestinationLabel}. (Testing - nothing was teleported.)",
-                gate.parent,
-                MessageTypeDefOf.NeutralEvent,
-                historical: false);
+            if (!DestinationStillValid())
+            {
+                ReArmAfterLostDestination();
+                return;
+            }
+
+            List<Thing> roster = RosterThings();
+            if (roster.Count == 0)
+            {
+                FailOperation($"{GateLabel} had nothing left to send.");
+                return;
+            }
+
+            if (!ChargeReady)
+            {
+                FailOperation("Insufficient charge at execution.");
+                return;
+            }
+
+            // Snapshot these before the lord goes, in case something goes wrong and we need to "Return To Sender".
+            Map map = gate.parent.Map;
+            IntVec3 gateCell = gate.parent.Position;
+            TransportersArrivalAction action = arrivalAction;
+            PlanetTile tile = destination.Tile;
+
+            ReleaseCaravan();
+
+            ActiveTransporterInfo info = new ActiveTransporterInfo();
+            info.openDelay = 0; // TEST (we won't be using pods for the final. Just make these open instantly).
+
+            for (int i = 0; i < roster.Count; i++)
+            {
+                Thing thing = roster[i];
+
+                //if (thing.Spawned) { thing.DeSpawn(); }
+                if (thing.Spawned) { thing.DeSpawnOrDeselect(); }
+
+                // TryAddOrTransfer rather than TryAdd, for the same reason: a carried pawn already has a
+                // holdingOwner and TryAdd flatly refuses (and warns about) anything that does.
+                if (info.innerContainer.TryAddOrTransfer(thing)) { continue; }
+
+                // Still fully recoverable. Put it all back on the floor and charge nothing.
+                DropAllAtGate(info, map, gateCell);
+                FailOperation($"{GateLabel} could not take {thing.LabelShortCap} through. The send was aborted.");
+                return;
+            }
+
+            if (!TrySpendRequiredCharge())
+            {
+                // Give up.
+                DropAllAtGate(info, map, gateCell);
+                return;
+            }
+
+            List<ActiveTransporterInfo> transporters = new List<ActiveTransporterInfo> { info };
+
+            // Generating a destination map is slow enough that vanilla always does it inside a long event
+            // (TravellingTransporters.Arrived). Doing it inline from a CompTick is no bueno.
+            if (action.ShouldUseLongEvent(transporters, tile))
+            {
+                LongEventHandler.QueueLongEvent(
+                    () => DoArrival(action, transporters, tile, map, gateCell),
+                    "GeneratingMapForNewEncounter",
+                    false,
+                    null);
+            }
+            else
+            {
+                DoArrival(action, transporters, tile, map, gateCell);
+            }
 
             CompleteOperation(requiredCharge);
         }
 
+        // Functions like TravellingTransporters.DoArrivalAction, which also swallows and logs arrival exceptions.
+        private void DoArrival(TransportersArrivalAction action, List<ActiveTransporterInfo> transporters, PlanetTile tile, Map originMap, IntVec3 originCell)
+        {
+            try
+            {
+                action.Arrived(transporters, tile);
+            }
+            catch (Exception ex)
+            {
+                SkiptechUtil.Error($"Skipgate arrival action failed: {ex}");
+
+                for (int i = 0; i < transporters.Count; i++)
+                {
+                    DropAllAtGate(transporters[i], originMap, originCell);
+                }
+
+                Find.LetterStack.ReceiveLetter(
+                    "Skip failed",
+                    $"{GateLabel} could not complete the skip. Everything it was carrying has been dropped at the gate.",
+                    LetterDefOf.NegativeEvent,
+                    new TargetInfo(originCell, originMap));
+            }
+        }
+
+        // Last-ditch recovery. Drop everything in dramatic fashion.
+        private static void DropAllAtGate(ActiveTransporterInfo info, Map map, IntVec3 cell)
+        {
+            if (map == null) { return; }
+
+            info.innerContainer.TryDropAll(cell, map, ThingPlaceMode.Near);
+        }
+
         protected override void OnCompleted()
         {
-            // TODO move caravan to world (if it's not going to an actual map cell).
-            DisbandCaravan();
+            ReleaseCaravan();
         }
 
         protected override void OnCancelled()
         {
-            DisbandCaravan();
+            AbortCaravan();
         }
 
         protected override void OnFailed(string reason)
         {
             Messages.Message(reason, gate.parent, MessageTypeDefOf.NegativeEvent, historical: false);
 
-            DisbandCaravan();
+            AbortCaravan();
+        }
+        private void ReleaseCaravan()
+        {
+            if (LordAlive) { lord.lordManager.RemoveLord(lord); }
+
+            lord = null;
         }
 
-        // Make sure we kill the caravan lord if the op stops / is killed.
-        private void DisbandCaravan()
+        private void AbortCaravan()
         {
             if (LordAlive) { CaravanFormingUtility.StopFormingCaravan(lord); }
 
@@ -307,12 +429,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             // A destination can go stale while the save sits on disk.
             if (HasDestination && !DestinationStillValid())
             {
-                Messages.Message(
-                    $"{GateLabel} lost its destination. Pick a new one before it can dial.",
-                    gate.parent,
-                    MessageTypeDefOf.NegativeEvent,
-                    historical: false);
-
+                MessageDestinationLost();
                 ClearDestination();
             }
         }
