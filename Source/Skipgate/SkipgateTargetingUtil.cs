@@ -341,12 +341,14 @@ namespace MigCorp.Skiptech.Skipgate
 
             float cost = send.EstimateCostTo(target);
 
-            float chargeSeconds = source.Capacitor.EstimateChargeTicks(cost) / 60f;
+            string chargeTime = source.Capacitor.EstimateChargeTicks(cost).ToStringTicksToPeriod();
+            float watts = source.Capacitor.WattsForCost(cost);
             float cooldownSeconds = source.CooldownTicksFor(cost * source.Props.heatPerCost) / 60f;
 
             string header = options.Count == 1 ? options[0].Label : "Click to see available orders";
 
-            return $"{header}\ncost {cost:F0} — charge {chargeSeconds:F0}s — cooldown {cooldownSeconds:F0}s";
+            // return $"{header}\ncost {cost:F0} — {watts:F0}W for {chargeSeconds:F0}s — cooldown {cooldownSeconds:F0}s";
+            return $"{header}\ncost {cost:F0} — {watts:F0}W for {chargeTime} — cooldown {cooldownSeconds:F0}s";
         }
 
         private static void DrawCandidateHighlights(List<PlanetTile> tiles)

@@ -43,6 +43,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         public SkipgateOperationPhase Phase => phase;
         public float RequiredCharge => requiredCharge;
         public int DialingTicksLeft => dialingTicksLeft;
+        protected virtual int ChargeTicks => gate.Capacitor.Props.chargeTicks;
         protected virtual bool ChecksCapacityPolicy => true;
         protected virtual float CancelHeat => 0f; // The heat applied on cancel. Will usually be 0f, but Unlinking changes that.
         protected virtual bool UsesCapacitor => true;
@@ -206,7 +207,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                 && (phase == SkipgateOperationPhase.Preparing
                     || phase == SkipgateOperationPhase.Dialing))
             {
-                gate.Capacitor.SetTarget(requiredCharge);
+                gate.Capacitor.SetTarget(requiredCharge, gate.Capacitor.WattsForCost(requiredCharge, ChargeTicks));
             }
         }
 

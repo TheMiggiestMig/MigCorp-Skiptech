@@ -16,8 +16,6 @@ namespace MigCorp.Skiptech.Patches.Core
     [HarmonyPatch(typeof(Dialog_FormCaravan))]
     public static class Dialog_FormCaravan_Patch
     {
-        private static MethodInfo checkForErrorsMethod = AccessTools.Method(typeof(Dialog_FormCaravan), "CheckForErrors");
-
         // Use our TryFormAndSendSkipgateCaravan instead if we are using a skipgate.
         [HarmonyPrefix]
         [HarmonyPatch(typeof(Dialog_FormCaravan), "TryFormAndSendCaravan")]
@@ -65,8 +63,7 @@ namespace MigCorp.Skiptech.Patches.Core
 
             List<Pawn> pawns = TransferableUtility.GetPawnsFromTransferables(dialog.transferables);
 
-            // Re-use vanilla's private Dialog_FormCaravan.CheckForErrors.
-            if (!(bool)checkForErrorsMethod.Invoke(dialog, new object[] { pawns })) { return false; } // It's ugly, but it works.
+            if (!CheckForErrors(dialog, pawns)) { return false; }
 
             // We don't do exit spots, so instead, check that all applicable pawns can reach the skipgate instead.
             Pawn unreachable = pawns.FirstOrDefault(x => x.IsColonist && !x.Downed && !x.CanReach(gate.parent, PathEndMode.Touch, Danger.Deadly));
@@ -110,6 +107,59 @@ namespace MigCorp.Skiptech.Patches.Core
             SkipgateTargetingUtil.BeginSendTargeting(gate, sendOp);
 
             return true;
+        }
+
+        // Modified copy of Dialog_FormCaravan.CheckForErrors.
+        // Strips location checks (we do that later),
+        // strips mass checks (just yeet em, if they skipped leg day and can't carry the load, that's their problem).
+        private static bool CheckForErrors(Dialog_FormSkipgateCaravan dialog, List<Pawn> pawns)
+        {
+            if (!pawns.Any((Pawn x) => CaravanUtility.IsOwner(x, Faction.OfPlayer) && !x.Downed))
+            {
+                if (ModsConfig.IdeologyActive) { Messages.Message("CaravanMustHaveAtLeastOneNonSlaveColonist".Translate(), MessageTypeDefOf.RejectInput, historical: false); }
+                else { Messages.Message("CaravanMustHaveAtLeastOneColonist".Translate(), MessageTypeDefOf.RejectInput, historical: false); }
+
+                return false;
+            }
+
+            List<TransferableOneWay> transferables = dialog.transferables;
+            for (int i = 0; i < transferables.Count; i++)
+            {
+                if (transferables[i].ThingDef.category != ThingCategory.Item) { continue; }
+
+                int countToTransfer = transferables[i].CountToTransfer;
+                int num = 0;
+                if (countToTransfer <= 0) { continue; }
+
+                for (int j = 0; j < transferables[i].things.Count; j++)
+                {
+                    Thing t = transferables[i].things[j];
+                    if (!t.Spawned || pawns.Any((Pawn x) => x.IsColonist && x.CanReach(t, PathEndMode.Touch, Danger.Deadly)))
+                    {
+                        num += t.stackCount;
+                        if (num >= countToTransfer) { break; }
+                    }
+                }
+
+                if (num < countToTransfer)
+                {
+                    if (countToTransfer == 1) { Messages.Message("CaravanItemIsUnreachableSingle".Translate(transferables[i].ThingDef.label), MessageTypeDefOf.RejectInput, historical: false); }
+                    else { Messages.Message("CaravanItemIsUnreachableMulti".Translate(countToTransfer, transferables[i].ThingDef.label), MessageTypeDefOf.RejectInput, historical: false); }
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(Dialog_FormCaravan), "CheckForErrors")]
+        static bool CheckForErrors_Prefix(Dialog_FormCaravan __instance, List<Pawn> pawns, ref bool __result)
+        {
+            if (!(__instance is Dialog_FormSkipgateCaravan dialog)) { return true; }
+
+            __result = CheckForErrors(dialog, pawns);
+            return false;
         }
     }
 }

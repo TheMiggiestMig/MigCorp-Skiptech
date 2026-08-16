@@ -17,6 +17,9 @@ namespace MigCorp.Skiptech.Skipgate.Operations
     {
         private SkipgateRecallMode mode;
         private float emergencyRecallActualCost;
+        protected override int ChargeTicks => mode == SkipgateRecallMode.Emergency
+            ? gate.Props.emergencyChargeTicks
+            : base.ChargeTicks;
         public override SkipgateOperationType Type => SkipgateOperationType.Recall;
         public SkipgateOperation_Recall(CompSkipgate gate) : base(gate)
         {

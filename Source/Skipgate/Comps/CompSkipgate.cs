@@ -11,7 +11,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
     {
         public CompProperties_Skipgate() => compClass = typeof(CompSkipgate);
 
-        public float heatPerCost = 1f;
+        public float heatPerCost = 2.5f;
         public float heatDissipationPerSecond = 1f;
 
         // Dialing time (10/64 glyph dialing phase after charging completes and pawns / load is ready).
@@ -25,6 +25,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public float sendCostBase = 10f;
         public float sendCostPerKg = 0.05f;
         public float sendCostPerKgPerTile = 0.002f;
+
+        public int emergencyChargeTicks = 180;
     }
 
     [StaticConstructorOnStartup]
@@ -64,7 +66,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private bool postLoadValidationPending;
         private bool autoSend;
         public bool AutoSend => autoSend;
-        public void ToggleAutoSend() => autoSend = !autoSend;
+        public void SetAutoSend(bool value) => autoSend = value;
 
         public override void PostExposeData()
         {

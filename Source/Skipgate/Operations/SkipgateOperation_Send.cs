@@ -38,10 +38,15 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         // Everything is charged and gathered, we're just waiting on the player to say go.
         public bool AwaitingSendOrder => ReadyToDial && !SendOrdered;
-
         public void ToggleSendOrder()
         {
             sendPressed = !sendPressed;
+            gate.SetAutoSend(false);
+        }
+        public void ToggleAutoSend()
+        {
+            sendPressed = false;
+            gate.SetAutoSend(!gate.AutoSend);
         }
         public bool HasDestination => destination.IsValid;
         public GlobalTargetInfo Destination => destination;
@@ -292,8 +297,6 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             TransportersArrivalAction action = arrivalAction;
             PlanetTile tile = destination.Tile;
 
-            ReleaseCaravan();
-
             ActiveTransporterInfo info = new ActiveTransporterInfo();
             info.openDelay = 0;
             info.sentTransporterDef = SkiptechDefOf.MigCorp_SkipgateSent;
@@ -313,6 +316,8 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                 FailOperation($"{GateLabel} could not take {thing.LabelShortCap} through. The send was aborted.");
                 return;
             }
+
+            ReleaseCaravan();
 
             if (!TrySpendRequiredCharge())
             {
@@ -400,8 +405,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             if (phase != SkipgateOperationPhase.Preparing) { yield break; }
 
             yield return Gizmo_SetSendDestination();
-            yield return Gizmo_SendOrder();
-            yield return Gizmo_AutoSend();
+            yield return new Command_SkipgateSendOrder(gate, this);
         }
 
         private Gizmo Gizmo_SetSendDestination()
@@ -414,42 +418,6 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                     : "Pick where this skipgate sends its caravan.\n\nThe gate won't start charging until a destination is set.",
                 icon = CompLaunchable.LaunchCommandTex,
                 action = delegate { SkipgateTargetingUtil.BeginSendTargeting(gate, this); }
-            };
-        }
-
-        // Arms the gate to fire this Send as soon as it's ready (like AutoSend, except only for this instance).
-        private Gizmo Gizmo_SendOrder()
-        {
-            Command_Toggle command = new Command_Toggle
-            {
-                defaultLabel = "Send",
-                defaultDesc = "Order this caravan to skip as soon as the gate is charged and everyone has gathered.\n\n" +
-                    "Leave it off to keep holding at the gate. A full charge latches, so waiting costs nothing.",
-                icon = CompLaunchable.LaunchCommandTex,
-                isActive = () => sendPressed,
-                toggleAction = delegate { ToggleSendOrder(); }
-            };
-
-            if (gate.AutoSend)
-            {
-                command.Disabled = true;
-                command.disabledReason = "Auto-send is on, so this caravan will leave on its own.";
-            }
-
-            return command;
-        }
-
-        // Toggles auto-firing Send (when ready).
-        private Gizmo Gizmo_AutoSend()
-        {
-            return new Command_Toggle
-            {
-                defaultLabel = "Auto-send",
-                defaultDesc = "Send every caravan the moment this skipgate is charged and the caravan has gathered, without waiting for a send order.\n\n" +
-                    "This is a setting on the gate: it stays on for future sends.",
-                icon = TexCommand.ReleaseAnimals,
-                isActive = () => gate.AutoSend,
-                toggleAction = delegate { gate.ToggleAutoSend(); }
             };
         }
 
