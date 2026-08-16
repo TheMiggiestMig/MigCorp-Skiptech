@@ -1,4 +1,7 @@
 ﻿using MigCorp.Skiptech.Skipgate.Comps;
+using RimWorld;
+using System.Collections.Generic;
+using System.Text;
 using Verse;
 
 namespace MigCorp.Skiptech.Skipgate.Operations
@@ -46,6 +49,10 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         protected virtual bool PreparationReady => true;
         protected bool ChargeReady => !UsesCapacitor || gate.Capacitor.Charge >= requiredCharge;
         protected bool ReadyToDial => ChargeReady && PreparationReady;
+
+        public virtual string CancelLabel => phase == SkipgateOperationPhase.Dialing ? "Cancel Dialing" : "Cancel Charging";
+        public virtual string CancelDesc => "Cancel the current action.\n\nThe current charge will remain but slowly drain.";
+        public virtual string CancelConfirmation => null;
 
         protected SkipgateOperation(CompSkipgate gate)
         {
@@ -216,6 +223,25 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             Scribe_Values.Look(ref phase, "phase", SkipgateOperationPhase.Preparing);
             Scribe_Values.Look(ref requiredCharge, "requiredCharge", 0f);
             Scribe_Values.Look(ref dialingTicksLeft, "dialingTicksLeft", 0);
+        }
+
+        public virtual IEnumerable<Gizmo> GetGizmos()
+        {
+            yield break;
+        }
+
+        public virtual void AppendInspectLines(StringBuilder sb)
+        {
+            switch (phase)
+            {
+                case SkipgateOperationPhase.Preparing:
+                    sb.AppendLine($"Preparing: {Type}");
+                    break;
+
+                case SkipgateOperationPhase.Dialing:
+                    sb.AppendLine($"Dialing: {Type} ({dialingTicksLeft.ToStringTicksToPeriod()})");
+                    break;
+            }
         }
     }
 }

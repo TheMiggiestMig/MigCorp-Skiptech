@@ -32,7 +32,6 @@
         <tickerType>Normal</tickerType>
 
         <designationCategory>Misc</designationCategory>
-        <constructionSkillPrerequisite>0</constructionSkillPrerequisite>
 
         <statBases>
             <MaxHitPoints>1000</MaxHitPoints>

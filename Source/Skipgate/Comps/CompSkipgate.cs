@@ -30,7 +30,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
     [StaticConstructorOnStartup]
     public class CompSkipgate : ThingComp
     {
-        private static readonly Texture2D ViewLinkedGateIcon = ContentFinder<Texture2D>.Get("UI/Commands/ViewCave");
         private static readonly Texture2D CancelIcon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel");
         public CompProperties_Skipgate Props => (CompProperties_Skipgate)props;
         private CompSkipgateCapacitor capacitor;
@@ -38,6 +37,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         private SkipgateOperation currentOperation;
         public SkipgateOperation CurrentOperation => currentOperation;
+        public Building_Skipgate Gate => (Building_Skipgate)parent;
+        public string GateLabel => Gate.RenamableLabel;
 
         private Building_SkipgatePortal portal;
         public Building_SkipgatePortal Portal => portal;
@@ -62,6 +63,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private bool postLoadValidationPending;
         private bool autoSend;
         public bool AutoSend => autoSend;
+        public void ToggleAutoSend() => autoSend = !autoSend;
 
         public override void PostExposeData()
         {
@@ -115,7 +117,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 if (!CoolingDown)
                 {
                     heatRemaining = 0f;
-                    Messages.Message($"Skipgate {(parent as Building_Skipgate).RenamableLabel} is ready to be used again.", MessageTypeDefOf.NeutralEvent);
+                    Messages.Message($"Skipgate {GateLabel} is ready to be used again.", MessageTypeDefOf.NeutralEvent);
                 }
             }
         }
@@ -190,14 +192,10 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             if (CurrentOperation != null)
             {
                 yield return Gizmo_Cancel();
-                if (CurrentOperation is SkipgateOperation_Link) { yield return Gizmo_ViewLinkedGate(); }
 
-                if (CurrentOperation is SkipgateOperation_Send sending
-                    && sending.Phase == SkipgateOperationPhase.Preparing)
+                foreach (Gizmo gizmo in CurrentOperation.GetGizmos())
                 {
-                    yield return Gizmo_SetSendDestination(sending);
-                    yield return Gizmo_SendOrder(sending);
-                    yield return Gizmo_AutoSend();
+                    yield return gizmo;
                 }
             }
             else
@@ -238,48 +236,26 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                     defaultLabel = "DEV: Reset heat",
                     action = delegate { heatRemaining = 0; }
                 };
-                /*
-                if (CurrentOperation == null)
-                {
-                    yield return new Command_Action
-                    {
-                        defaultLabel = "DEV: Form skipgate caravan",
-                        defaultDesc = "Opens the skipgate caravan-forming dialog. Accepting starts the forming lord; op binding arrives with the Send operation.",
-
-                        action = delegate
-                        {
-                            Find.WindowStack.Add(new Dialog_FormSkipgateCaravan(this));
-                        }
-                    };
-                }*/
             }
         }
 
         public Gizmo Gizmo_Cancel()
         {
-            bool isLiveLink = CurrentOperation is SkipgateOperation_Link && CurrentOperation.Phase == SkipgateOperationPhase.Active;
-            bool isIncomingLink = !isLiveLink && CurrentOperation is SkipgateOperation_Link incomingLink && incomingLink.Role == LinkRole.Responder;
-
-            string label;
-            if (isLiveLink) { label = "Unlink"; }
-            else if (isIncomingLink) { label = "Cancel Link"; }
-            else if (CurrentOperation.Phase == SkipgateOperationPhase.Dialing) { label = "Cancel Dialing"; }
-            else { label = "Cancel Charging"; }
+            SkipgateOperation operation = CurrentOperation;
 
             return new Command_Action
             {
-                defaultLabel = label,
-                defaultDesc = isLiveLink
-                    ? "Close the link.\n\nWARNING: Both skipgates will generate heat and must cool down."
-                    : "Cancel the current action.\n\nThe current charge will remain but slowly drain.",
+                defaultLabel = operation.CancelLabel,
+                defaultDesc = operation.CancelDesc,
                 icon = CancelIcon,
                 action = delegate
                 {
-                    if (isLiveLink)
+                    string confirmation = operation.CancelConfirmation;
+
+                    if (confirmation != null)
                     {
-                        Building_Skipgate far = LinkedFarGate?.parent as Building_Skipgate;
                         Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(
-                            $"Unlink from {far?.RenamableLabel}?\n\nBoth skipgates will take heat and must cool down before they can be used again.",
+                            confirmation,
                             () => currentOperation?.TryCancel(),
                             destructive: true));
                         return;
@@ -287,21 +263,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
                     currentOperation?.TryCancel();
                 }
-            };
-        }
-
-        public Gizmo Gizmo_ViewLinkedGate()
-        {
-            Building_Skipgate far = (Building_Skipgate)((SkipgateOperation_Link)CurrentOperation).OtherGate.parent;
-
-            return new Command_Action
-            {
-                defaultLabel = CurrentOperation.Phase == SkipgateOperationPhase.Active
-                    ? "View linked skipgate"
-                    : "View linking skipgate",
-                defaultDesc = $"Jump the camera to {far.RenamableLabel}.",
-                icon = ViewLinkedGateIcon,
-                action = () => CameraJumper.TryJumpAndSelect(far)
             };
         }
 
@@ -332,55 +293,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             command.icon = CompLaunchable.LaunchCommandTex;
 
             return command;
-        }
-
-        // Arms the gate to fire a Send as soon as it's ready (like AutoSend, except only for this instance).
-        public Gizmo Gizmo_SendOrder(SkipgateOperation_Send send)
-        {
-            Command_Toggle command = new Command_Toggle
-            {
-                defaultLabel = "Send",
-                defaultDesc = "Order this caravan to skip as soon as the gate is charged and everyone has gathered.\n\n" +
-                    "Leave it off to keep holding at the gate. A full charge latches, so waiting costs nothing.",
-                icon = CompLaunchable.LaunchCommandTex,
-                isActive = () => send.SendPressed,
-                toggleAction = delegate { send.ToggleSendOrder(); }
-            };
-
-            if (AutoSend)
-            {
-                command.Disabled = true;
-                command.disabledReason = "Auto-send is on, so this caravan will leave on its own.";
-            }
-
-            return command;
-        }
-
-        // Toggles auto-firing Send (when ready)
-        public Gizmo Gizmo_AutoSend()
-        {
-            return new Command_Toggle
-            {
-                defaultLabel = "Auto-send",
-                defaultDesc = "Send every caravan the moment this skipgate is charged and the caravan has gathered, without waiting for a send order.\n\n" +
-                    "This is a setting on the gate: it stays on for future sends.",
-                icon = TexCommand.ReleaseAnimals,
-                isActive = () => autoSend,
-                toggleAction = delegate { autoSend = !autoSend; }
-            };
-        }
-
-        public Gizmo Gizmo_SetSendDestination(SkipgateOperation_Send send)
-        {
-            return new Command_Action
-            {
-                defaultLabel = send.HasDestination ? "Change destination" : "Set destination",
-                defaultDesc = send.HasDestination
-                    ? $"Currently sending to {send.DestinationLabel}. Picking a new destination recalculates the charge cost."
-                    : "Pick where this skipgate sends its caravan.\n\nThe gate won't start charging until a destination is set.",
-                icon = CompLaunchable.LaunchCommandTex,
-                action = delegate { SkipgateTargetingUtil.BeginSendTargeting(this, send); }
-            };
         }
 
         public Gizmo Gizmo_EmergencyRecall()
@@ -414,7 +326,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public Gizmo Gizmo_Link()
         {
-            // Custom Command (so that the right-click could be overridden to produce a list while left click opens world map targeting).
             return new Command_LinkSkipgate(this);
         }
 
@@ -422,51 +333,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             StringBuilder sb = new StringBuilder();
 
-            if (CurrentOperation is SkipgateOperation_Link activeLink
-                && activeLink.Phase == SkipgateOperationPhase.Active)
-            {
-                sb.AppendLine($"Linked to: {(LinkedFarGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
-
-                if (!Capacitor.Powered && Capacitor.LoadPerSecond > 0f)
-                {
-                    int collapseTicks = Mathf.CeilToInt(Capacitor.Charge / Capacitor.LoadPerSecond * 60f);
-                    sb.AppendLine($"WARNING: no power — link collapse in {collapseTicks.ToStringTicksToPeriod()}");
-                }
-            }
-            else if (CurrentOperation is SkipgateOperation_Link incoming && incoming.Role == LinkRole.Responder)
-            {
-                sb.AppendLine($"Incoming link from: {(incoming.OtherGate?.parent as Building_Skipgate)?.RenamableLabel ?? "unknown"}");
-            }
-            else if (CurrentOperation != null)
-            {
-                switch (CurrentOperation.Phase)
-                {
-                    case SkipgateOperationPhase.Preparing:
-                        sb.AppendLine($"Preparing: {CurrentOperation.Type}");
-                        break;
-
-                    case SkipgateOperationPhase.Dialing:
-                        sb.AppendLine($"Dialing: {CurrentOperation.Type} ({CurrentOperation.DialingTicksLeft.ToStringTicksToPeriod()})");
-                        break;
-                }
-            }
-
-            if (CurrentOperation is SkipgateOperation_Send sendOp)
-            {
-                sb.AppendLine(sendOp.HasDestination
-                    ? $"Destination: {sendOp.DestinationLabel} (cost {sendOp.RequiredCharge:F0})"
-                    : "Destination: none set");
-
-                if (sendOp.AwaitingSendOrder) { sb.AppendLine("Ready — awaiting send order."); }
-            }
-
-            if (DebugSettings.ShowDevGizmos
-                && CurrentOperation is SkipgateOperation_Send send
-                && send.FormingCaravan != null)
-            {
-                LordJob_FormSkipgateCaravan caravan = send.FormingCaravan;
-                sb.AppendLine($"DEV caravan: {caravan.Status} — holding: {caravan.Holding}, assembled: {caravan.AllAssembled}");
-            }
+            CurrentOperation?.AppendInspectLines(sb);
 
             if (CoolingDown) { sb.AppendLine($"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"); }
 

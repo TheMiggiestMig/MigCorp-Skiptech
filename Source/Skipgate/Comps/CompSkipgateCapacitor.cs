@@ -1,5 +1,4 @@
 ﻿using RimWorld;
-using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using Verse;
@@ -27,7 +26,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private float currentCharge;
         private float targetCharge;
         private float loadPerSecond;
-        //private float activeChargingWatts;
         private float requestedChargingWatts;
 
         private CompPowerTrader powerComp;
@@ -219,45 +217,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             }
 
             return sb.ToString();
-        }
-
-        // DEV Only
-        public override IEnumerable<Gizmo> CompGetGizmosExtra()
-        {
-            if (!DebugSettings.ShowDevGizmos) { yield break; }
-
-            yield return new Command_Action
-            {
-                defaultLabel = "DEV: Target 66",
-                action = () => SetTarget(66f)
-            };
-            yield return new Command_Action
-            {
-                defaultLabel = "DEV: Clear target",
-                action = ClearTarget
-            };
-            yield return new Command_Action
-            {
-                defaultLabel = "DEV: Fill",
-                action = () => currentCharge = HasTarget ? targetCharge : Props.maxCharge > 0f ? Props.maxCharge : 66f
-            };
-            yield return new Command_Action
-            {
-                defaultLabel = "DEV: Empty",
-                action = () => currentCharge = 0f
-            };
-            yield return new Command_Action
-            {
-                defaultLabel = loadPerSecond > 0f
-                    ? "DEV: Drain off"
-                    : "DEV: Drain 0.4/s",
-                action = () => SetLoad(loadPerSecond > 0f ? 0f : 0.4f)
-            };
-            yield return new Command_Action
-            {
-                defaultLabel = "DEV: Slow target 66 (200W)",
-                action = () => SetTarget(66f, 200f)
-            };
         }
     }
 }

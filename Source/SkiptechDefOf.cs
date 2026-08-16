@@ -8,6 +8,7 @@ namespace MigCorp.Skiptech
     public static class SkiptechDefOf
     {
         public static ThingDef MigCorp_SkipgatePortal;
+        public static ThingDef MigCorp_SkipgateSent;
         public static RulePackDef MigCorp_SkipgateNameMaker;
         public static DutyDef MigCorp_SkipgateHold;
 

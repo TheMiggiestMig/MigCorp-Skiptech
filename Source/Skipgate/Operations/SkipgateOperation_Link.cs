@@ -1,5 +1,8 @@
 ﻿using MigCorp.Skiptech.Skipgate.Comps;
 using RimWorld;
+using System.Collections.Generic;
+using System.Text;
+using UnityEngine;
 using Verse;
 
 namespace MigCorp.Skiptech.Skipgate.Operations
@@ -11,11 +14,13 @@ namespace MigCorp.Skiptech.Skipgate.Operations
     }
 
     // Handles linking and opening a portal (Building_SkipgatePortal) to another Skipgate.
-    // One skipgate execute this operation and notifies the other to get ready (reserves it once dialing starts, but link operation can be cancelled from either end).
+    // One skipgate execute this operation and reserves the other (link operation can be cancelled from either end).
     // Only the executing skipgate pays the initial charge cost. Once charged, it notifies the other end to dial at the same time as this one dials.
     // Once executed, the operation stays active until either portal is taken down (either manually, or sustained loss of power).
+    [StaticConstructorOnStartup]
     public class SkipgateOperation_Link : SkipgateOperation
     {
+        private static readonly Texture2D ViewLinkedGateIcon = ContentFinder<Texture2D>.Get("UI/Commands/ViewCave");
         private LinkRole role = LinkRole.Initiator;
         private Building_Skipgate otherGateBuilding;
 
@@ -195,9 +200,72 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             return other;
         }
+
+        public override string CancelLabel
+        {
+            get
+            {
+                if (phase == SkipgateOperationPhase.Active) { return "Unlink"; }
+                if (role == LinkRole.Responder) { return "Cancel Link"; }
+
+                return base.CancelLabel;
+            }
+        }
+
+        public override string CancelDesc => phase == SkipgateOperationPhase.Active
+            ? "Close the link.\n\nWARNING: Both skipgates will generate heat and must cool down."
+            : base.CancelDesc;
+
+        public override string CancelConfirmation => phase == SkipgateOperationPhase.Active
+            ? $"Unlink from {otherGateBuilding?.RenamableLabel}?\n\nBoth skipgates will take heat and must cool down before they can be used again."
+            : null;
+
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            yield return Gizmo_ViewLinkedGate();
+        }
+
+        private Gizmo Gizmo_ViewLinkedGate()
+        {
+            Building_Skipgate far = otherGateBuilding;
+
+            return new Command_Action
+            {
+                defaultLabel = phase == SkipgateOperationPhase.Active
+                    ? "View linked skipgate"
+                    : "View linking skipgate",
+                defaultDesc = $"Jump the camera to {far.RenamableLabel}.",
+                icon = ViewLinkedGateIcon,
+                action = () => CameraJumper.TryJumpAndSelect(far)
+            };
+        }
+
+        public override void AppendInspectLines(StringBuilder sb)
+        {
+            if (phase == SkipgateOperationPhase.Active)
+            {
+                sb.AppendLine($"Linked to: {otherGateBuilding?.RenamableLabel ?? "unknown"}");
+
+                if (!gate.Capacitor.Powered && gate.Capacitor.LoadPerSecond > 0f)
+                {
+                    int collapseTicks = Mathf.CeilToInt(gate.Capacitor.Charge / gate.Capacitor.LoadPerSecond * 60f);
+                    sb.AppendLine($"WARNING: no power — link collapse in {collapseTicks.ToStringTicksToPeriod()}");
+                }
+
+                return;
+            }
+
+            if (role == LinkRole.Responder)
+            {
+                sb.AppendLine($"Incoming link from: {otherGateBuilding?.RenamableLabel ?? "unknown"}");
+                return;
+            }
+
+            base.AppendInspectLines(sb);
+        }
+
         public override void ResumeAfterLoad()
         {
-            //if (phase == SkipgateOperationPhase.Preparing) { return; }
             SkipgateOperation_Link other = MutualOther();
 
             if (other == null || (phase == SkipgateOperationPhase.Active) != (other.phase == SkipgateOperationPhase.Active))

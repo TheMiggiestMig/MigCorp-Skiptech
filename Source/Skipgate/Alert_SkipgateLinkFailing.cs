@@ -1,11 +1,10 @@
-﻿using MigCorp.Skiptech.Skipgate;
-using MigCorp.Skiptech.Skipgate.Comps;
+﻿using MigCorp.Skiptech.Skipgate.Comps;
 using RimWorld;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
-namespace MigCorp.Skiptech
+namespace MigCorp.Skiptech.Skipgate
 {
     public class Alert_SkipgateLinkFailing : Alert
     {

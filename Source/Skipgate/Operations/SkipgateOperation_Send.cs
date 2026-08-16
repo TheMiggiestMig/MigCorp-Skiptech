@@ -4,6 +4,7 @@ using RimWorld;
 using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Verse;
 using Verse.AI.Group;
 
@@ -54,7 +55,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                 return caravan != null && caravan.AllAssembled && HasDestination;
             }
         }
-        private string GateLabel => (gate.parent as Building_Skipgate)?.RenamableLabel ?? gate.parent.LabelCap;
+        private string GateLabel => gate.GateLabel;
         public string DestinationLabel
         {
             get
@@ -311,13 +312,13 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             ReleaseCaravan();
 
             ActiveTransporterInfo info = new ActiveTransporterInfo();
-            info.openDelay = 0; // TEST (we won't be using pods for the final. Just make these open instantly).
+            info.openDelay = 0;
+            info.sentTransporterDef = SkiptechDefOf.MigCorp_SkipgateSent;
 
             for (int i = 0; i < roster.Count; i++)
             {
                 Thing thing = roster[i];
 
-                //if (thing.Spawned) { thing.DeSpawn(); }
                 if (thing.Spawned) { thing.DeSpawnOrDeselect(); }
 
                 // TryAddOrTransfer rather than TryAdd, for the same reason: a carried pawn already has a
@@ -389,15 +390,9 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             info.innerContainer.TryDropAll(cell, map, ThingPlaceMode.Near);
         }
 
-        protected override void OnCompleted()
-        {
-            ReleaseCaravan();
-        }
+        protected override void OnCompleted() => ReleaseCaravan();
 
-        protected override void OnCancelled()
-        {
-            AbortCaravan();
-        }
+        protected override void OnCancelled() => AbortCaravan();
 
         protected override void OnFailed(string reason)
         {
@@ -408,22 +403,94 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         private void ReleaseCaravan()
         {
             if (LordAlive) { lord.lordManager.RemoveLord(lord); }
-
             lord = null;
         }
 
         private void AbortCaravan()
         {
             if (LordAlive) { CaravanFormingUtility.StopFormingCaravan(lord); }
-
             lord = null;
+        }
+
+        public override IEnumerable<Gizmo> GetGizmos()
+        {
+            if (phase != SkipgateOperationPhase.Preparing) { yield break; }
+
+            yield return Gizmo_SetSendDestination();
+            yield return Gizmo_SendOrder();
+            yield return Gizmo_AutoSend();
+        }
+
+        private Gizmo Gizmo_SetSendDestination()
+        {
+            return new Command_Action
+            {
+                defaultLabel = HasDestination ? "Change destination" : "Set destination",
+                defaultDesc = HasDestination
+                    ? $"Currently sending to {DestinationLabel}. Picking a new destination recalculates the charge cost."
+                    : "Pick where this skipgate sends its caravan.\n\nThe gate won't start charging until a destination is set.",
+                icon = CompLaunchable.LaunchCommandTex,
+                action = delegate { SkipgateTargetingUtil.BeginSendTargeting(gate, this); }
+            };
+        }
+
+        // Arms the gate to fire this Send as soon as it's ready (like AutoSend, except only for this instance).
+        private Gizmo Gizmo_SendOrder()
+        {
+            Command_Toggle command = new Command_Toggle
+            {
+                defaultLabel = "Send",
+                defaultDesc = "Order this caravan to skip as soon as the gate is charged and everyone has gathered.\n\n" +
+                    "Leave it off to keep holding at the gate. A full charge latches, so waiting costs nothing.",
+                icon = CompLaunchable.LaunchCommandTex,
+                isActive = () => sendPressed,
+                toggleAction = delegate { ToggleSendOrder(); }
+            };
+
+            if (gate.AutoSend)
+            {
+                command.Disabled = true;
+                command.disabledReason = "Auto-send is on, so this caravan will leave on its own.";
+            }
+
+            return command;
+        }
+
+        // Toggles auto-firing Send (when ready).
+        private Gizmo Gizmo_AutoSend()
+        {
+            return new Command_Toggle
+            {
+                defaultLabel = "Auto-send",
+                defaultDesc = "Send every caravan the moment this skipgate is charged and the caravan has gathered, without waiting for a send order.\n\n" +
+                    "This is a setting on the gate: it stays on for future sends.",
+                icon = TexCommand.ReleaseAnimals,
+                isActive = () => gate.AutoSend,
+                toggleAction = delegate { gate.ToggleAutoSend(); }
+            };
+        }
+
+        public override void AppendInspectLines(StringBuilder sb)
+        {
+            base.AppendInspectLines(sb);
+
+            sb.AppendLine(HasDestination
+                ? $"Destination: {DestinationLabel} (cost {RequiredCharge:F0})"
+                : "Destination: none set");
+
+            if (AwaitingSendOrder) { sb.AppendLine("Ready — awaiting send order."); }
+
+            if (DebugSettings.ShowDevGizmos && FormingCaravan != null)
+            {
+                LordJob_FormSkipgateCaravan caravan = FormingCaravan;
+                sb.AppendLine($"DEV caravan: {caravan.Status} — holding: {caravan.Holding}, assembled: {caravan.AllAssembled}");
+            }
         }
 
         public override void ResumeAfterLoad()
         {
             base.ResumeAfterLoad();
 
-            //CheckCaravanLost();
             if (CheckCaravanLost()) { return; }
 
             // A destination can go stale while the save sits on disk.

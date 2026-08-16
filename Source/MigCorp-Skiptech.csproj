@@ -65,6 +65,7 @@
     <Compile Include="Bootstrap.cs" />
     <Compile Include="Patches\Core\Patch_Dialog_FormCaravan.cs" />
     <Compile Include="Patches\Core\Patch_WorldRoutePlanner.cs" />
+    <Compile Include="Skipgate\ActiveTransporter_Skip.cs" />
     <Compile Include="Skipgate\Dialog_FormSkipgateCaravan.cs" />
     <Compile Include="Skipgate\Alert_SkipgateLinkFailing.cs" />
     <Compile Include="Skipgate\Command_LinkSkipgate.cs" />
@@ -78,6 +79,7 @@
     <Compile Include="Skipgate\Comps\CompSkipgate.cs" />
     <Compile Include="Skipgate\Comps\CompSkipgateCapacitor.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation_Send.cs" />
+    <Compile Include="Skipgate\SkipgateArrivalUtil.cs" />
     <Compile Include="Skipgate\SkipgateCaravanUtil.cs" />
     <Compile Include="Skipgate\SkipgateRosterHolder.cs" />
     <Compile Include="Skipgate\SkipgateTargetingUtil.cs" />

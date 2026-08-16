@@ -14,7 +14,6 @@ namespace MigCorp.Skiptech.Skipgate
         public const int AssembledRadiusCells = 5; // ...and count as assembled anywhere in an 11x11 footprint.
 
         private readonly IntVec3 gateCenter;
-        //private CellRect assemblyRect;
         private CellRect anchorRect;
         private CellRect assembledRect;
         private bool allAssembled;

@@ -48,7 +48,7 @@ namespace MigCorp.Skiptech.Skipgate
 
             for (int i = 0; i < transporters.Count; i++)
             {
-                SpawnContents(transporters[i], map);
+                SkipgateArrivalUtil.PlaceContents(transporters[i], cell, map);
             }
 
             Messages.Message(
@@ -56,31 +56,6 @@ namespace MigCorp.Skiptech.Skipgate
                 lookTarget,
                 MessageTypeDefOf.TaskCompletion,
                 historical: false);
-        }
-
-        // A cutdown version of ActiveTransporter.PodOpen.
-        private void SpawnContents(ActiveTransporterInfo info, Map map)
-        {
-            for (int i = info.innerContainer.Count - 1; i >= 0; i--)
-            {
-                Thing thing = info.innerContainer[i];
-
-                Thing placed;
-                if (!GenPlace.TryPlaceThing(thing, cell, map, ThingPlaceMode.Near, out placed))
-                {
-                    // If we can't place it nearby, just dump it on the ground. The container doesn't really
-                    // exist, so we don't want pawns stuck in limbo.
-                    GenPlace.TryPlaceThing(thing, cell, map, ThingPlaceMode.Direct, out placed);
-                }
-
-                Pawn pawn = placed as Pawn;
-                if (pawn == null) { continue; }
-
-                // Keep behavior the same as drop pods, and draft out pawns if not on a home map.
-                if (pawn.IsColonist && pawn.Spawned && !map.IsPlayerHome) { pawn.drafter.Drafted = true; }
-
-                if (pawn.guest != null && pawn.guest.IsPrisoner) { pawn.guest.WaitInsteadOfEscapingForDefaultTicks(); }
-            }
         }
 
         public override void ExposeData()

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <ThingDef ParentName="SkyfallerBase">
+    <defName>MigCorp_SkipArrivalIncoming</defName>
+    <label>skip arrival</label>
+    <!-- SkyfallerBase is RealtimeOnly, which would draw BadGraphic (the pink square) with no graphicData. -->
+    <drawerType>None</drawerType>
+    <skyfaller>
+      <!-- SpawnSetup sets ticksToImpact from this, the first Tick drops it to -1 and impacts immediately. -->
+      <ticksToImpactRange>0~0</ticksToImpactRange>
+      <!-- Defaults to TRUE. A skip doesn't fall, so it must never punch the destination's roof. -->
+      <hitRoof>false</hitRoof>
+      <motesPerCell>0</motesPerCell>
+    </skyfaller>
+  </ThingDef>
+
+  <ThingDef>
+    <defName>MigCorp_ActiveSkipArrival</defName>
+    <label>skip arrival</label>
+    <thingClass>MigCorp.Skiptech.Skipgate.ActiveTransporter_Skip</thingClass>
+    <category>Item</category>
+    <tickerType>Normal</tickerType>
+    <drawerType>None</drawerType>
+    <altitudeLayer>Building</altitudeLayer>
+    <scatterableOnMapGen>false</scatterableOnMapGen>
+    <useHitPoints>false</useHitPoints>
+    <selectable>false</selectable>
+  </ThingDef>
+
+  <ThingDef ParentName="EtherealThingBase">
+    <defName>MigCorp_SkipgateSent</defName>
+    <label>skipgate</label>
+    <thingClass>Thing</thingClass>
+    <dropPodActive>MigCorp_ActiveSkipArrival</dropPodActive>
+    <dropPodFaller>MigCorp_SkipArrivalIncoming</dropPodFaller>
+  </ThingDef>
+
+</Defs>

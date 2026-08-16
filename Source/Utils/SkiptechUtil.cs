@@ -7,7 +7,7 @@ namespace MigCorp.Skiptech.Utils
     public enum LogType { Info, Warning, Error }
     public enum SkipdoorType { None, Entry, Exit }
 
-    internal class SkiptechUtil
+    internal static class SkiptechUtil
     {
 
 
