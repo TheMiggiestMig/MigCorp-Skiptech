@@ -199,9 +199,16 @@ namespace MigCorp.Skiptech.Skipgate
             // Messy way to do it with "string matching" on the option Label, but not sure how else to do it without funky patches.
             string vanillaLabel = canLandInCell ? ((string)"LandInExistingMap".Translate(mapParent.Label)).TrimEnd() : null;
 
+            // Also skip gifting options. Skipgate caravans always have colony pawns. Just use drop pods if you want to get rid of Timmy.
+            Settlement settlement = worldObject as Settlement;
+            string giftLabel = settlement != null && settlement.Faction != null && settlement.Faction != Faction.OfPlayer
+                ? ((string)"GiveGiftViaTransportPods".Translate(settlement.Faction.Name, FactionGiftUtility.GetGoodwillChange(pods, settlement).ToStringWithSign())).TrimEnd()
+                : null;
+
             foreach (FloatMenuOption option in worldObject.GetTransportersFloatMenuOptions(pods, launchAction))
             {
                 if (vanillaLabel != null && option.Label == vanillaLabel) { continue; }
+                if (giftLabel != null && option.Label == giftLabel) { continue; }
 
                 yield return option;
             }
