@@ -222,6 +222,7 @@ namespace MigCorp.Skiptech.Skipgate
 
         // Basically the same option setup as MapParent.GetTransportersFloatMenuOptions', but with a less restrictive TargetingParameters.validator.
         // Only checks if the cell is in bounds, standable, not fogged. More importantly, doesn't care about the (overhead mountain) roof.
+        // The arrival action is ours too — vanilla's does the same roof check again on the way in.
         private static void BeginSkipCellTargeting(MapParent mapParent, Action<PlanetTile, TransportersArrivalAction> launchAction)
         {
             Current.Game.CurrentMap = mapParent.Map;
@@ -241,7 +242,7 @@ namespace MigCorp.Skiptech.Skipgate
             MapParent mapParentLocal = mapParent;
             Find.Targeter.BeginTargeting(parameters, delegate (LocalTargetInfo x)
             {
-                launchAction(mapParentLocal.Tile, new TransportersArrivalAction_LandInSpecificCell(mapParentLocal, x.Cell, Rot4.North, landInShuttle: false));
+                launchAction(mapParentLocal.Tile, new TransportersArrivalAction_SkipInSpecificCell(mapParentLocal, x.Cell));
             }, null, null, CompLaunchable.TargeterMouseAttachment);
         }
 

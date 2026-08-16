@@ -90,7 +90,8 @@ namespace MigCorp.Skiptech.Patches.Core
 
             // The Send operation drives the gate from here.
             // The lord only gathers and holds.
-            if (!gate.TryStartOperation(new SkipgateOperation_Send(gate, lord)))
+            SkipgateOperation_Send sendOp = new SkipgateOperation_Send(gate, lord);
+            if (!gate.TryStartOperation(sendOp))
             {
                 // Pre-checked above so this shouldn't fire, but just in case, never leave a op-less lord behind.
                 CaravanFormingUtility.StopFormingCaravan(lord);
@@ -104,6 +105,10 @@ namespace MigCorp.Skiptech.Patches.Core
             {
                 LessonAutoActivator.TeachOpportunity(ConceptDefOf.MechsInCaravans, OpportunityType.GoodToKnow);
             }
+
+            dialog.Close(doCloseSound: false);
+            SkipgateTargetingUtil.BeginSendTargeting(gate, sendOp);
+
             return true;
         }
     }
