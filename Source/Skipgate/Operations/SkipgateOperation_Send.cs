@@ -136,33 +136,16 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             return mass;
         }
 
-        // TODO Make this a util method? Recall will probably something 90% similar too.
-        public static float CalculateSendCost(CompSkipgate gate, float mass, float tiles)
-        {
-            CompProperties_Skipgate props = gate.Props;
-
-            return props.sendCostBase + mass * (props.sendCostPerKg + props.sendCostPerKgPerTile * tiles);
-        }
-
-        // TODO Make this a util method? Recall will probably something 90% similar too.
-        private float TilesTo(GlobalTargetInfo target)
-        {
-            if (!target.IsValid || gate.parent.Map == null) { return 0f; }
-
-            return Find.WorldGrid.ApproxDistanceInTiles(gate.parent.Map.Tile, target.Tile);
-        }
-
         // The estimate shown on the targeter before anything is committed.
         public float EstimateCostTo(GlobalTargetInfo target)
         {
-            return CalculateSendCost(gate, PlannedMass(), TilesTo(target));
+            return SkipgateCostUtil.CalculateSendCost(gate, PlannedMass(), SkipgateCostUtil.TilesBetween(gate, target));
         }
 
         // Actually calculate and apply the cost changes back to the capacitor.
         private void Recost(float mass)
         {
-            requiredCharge = CalculateSendCost(gate, mass, TilesTo(destination));
-
+            requiredCharge = SkipgateCostUtil.CalculateSendCost(gate, mass, SkipgateCostUtil.TilesBetween(gate, destination));
             ApplyRuntimeState();
         }
 
@@ -174,7 +157,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             if (!target.IsValid) { return "Invalid destination."; }
 
-            float cost = CalculateSendCost(gate, PlannedMass(), TilesTo(target));
+            float cost = SkipgateCostUtil.CalculateSendCost(gate, PlannedMass(), SkipgateCostUtil.TilesBetween(gate, target));
 
             // Relevant prior to max research.
             if (!gate.Capacitor.IsWithinCapacity(cost)) { return "Charge cost exceeds the capacitor's safe operating limit."; }

@@ -47,7 +47,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private float heatRemaining;
         public float HeatRemaining => heatRemaining;
         public bool CoolingDown => heatRemaining > 0f;
-        private int CooldownTicksLeft() => Mathf.CeilToInt(heatRemaining / Props.heatDissipationPerSecond * 60);
+        public int CooldownTicksFor(float heat) => Props.heatDissipationPerSecond <= 0f ? 0 : Mathf.CeilToInt(heat / Props.heatDissipationPerSecond * 60f);
+        private int CooldownTicksLeft() => CooldownTicksFor(heatRemaining);
 
         public CompSkipgate LinkedFarGate => CurrentOperation is SkipgateOperation_Link link
                                 && link.Phase == SkipgateOperationPhase.Active

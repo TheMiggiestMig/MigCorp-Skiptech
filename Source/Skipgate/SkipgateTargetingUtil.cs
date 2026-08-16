@@ -38,7 +38,7 @@ namespace MigCorp.Skiptech.Skipgate
             if (!source.TryStartOperation(new SkipgateOperation_Link(source, target))) { return false; }
 
             Messages.Message(
-                $"{(source.parent as Building_Skipgate).RenamableLabel} is charging to link with {target.RenamableLabel}.",
+                $"{source.GateLabel} is charging to link with {target.RenamableLabel}.",
                 new LookTargets(source.parent, target),
                 MessageTypeDefOf.TaskCompletion,
                 historical: false);
@@ -48,7 +48,7 @@ namespace MigCorp.Skiptech.Skipgate
 
         private static string OptionLabel(CompSkipgate source, Building_Skipgate gate)
         {
-            float cost = SkipgateOperation_Link.CalculateLinkCost(source, gate);
+            float cost = SkipgateCostUtil.CalculateLinkCost(source, gate);
 
             if (gate.Map == source.parent.Map)
             {
@@ -56,7 +56,7 @@ namespace MigCorp.Skiptech.Skipgate
             }
 
             string where = gate.Map.Parent?.LabelCap ?? "unknown location";
-            float tiles = Find.WorldGrid.ApproxDistanceInTiles(source.parent.Map.Tile, gate.Map.Tile);
+            float tiles = SkipgateCostUtil.TilesBetween(source, gate.Map.Tile);
 
             return $"{gate.RenamableLabel} ({where}, {Mathf.RoundToInt(tiles)} tiles) — cost {cost:F0}";
         }
@@ -261,7 +261,7 @@ namespace MigCorp.Skiptech.Skipgate
                 }
 
                 Messages.Message(
-                    $"{(source.parent as Building_Skipgate).RenamableLabel} is charging to send to {send.DestinationLabel} — cost {send.RequiredCharge:F0}.",
+                     $"{source.GateLabel} is charging to send to {send.DestinationLabel} — cost {send.RequiredCharge:F0}.",
                     source.parent,
                     MessageTypeDefOf.TaskCompletion,
                     historical: false);
@@ -341,10 +341,8 @@ namespace MigCorp.Skiptech.Skipgate
 
             float cost = send.EstimateCostTo(target);
 
-            CompProperties_SkipgateCapacitor capacitorProps = source.Capacitor.Props;
-            float chargePerSecond = capacitorProps.wattsPerCharge <= 0f ? 0f : capacitorProps.chargingWatts / capacitorProps.wattsPerCharge;
-            float chargeSeconds = chargePerSecond <= 0f ? 0f : Mathf.Max(cost - source.Capacitor.Charge, 0f) / chargePerSecond;
-            float cooldownSeconds = source.Props.heatDissipationPerSecond <= 0f ? 0f : cost * source.Props.heatPerCost / source.Props.heatDissipationPerSecond;
+            float chargeSeconds = source.Capacitor.EstimateChargeTicks(cost) / 60f;
+            float cooldownSeconds = source.CooldownTicksFor(cost * source.Props.heatPerCost) / 60f;
 
             string header = options.Count == 1 ? options[0].Label : "Click to see available orders";
 

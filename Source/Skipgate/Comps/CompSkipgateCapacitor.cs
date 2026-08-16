@@ -30,8 +30,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         private CompPowerTrader powerComp;
 
-        public CompProperties_SkipgateCapacitor Props =>
-            (CompProperties_SkipgateCapacitor)props;
+        public CompProperties_SkipgateCapacitor Props => (CompProperties_SkipgateCapacitor)props;
 
         public float Charge => currentCharge;
         public float Target => targetCharge;
@@ -44,6 +43,19 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         private float ChargePerSecond => Props.wattsPerCharge <= 0f ? 0f : requestedChargingWatts / Props.wattsPerCharge;
         public bool IsWithinCapacity(float cost) => cost >= 0f && (Props.maxCharge < 0f || cost <= Props.maxCharge);
         public bool HasCharge(float amount) => amount >= 0f && currentCharge >= amount;
+        public int ChargeEtaTicks()
+        {
+            float rate = ChargePerSecond;
+
+            return rate <= 0f ? 0 : Mathf.CeilToInt(Mathf.Max(targetCharge - currentCharge, 0f) / rate * 60f);
+        }
+        public int EstimateChargeTicks(float cost)
+        {
+            float rate = Props.wattsPerCharge <= 0f ? 0f : Props.chargingWatts / Props.wattsPerCharge;
+
+            return rate <= 0f ? 0 : Mathf.CeilToInt(Mathf.Max(cost - currentCharge, 0f) / rate * 60f);
+        }
+        public int BufferTicksRemaining => loadPerSecond <= 0f ? 0 : Mathf.CeilToInt(currentCharge / loadPerSecond * 60f);
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
@@ -183,7 +195,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             {
                 if (Powered)
                 {
-                    int ticksLeft = Mathf.CeilToInt((targetCharge - currentCharge) / ChargePerSecond * 60f);
+                    int ticksLeft = ChargeEtaTicks();
                     sb.Append(requestedChargingWatts < Props.chargingWatts
                         ? $" (slow-charging, {ticksLeft.ToStringTicksToPeriod()})"
                         : $" (charging, {ticksLeft.ToStringTicksToPeriod()})");
@@ -210,9 +222,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 }
                 else
                 {
-                    int bufferTicks = Mathf.CeilToInt(
-                        currentCharge / loadPerSecond * 60f);
-                    sb.Append($"\nReserve: {bufferTicks.ToStringTicksToPeriod()} remaining at current load");
+                    sb.Append($"\nReserve: {BufferTicksRemaining.ToStringTicksToPeriod()} remaining at current load");
                 }
             }
 

@@ -24,7 +24,7 @@ namespace MigCorp.Skiptech.Skipgate
                 CompSkipgate comp = (t as Building_Skipgate)?.skipgateComp;
                 if (comp == null || comp.Capacitor.LoadPerSecond <= 0f) { continue; }
 
-                worst = Mathf.Min(worst, Mathf.CeilToInt(comp.Capacitor.Charge / comp.Capacitor.LoadPerSecond * 60f));
+                worst = Mathf.Min(worst, comp.Capacitor.BufferTicksRemaining);
             }
 
             return worst == int.MaxValue

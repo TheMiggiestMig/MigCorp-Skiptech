@@ -39,7 +39,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         {
             role = LinkRole.Initiator;
             otherGateBuilding = target;
-            requiredCharge = CalculateLinkCost(gate, target);
+            requiredCharge = SkipgateCostUtil.CalculateLinkCost(gate, target);
         }
 
         public SkipgateOperation_Link(CompSkipgate gate, Building_Skipgate initiatorGate, float linkCost) : this(gate)
@@ -47,12 +47,6 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             role = LinkRole.Responder;
             otherGateBuilding = initiatorGate;
             requiredCharge = linkCost;
-        }
-
-        public static float CalculateLinkCost(CompSkipgate gate, Building_Skipgate target)
-        {
-            float tiles = Find.WorldGrid.ApproxDistanceInTiles(gate.parent.Map.Tile, target.Map.Tile);
-            return gate.Props.linkCostBase + gate.Props.linkCostPerTile * tiles;
         }
 
         public override AcceptanceReport CanStart()
@@ -248,8 +242,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
                 if (!gate.Capacitor.Powered && gate.Capacitor.LoadPerSecond > 0f)
                 {
-                    int collapseTicks = Mathf.CeilToInt(gate.Capacitor.Charge / gate.Capacitor.LoadPerSecond * 60f);
-                    sb.AppendLine($"WARNING: no power — link collapse in {collapseTicks.ToStringTicksToPeriod()}");
+                    sb.AppendLine($"WARNING: no power — link collapse in {gate.Capacitor.BufferTicksRemaining.ToStringTicksToPeriod()}");
                 }
 
                 return;
