@@ -81,6 +81,7 @@
     <Compile Include="Skipgate\Comps\CompSkipgate.cs" />
     <Compile Include="Skipgate\Comps\CompSkipgateCapacitor.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation_Send.cs" />
+    <Compile Include="Skipgate\SkipBeaconUtil.cs" />
     <Compile Include="Skipgate\SkipgateArrivalUtil.cs" />
     <Compile Include="Skipgate\SkipgateCaravanUtil.cs" />
     <Compile Include="Skipgate\SkipgateCostUtil.cs" />

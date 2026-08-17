@@ -32,7 +32,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             if (mode == SkipgateRecallMode.Emergency)
             {
-                this.requiredCharge = 5; // Fixed valued for Emergency. Might move this to def somewhere.
+                this.requiredCharge = gate.Props.emergencyRequiredCharge;
                 emergencyRecallActualCost = requiredCharge;
                 return;
             }

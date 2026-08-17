@@ -26,7 +26,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public float sendCostPerKg = 0.05f;
         public float sendCostPerKgPerTile = 0.002f;
 
+        public float recallCostBase = 10f;
+        public float recallCostPerKg = 0.05f;
+        public float recallCostPerKgPerTile = 0.002f;
+
         public int emergencyChargeTicks = 180;
+        public float emergencyRequiredCharge = 5f;
     }
 
     [StaticConstructorOnStartup]
@@ -302,7 +307,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Emergency Recall",
-                defaultDesc: "Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, consuming the skip beacon.\n\n" +
+                defaultDesc: $"Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, {(linkResearchFinished ? "with a 50% chance of consuming the skip beacon" : "consuming the skip beacon")}.\n\n" +
                     "WARNING: Will cause damage and breakdowns around the map!".Colorize(Color.yellow),
                 action: delegate
                 {
@@ -317,7 +322,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Recall",
-                defaultDesc: $"Targets a pawn or caravan equipped with a skip beacon and teleports them to this skipgate{(!linkResearchFinished ? ", consuming the skip beacon" : null)}.",
+                defaultDesc: "Targets a pawn or caravan equipped with a skip beacon and teleports them to this skipgate.",
                 action: delegate
                 {
                     TryStartOperation(new SkipgateOperation_Recall(this, "Bring home the pawns!", 37f));

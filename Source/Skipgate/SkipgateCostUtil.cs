@@ -1,6 +1,5 @@
 ﻿using MigCorp.Skiptech.Skipgate.Comps;
 using RimWorld.Planet;
-using System;
 using Verse;
 
 namespace MigCorp.Skiptech.Skipgate
@@ -28,9 +27,11 @@ namespace MigCorp.Skiptech.Skipgate
             return props.sendCostBase + mass * (props.sendCostPerKg + props.sendCostPerKgPerTile * tiles);
         }
 
-        public static void CalculateRecallCost(CompSkipgate gate, float mass, float tiles)
+        public static float CalculateRecallCost(CompSkipgate gate, float mass, float tiles)
         {
-            throw new NotImplementedException();
+            CompProperties_Skipgate props = gate.Props;
+
+            return props.recallCostBase + mass * (props.recallCostPerKg + props.recallCostPerKgPerTile * tiles);
         }
 
         public static float CalculateLinkCost(CompSkipgate gate, Building_Skipgate target)
