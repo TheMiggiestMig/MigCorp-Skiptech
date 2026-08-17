@@ -108,7 +108,7 @@
     </graphicData>
     <uiIconPath>Things/Building/Misc/migcorp_ArchotechSkipdoor</uiIconPath>
     <statBases>
-      <MarketValue>1200</MarketValue>
+      <MarketValue>3200</MarketValue>
       <MaxHitPoints>360</MaxHitPoints>
       <WorkToBuild>10000</WorkToBuild>
     </statBases>
