@@ -39,10 +39,10 @@
     </graphicData>
     <uiIconPath>Things/Building/Misc/migcorp_MigcorpSkipdoor</uiIconPath>
     <costList>
-      <Uranium>50</Uranium>
-      <Plasteel>100</Plasteel>
+      <Plasteel>75</Plasteel>
+      <ComponentIndustrial>4</ComponentIndustrial>
       <ComponentSpacer>1</ComponentSpacer>
-      <ComponentIndustrial>5</ComponentIndustrial>
+      <MigCorp_SkipBeacon>1</MigCorp_SkipBeacon>
     </costList>
     <statBases>
       <WorkToBuild>10000</WorkToBuild>
@@ -54,7 +54,7 @@
     <comps>
       <li Class="CompProperties_Breakdownable" />
       <li Class="CompProperties_Forbiddable" />
-      <li Class="CompProperties_Flickable"/>
+      <li Class="CompProperties_Flickable" />
       <li Class="CompProperties_Power">
         <compClass>RimWorld.CompPowerTrader</compClass>
         <basePowerConsumption>300</basePowerConsumption>
@@ -117,7 +117,7 @@
     </thingCategories>
     <comps>
       <li Class="CompProperties_Forbiddable" />
-      <li Class="CompProperties_Flickable"/>
+      <li Class="CompProperties_Flickable" />
       <li Class="CompProperties_Glower">
         <glowRadius>3</glowRadius>
         <glowColor>(227,233,168,0)</glowColor>

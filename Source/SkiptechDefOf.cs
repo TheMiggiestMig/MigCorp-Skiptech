@@ -9,6 +9,7 @@ namespace MigCorp.Skiptech
     {
         public static ThingDef MigCorp_SkipgatePortal;
         public static ThingDef MigCorp_SkipgateSent;
+        public static ThingDef MigCorp_SkipBeacon;
         public static RulePackDef MigCorp_SkipgateNameMaker;
         public static DutyDef MigCorp_SkipgateHold;
 

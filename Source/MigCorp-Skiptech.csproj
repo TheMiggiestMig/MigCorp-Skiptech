@@ -63,6 +63,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
+    <Compile Include="Comps\CompSkipBeacon.cs" />
     <Compile Include="Patches\Core\Patch_Dialog_FormCaravan.cs" />
     <Compile Include="Patches\Core\Patch_WorldRoutePlanner.cs" />
     <Compile Include="Skipgate\ActiveTransporter_Skip.cs" />

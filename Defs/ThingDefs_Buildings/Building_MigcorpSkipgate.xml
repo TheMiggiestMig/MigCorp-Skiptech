@@ -43,13 +43,11 @@
 
         <!-- No idea what will be a fair cost. -->
         <costList>
-            <Steel>500</Steel>
-            <Plasteel>150</Plasteel>
-            <ComponentIndustrial>12</ComponentIndustrial>
-            <ComponentSpacer>4</ComponentSpacer>
-            <Uranium>50</Uranium>
-
-            <!-- <MigCorp_SkipBeacon>1</MigCorp_SkipBeacon> -->
+            <Steel>400</Steel>
+            <Plasteel>120</Plasteel>
+            <ComponentIndustrial>8</ComponentIndustrial>
+            <ComponentSpacer>3</ComponentSpacer>
+            <MigCorp_SkipBeacon>3</MigCorp_SkipBeacon>
         </costList>
 
         <constructionSkillPrerequisite>8</constructionSkillPrerequisite>
