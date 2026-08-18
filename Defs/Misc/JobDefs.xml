@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Defs>
+    <JobDef>
+        <defName>MigCorp_ChannelSkipBeacon</defName>
+        <driverClass>MigCorp.Skiptech.Skipgate.JobDriver_ChannelSkipBeacon</driverClass>
+        <reportString>channelling a skip beacon.</reportString>
+        <casualInterruptible>false</casualInterruptible>
+        <playerInterruptible>true</playerInterruptible>
+        <allowOpportunisticPrefix>false</allowOpportunisticPrefix>
+    </JobDef>
+</Defs>

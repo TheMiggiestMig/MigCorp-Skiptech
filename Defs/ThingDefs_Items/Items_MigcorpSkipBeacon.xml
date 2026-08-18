@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <Defs>
-    <ThingDef ParentName="ResourceBase">
+    <ThingDef ParentName="ApparelNoQualityBase">
         <defName>MigCorp_SkipBeacon</defName>
         <label>skip beacon</label>
-        <description>A portable skipfield anchor. Carried into the field, it holds a fixed point in folded space precisely enough for a distant skipgate to reach out and pull it home - along with anything unlucky enough to be standing near it.\n\nThe beacon cannot skip anything on its own. It only tells a gate where to aim.</description>
+        <!--<description>A portable skipfield anchor. Carried into the field, it holds a fixed point in folded space precisely enough for a distant skipgate to reach out and pull it home - along with anything unlucky enough to be standing near it.\n\nThe beacon cannot skip anything on its own. It only tells a gate where to aim.</description>-->
+        <description>A skipfield anchor worn at the belt. While it is worn and running, it holds a fixed point in folded space precisely enough for a distant skipgate to reach out and pull it home - along with anything unlucky enough to be standing near it.\n\nThe beacon cannot skip anything on its own. It only tells a gate where to aim.</description>
+
+        <thingClass>Apparel</thingClass>
 
         <graphicData>
             <texPath>Things/Item/Special/AIPersonaCore</texPath>
@@ -14,18 +17,20 @@
         <soundInteract>Metal_Drop</soundInteract>
         <soundDrop>Metal_Drop</soundDrop>
 
-        <stackLimit>1</stackLimit>
-        <drawGUIOverlay>false</drawGUIOverlay>
+        <!--<stackLimit>1</stackLimit>
+        <drawGUIOverlay>false</drawGUIOverlay>-->
 
         <statBases>
             <MarketValue>900</MarketValue>
             <MaxHitPoints>60</MaxHitPoints>
             <Mass>3</Mass>
             <Flammability>0</Flammability>
+            <EquipDelay>2</EquipDelay>
+            <DeteriorationRate>0</DeteriorationRate>
         </statBases>
 
         <thingCategories>
-            <li>ItemsMisc</li>
+            <li>ApparelUtility</li>
         </thingCategories>
 
         <techLevel>Ultra</techLevel>
@@ -33,6 +38,24 @@
         <tradeTags>
             <li>ExoticMisc</li>
         </tradeTags>
+        <smeltable>false</smeltable>
+        <apparel>
+            <countsAsClothingForNudity>false</countsAsClothingForNudity>
+            <careIfWornByCorpse>false</careIfWornByCorpse>
+            <careIfDamaged>false</careIfDamaged>
+            <wearPerDay>0</wearPerDay>
+            <bodyPartGroups>
+                <li>Waist</li>
+            </bodyPartGroups>
+                    <layers>
+                <li>Belt</li>
+            </layers>
+
+            <tags>
+                <li>MigCorpSkipBeacon</li>
+            </tags>
+            <developmentalStageFilter>Child, Adult</developmentalStageFilter>
+        </apparel>
 
         <comps>
             <li Class="MigCorp.Skiptech.Comps.CompProperties_SkipBeacon">

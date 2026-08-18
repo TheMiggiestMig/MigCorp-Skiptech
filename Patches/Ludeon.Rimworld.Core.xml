@@ -18,4 +18,22 @@
             </li>
         </value>
     </Operation>
+
+    <Operation Class="PatchOperationConditional">
+        <xpath>Defs/WorldObjectDef[defName="Caravan"]/comps</xpath>
+        <match Class="PatchOperationAdd">
+            <xpath>Defs/WorldObjectDef[defName="Caravan"]/comps</xpath>
+            <value>
+                <li Class="MigCorp.Skiptech.Skipgate.WorldObjectCompProperties_SkipBeaconRecall" />
+            </value>
+        </match>
+        <nomatch Class="PatchOperationAdd">
+            <xpath>Defs/WorldObjectDef[defName="Caravan"]</xpath>
+            <value>
+                <comps>
+                    <li Class="MigCorp.Skiptech.Skipgate.WorldObjectCompProperties_SkipBeaconRecall" />
+                </comps>
+            </value>
+        </nomatch>
+    </Operation>
 </Patch>

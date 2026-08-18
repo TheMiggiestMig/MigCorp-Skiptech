@@ -26,15 +26,11 @@ namespace MigCorp.Skiptech.Skipgate
                 return beaconDefs;
             }
         }
-
         public static CompSkipBeacon BeaconComp(Thing thing) => thing?.TryGetComp<CompSkipBeacon>();
-
         public static float RadiusOf(Thing beacon) => BeaconComp(beacon)?.Radius ?? 0f;
-
         public static Caravan CaravanOf(Thing beacon) => ThingOwnerUtility.GetAnyParent<Caravan>(beacon);
-
         public static Pawn HolderOf(Thing beacon) => ThingOwnerUtility.GetAnyParent<Pawn>(beacon);
-
+        public static Pawn WearerOf(Thing beacon) => (beacon as Apparel)?.Wearer;
         public static Map MapOf(Thing beacon) => beacon.MapHeld;
 
         public static PlanetTile TileOf(Thing beacon)
@@ -52,19 +48,25 @@ namespace MigCorp.Skiptech.Skipgate
             if (BeaconComp(beacon) == null) { return false; }
             if (!TileOf(beacon).Valid) { return false; }
 
-            Pawn holder = HolderOf(beacon);
+            Pawn wearer = (beacon as Apparel)?.Wearer;
 
-            return holder != null && holder.Faction == Faction.OfPlayer;
+            return wearer != null && wearer.Faction == Faction.OfPlayer;
         }
 
         public static void BeaconsInCaravan(Caravan caravan, List<Thing> outBeacons)
         {
             outBeacons.Clear();
 
-            List<Thing> inventory = CaravanInventoryUtility.AllInventoryItems(caravan);
-            for (int i = 0; i < inventory.Count; i++)
+            List<Pawn> pawns = caravan.PawnsListForReading;
+            for (int i = 0; i < pawns.Count; i++)
             {
-                if (BeaconComp(inventory[i]) != null) { outBeacons.Add(inventory[i]); }
+                List<Apparel> worn = pawns[i].apparel?.WornApparel;
+                if (worn == null) { continue; }
+
+                for (int j = 0; j < worn.Count; j++)
+                {
+                    if (BeaconComp(worn[j]) != null) { outBeacons.Add(worn[j]); }
+                }
             }
         }
 
@@ -122,7 +124,7 @@ namespace MigCorp.Skiptech.Skipgate
             // Yoink the whole caravan. Ez.
             Caravan caravan = CaravanOf(beacon);
             if (caravan != null) { return new List<Thing>(caravan.PawnsListForReading); }
-                        
+
             Map map = MapOf(beacon);
             if (map == null) { return new List<Thing>(); }
 

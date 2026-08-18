@@ -68,9 +68,11 @@
     <Compile Include="Patches\Core\Patch_WorldRoutePlanner.cs" />
     <Compile Include="Skipgate\ActiveTransporter_Skip.cs" />
     <Compile Include="Skipgate\Command_SkipgateSendOrder.cs" />
+    <Compile Include="Skipgate\Comps\WorldObjectComp_SkipBeaconRecall.cs" />
     <Compile Include="Skipgate\Dialog_FormSkipgateCaravan.cs" />
     <Compile Include="Skipgate\Alert_SkipgateLinkFailing.cs" />
     <Compile Include="Skipgate\Command_LinkSkipgate.cs" />
+    <Compile Include="Skipgate\JobDriver_ChannelSkipBeacon.cs" />
     <Compile Include="Skipgate\LordJob_FormSkipgateCaravan.cs" />
     <Compile Include="Skipgate\LordToil_PrepareSkipgateCaravan_Hold.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation.cs" />
