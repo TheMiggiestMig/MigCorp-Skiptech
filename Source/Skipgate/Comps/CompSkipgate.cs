@@ -309,10 +309,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 defaultLabel: "Emergency Recall",
                 defaultDesc: $"Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, {(linkResearchFinished ? "with a 50% chance of consuming the skip beacon" : "consuming the skip beacon")}.\n\n" +
                     "WARNING: Will cause damage and breakdowns around the map!".Colorize(Color.yellow),
-                action: delegate
-                {
-                    TryStartOperation(new SkipgateOperation_Recall(this, "Emergency Recalling some poor schmucks!", 69f, SkipgateRecallMode.Emergency));
-                }
+                action: delegate { SkipgateTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Emergency); }
                 );
 
             return command;
@@ -323,10 +320,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Recall",
                 defaultDesc: "Targets a pawn or caravan equipped with a skip beacon and teleports them to this skipgate.",
-                action: delegate
-                {
-                    TryStartOperation(new SkipgateOperation_Recall(this, "Bring home the pawns!", 37f));
-                }
+                action: delegate { SkipgateTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Normal); }
                 );
 
             return command;
@@ -335,6 +329,13 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public Gizmo Gizmo_Link()
         {
             return new Command_LinkSkipgate(this);
+        }
+
+        public override void PostDrawExtraSelectionOverlays()
+        {
+            base.PostDrawExtraSelectionOverlays();
+
+            CurrentOperation?.DrawExtraSelectionOverlays();
         }
 
         public override string CompInspectStringExtra()

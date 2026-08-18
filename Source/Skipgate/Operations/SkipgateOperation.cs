@@ -226,6 +226,8 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             Scribe_Values.Look(ref dialingTicksLeft, "dialingTicksLeft", 0);
         }
 
+        public virtual void DrawExtraSelectionOverlays() { }
+
         public virtual IEnumerable<Gizmo> GetGizmos()
         {
             yield break;

@@ -38,5 +38,10 @@ namespace MigCorp.Skiptech.Skipgate
         {
             return gate.Props.linkCostBase + gate.Props.linkCostPerTile * TilesBetween(gate, target.Map.Tile);
         }
+
+        public static float CalculateRecallCost(CompSkipgate gate, Thing beacon)
+        {
+            return CalculateRecallCost(gate, SkipBeaconUtil.YoinkSetMass(beacon), TilesBetween(gate, SkipBeaconUtil.TileOf(beacon)));
+        }
     }
 }
