@@ -97,7 +97,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             targetCharge = Mathf.Max(cost, 0f);
             requestedChargingWatts = Mathf.Max(rate, 0f);
         }
-        //public void SetTarget(float cost) => SetTarget(cost, Props.chargingWatts);
         public void SetTarget(float cost) => SetTarget(cost, WattsForCost(cost));
 
         public float WattsForCost(float cost, int ticks)

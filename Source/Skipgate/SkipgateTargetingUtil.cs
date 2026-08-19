@@ -433,13 +433,6 @@ namespace MigCorp.Skiptech.Skipgate
             DrawCandidateHighlights(tmpBeaconTiles);
         }
 
-        private static float EstimateRecallCost(CompSkipgate source, Thing beacon, SkipgateRecallMode mode)
-        {
-            return mode == SkipgateRecallMode.Emergency
-                ? source.Props.emergencyRequiredCharge
-                : SkipgateCostUtil.CalculateRecallCost(source, beacon);
-        }
-
         private static string RecallOptionLabel(CompSkipgate source, Thing beacon, SkipgateRecallMode mode)
         {
             Pawn holder = SkipBeaconUtil.HolderOf(beacon);
@@ -449,10 +442,11 @@ namespace MigCorp.Skiptech.Skipgate
                 ? caravan.LabelCap
                 : SkipBeaconUtil.MapOf(beacon)?.Parent?.LabelCap ?? "unknown location";
 
-            float cost = EstimateRecallCost(source, beacon, mode);
             int count = SkipBeaconUtil.YoinkSet(beacon).Count;
 
-            return $"{holder.LabelShortCap} ({where}) — {count} coming through, cost {cost:F0}";
+            return mode == SkipgateRecallMode.Emergency
+                ? $"{holder.LabelShortCap} ({where}) — {count} coming through"
+                : $"{holder.LabelShortCap} ({where}) — {count} coming through, cost {SkipgateCostUtil.CalculateRecallCost(source, beacon):F0}";
         }
 
         private static TaggedString RecallHoverLabel(CompSkipgate source, List<Thing> candidates, SkipgateRecallMode mode, GlobalTargetInfo target)
@@ -463,14 +457,15 @@ namespace MigCorp.Skiptech.Skipgate
             if (beacons.Count > 1) { return $"{beacons.Count} skip beacons"; }
 
             Thing beacon = beacons[0];
-            bool emergency = mode == SkipgateRecallMode.Emergency;
-            float cost = EstimateRecallCost(source, beacon, mode);
 
-            // Emergency's wind-up is fixed, so its wattage comes off emergencyChargeTicks, not the usual rate.
-            string chargeTime = (emergency ? source.Props.emergencyChargeTicks : source.Capacitor.EstimateChargeTicks(cost)).ToStringTicksToPeriod();
-            float watts = emergency
-                ? source.Capacitor.WattsForCost(cost, source.Props.emergencyChargeTicks)
-                : source.Capacitor.WattsForCost(cost);
+            if (mode == SkipgateRecallMode.Emergency)
+            {
+                return $"{RecallOptionLabel(source, beacon, mode)}\nNo charge required — dials in {source.Props.dialingTicks.ToStringTicksToPeriod()}";
+            }
+
+            float cost = SkipgateCostUtil.CalculateRecallCost(source, beacon);
+            string chargeTime = source.Capacitor.EstimateChargeTicks(cost).ToStringTicksToPeriod();
+            float watts = source.Capacitor.WattsForCost(cost);
             float cooldownSeconds = source.CooldownTicksFor(cost * source.Props.heatPerCost) / 60f;
 
             return $"{RecallOptionLabel(source, beacon, mode)}\n{watts:F0}W for {chargeTime} — cooldown {cooldownSeconds:F0}s";
@@ -524,6 +519,137 @@ namespace MigCorp.Skiptech.Skipgate
                 historical: false);
 
             return true;
+        }
+
+        public static IEnumerable<CompSkipgate> FindRecallGateCandidates(SkipgateRecallMode mode)
+        {
+            foreach (Map map in Find.Maps)
+            {
+                if (map.IsPocketMap) { continue; }
+
+                foreach (Building_Skipgate gate in map.listerBuildings.AllBuildingsColonistOfClass<Building_Skipgate>())
+                {
+                    CompSkipgate comp = gate.skipgateComp;
+
+                    if (comp == null || comp.CurrentOperation != null) { continue; }
+                    if (comp.CoolingDown && mode != SkipgateRecallMode.Emergency) { continue; }
+
+                    if (!(mode == SkipgateRecallMode.Emergency ? comp.recallResearchFinished : comp.linkResearchFinished)) { continue; }
+
+                    yield return comp;
+                }
+            }
+        }
+
+        private static string RecallGateOptionLabel(CompSkipgate gate, Thing beacon, SkipgateRecallMode mode)
+        {
+            float tiles = SkipgateCostUtil.TilesBetween(gate, SkipBeaconUtil.TileOf(beacon));
+
+            return mode == SkipgateRecallMode.Emergency
+                ? $"{gate.GateLabel} ({Mathf.RoundToInt(tiles)} tiles)"
+                : $"{gate.GateLabel} ({Mathf.RoundToInt(tiles)} tiles) — cost {SkipgateCostUtil.CalculateRecallCost(gate, beacon):F0}";
+        }
+
+        // Right-click on the far-side gizmo.
+        public static IEnumerable<FloatMenuOption> GetRecallGateOptions(Thing beacon, SkipgateRecallMode mode)
+        {
+            bool found = false;
+
+            foreach (CompSkipgate gate in FindRecallGateCandidates(mode).OrderBy(g => g.GateLabel))
+            {
+                found = true;
+                CompSkipgate target = gate;
+
+                yield return new FloatMenuOption(RecallGateOptionLabel(target, beacon, mode), () => TryStartRecall(target, beacon, mode));
+            }
+
+            if (!found) { yield return new FloatMenuOption("No skipgate is available", null); }
+        }
+
+        // Left-click on the far-side gizmo.
+        public static void BeginRecallGateTargeting(Thing beacon, SkipgateRecallMode mode)
+        {
+            List<CompSkipgate> candidates = FindRecallGateCandidates(mode).ToList();
+
+            if (candidates.Count == 0)
+            {
+                Messages.Message("No skipgate is available.", MessageTypeDefOf.RejectInput, historical: false);
+                return;
+            }
+
+            List<PlanetTile> candidateTiles = candidates.Select(g => g.parent.Map.Tile).Distinct().ToList();
+
+            CameraJumper.TryJump(SkipBeaconUtil.TileOf(beacon));
+            Find.WorldSelector.ClearSelection();
+
+            Find.WorldTargeter.BeginTargeting(
+                (GlobalTargetInfo t) => ChoseRecallGate(beacon, candidates, mode, t),
+                canTargetTiles: true,
+                mouseAttachment: CompLaunchable.TargeterMouseAttachment,
+                closeWorldTabWhenFinished: true,
+                onUpdate: () => DrawCandidateHighlights(candidateTiles),
+                extraLabelGetter: t => RecallGateHoverLabel(beacon, candidates, mode, t),
+                canSelectTarget: t => GatesAt(candidates, t).Any(),
+                originForClosest: SkipBeaconUtil.TileOf(beacon),
+                showCancelButton: true);
+        }
+
+        private static List<CompSkipgate> GatesAt(List<CompSkipgate> candidates, GlobalTargetInfo target)
+        {
+            List<CompSkipgate> here = new List<CompSkipgate>();
+            if (!target.IsValid) { return here; }
+
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                Map map = candidates[i].parent.Map;
+
+                if (map != null && map.Tile == target.Tile) { here.Add(candidates[i]); }
+            }
+
+            return here;
+        }
+
+        private static TaggedString RecallGateHoverLabel(Thing beacon, List<CompSkipgate> candidates, SkipgateRecallMode mode, GlobalTargetInfo target)
+        {
+            List<CompSkipgate> gates = GatesAt(candidates, target);
+
+            if (gates.Count == 0) { return null; }
+            if (gates.Count > 1) { return $"{gates.Count} skipgates"; }
+
+            return RecallGateOptionLabel(gates[0], beacon, mode);
+        }
+
+        private static bool ChoseRecallGate(Thing beacon, List<CompSkipgate> candidates, SkipgateRecallMode mode, GlobalTargetInfo target)
+        {
+            List<CompSkipgate> gates = GatesAt(candidates, target);
+
+            if (gates.Count == 0)
+            {
+                Messages.Message("No available skipgate there.", MessageTypeDefOf.RejectInput, historical: false);
+                return false;
+            }
+
+            if (gates.Count == 1)
+            {
+                TryStartRecall(gates[0], beacon, mode);
+                return true;
+            }
+
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+
+            for (int i = 0; i < gates.Count; i++)
+            {
+                CompSkipgate gate = gates[i];
+
+                options.Add(new FloatMenuOption(RecallGateOptionLabel(gate, beacon, mode), () =>
+                {
+                    if (TryStartRecall(gate, beacon, mode)) { Find.WorldTargeter.StopTargeting(); }
+                }));
+            }
+
+            Find.WindowStack.Add(new FloatMenu(options) { vanishIfMouseDistant = false });
+
+            return false;
         }
     }
 }

@@ -50,7 +50,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         protected virtual bool PreparationReady => true;
         protected bool ChargeReady => !UsesCapacitor || gate.Capacitor.Charge >= requiredCharge;
         protected bool ReadyToDial => ChargeReady && PreparationReady;
-
+        public virtual bool IgnoresCooldown => false;
         public virtual string CancelLabel => phase == SkipgateOperationPhase.Dialing ? "Cancel Dialing" : "Cancel Charging";
         public virtual string CancelDesc => "Cancel the current action.\n\nThe current charge will remain but slowly drain.";
         public virtual string CancelConfirmation => null;

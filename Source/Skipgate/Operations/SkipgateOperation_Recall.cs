@@ -41,6 +41,8 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         public bool IsEmergency => mode == SkipgateRecallMode.Emergency;
         protected override int ChargeTicks => IsEmergency ? gate.Props.emergencyChargeTicks : base.ChargeTicks;
         protected override bool ChecksCapacityPolicy => !IsEmergency;
+        public override bool IgnoresCooldown => IsEmergency;
+        protected override bool UsesCapacitor => !IsEmergency;
         public override SkipgateOperationType Type => SkipgateOperationType.Recall;
         public string TargetLabel
         {
@@ -69,8 +71,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
             if (IsEmergency)
             {
-                requiredCharge = gate.Props.emergencyRequiredCharge;
-                emergencyRecallActualCost = requiredCharge;
+                requiredCharge = 0f;
                 return;
             }
 
@@ -80,7 +81,6 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         public override AcceptanceReport CanStart()
         {
             if (beacon == null || beacon.Destroyed) { return "That skip beacon is gone."; }
-            //if (!SkipBeaconUtil.IsTargetable(beacon)) { return "Nobody is carrying that skip beacon any more."; }
             if (!SkipBeaconUtil.IsTargetable(beacon)) { return "Nobody is wearing that skip beacon any more."; }
 
             CompSkipBeacon comp = BeaconComp;

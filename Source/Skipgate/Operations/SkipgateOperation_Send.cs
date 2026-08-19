@@ -351,6 +351,8 @@ namespace MigCorp.Skiptech.Skipgate.Operations
         {
             try
             {
+                for (int i = 0; i < transporters.Count; i++) { PassPawnsToWorld(transporters[i]); }
+
                 action.Arrived(transporters, tile);
             }
             catch (Exception ex)
@@ -367,6 +369,19 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                     $"{GateLabel} could not complete the skip. Everything it was carrying has been dropped at the gate.",
                     LetterDefOf.NegativeEvent,
                     new TargetInfo(originCell, originMap));
+            }
+        }
+
+        // Vanilla does this in TravellingTransporters.AddTransporter, we need to do it by hand.
+        // Otherwise the caravan nukes the pawn.
+        private static void PassPawnsToWorld(ActiveTransporterInfo info)
+        {
+            for (int i = info.innerContainer.Count - 1; i >= 0; i--)
+            {
+                if (info.innerContainer[i] is Pawn pawn && !pawn.IsWorldPawn())
+                {
+                    pawn.ExitMap(allowedToJoinOrCreateCaravan: false, Rot4.Invalid);
+                }
             }
         }
 

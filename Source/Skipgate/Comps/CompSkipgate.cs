@@ -133,7 +133,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public bool TryStartOperation(SkipgateOperation operation)
         {
             if (operation == null || currentOperation != null) { return false; }
-            if (HeatRemaining > 0f) { return false; }
+            if (HeatRemaining > 0f && !operation.IgnoresCooldown) { return false; }
 
             AcceptanceReport canStart = operation.CanStart();
             if (!canStart.Accepted)
@@ -274,10 +274,10 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             };
         }
 
-        private Command_Action Skipgate_Command_Operation(string defaultLabel, string defaultDesc, System.Action action)
+        private Command_Action Skipgate_Command_Operation(string defaultLabel, string defaultDesc, System.Action action, bool ignoresCooldown = false)
         {
             Command_Action command = new Command_Action();
-            if (CoolingDown)
+            if (CoolingDown && !ignoresCooldown)
             {
                 command.Disabled = true;
                 command.disabledReason = "Skipgate cannot be used while dispersing heat.";
@@ -309,7 +309,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 defaultLabel: "Emergency Recall",
                 defaultDesc: $"Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, {(linkResearchFinished ? "with a 50% chance of consuming the skip beacon" : "consuming the skip beacon")}.\n\n" +
                     "WARNING: Will cause damage and breakdowns around the map!".Colorize(Color.yellow),
-                action: delegate { SkipgateTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Emergency); }
+                action: delegate { SkipgateTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Emergency); },
+                ignoresCooldown: true
                 );
 
             return command;

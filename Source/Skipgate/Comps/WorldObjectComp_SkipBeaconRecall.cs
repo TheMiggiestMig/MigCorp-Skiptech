@@ -19,25 +19,23 @@ namespace MigCorp.Skiptech.Skipgate
         private static readonly Texture2D CancelIcon = ContentFinder<Texture2D>.Get("UI/Designators/Cancel");
 
         private static readonly List<Thing> tmpBeacons = new List<Thing>();
-
-        private CompSkipBeacon ClaimedBeacon
+        private CompSkipBeacon ClaimedBeacon => FirstBeacon(true);
+        private CompSkipBeacon AnyBeacon => FirstBeacon(false);
+        private CompSkipBeacon FirstBeacon(bool claimedOnly)
         {
-            get
+            Caravan caravan = parent as Caravan;
+            if (caravan == null) { return null; }
+
+            SkipBeaconUtil.BeaconsInCaravan(caravan, tmpBeacons);
+
+            for (int i = 0; i < tmpBeacons.Count; i++)
             {
-                Caravan caravan = parent as Caravan;
-                if (caravan == null) { return null; }
+                CompSkipBeacon comp = SkipBeaconUtil.BeaconComp(tmpBeacons[i]);
 
-                SkipBeaconUtil.BeaconsInCaravan(caravan, tmpBeacons);
-
-                for (int i = 0; i < tmpBeacons.Count; i++)
-                {
-                    CompSkipBeacon comp = SkipBeaconUtil.BeaconComp(tmpBeacons[i]);
-
-                    if (comp != null && comp.IsClaimed) { return comp; }
-                }
-
-                return null;
+                if (comp != null && (!claimedOnly || comp.IsClaimed)) { return comp; }
             }
+
+            return null;
         }
 
         public override IEnumerable<Gizmo> GetGizmos()
@@ -45,16 +43,25 @@ namespace MigCorp.Skiptech.Skipgate
             CompSkipBeacon comp = ClaimedBeacon;
             SkipgateOperation_Recall recall = comp?.ActiveRecall;
 
-            if (recall == null) { yield break; }
-
-            yield return new Command_Action
+            if (recall != null)
             {
-                defaultLabel = recall.CancelLabel,
-                defaultDesc = $"{recall.CancelDesc}\n\nBeing recalled by {comp.RecallingGate.RenamableLabel}.",
-                icon = CancelIcon,
-                groupable = true,
-                action = delegate { comp.ActiveRecall?.TryCancel(); }
-            };
+                yield return new Command_Action
+                {
+                    defaultLabel = recall.CancelLabel,
+                    defaultDesc = $"{recall.CancelDesc}\n\nBeing recalled by {comp.RecallingGate.RenamableLabel}.",
+                    icon = CancelIcon,
+                    action = delegate { comp.ActiveRecall?.TryCancel(); }
+                };
+
+                yield break;
+            }
+
+            // Nothing claimed — offer to call home, if anyone aboard is actually wearing a beacon.
+            CompSkipBeacon carried = AnyBeacon;
+            if (carried == null) { yield break; }
+
+            yield return new Command_RecallToSkipgate(carried.parent, SkipgateRecallMode.Emergency);
+            yield return new Command_RecallToSkipgate(carried.parent, SkipgateRecallMode.Normal);
         }
 
         public override string CompInspectStringExtra()

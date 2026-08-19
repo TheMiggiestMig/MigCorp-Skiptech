@@ -2,6 +2,7 @@
 using MigCorp.Skiptech.Skipgate.Comps;
 using MigCorp.Skiptech.Skipgate.Operations;
 using RimWorld;
+using System.Collections.Generic;
 using Verse;
 
 namespace MigCorp.Skiptech.Comps
@@ -37,6 +38,15 @@ namespace MigCorp.Skiptech.Comps
 
                 return recall != null && recall.Beacon == parent ? recall : null;
             }
+        }
+        public override IEnumerable<Gizmo> CompGetWornGizmosExtra()
+        {
+            Pawn wearer = Wearer;
+
+            if (IsClaimed || wearer == null || wearer.Faction != Faction.OfPlayer) { yield break; }
+
+            yield return new Command_RecallToSkipgate(parent, SkipgateRecallMode.Emergency);
+            yield return new Command_RecallToSkipgate(parent, SkipgateRecallMode.Normal);
         }
 
         public override void CompDrawWornExtras()
