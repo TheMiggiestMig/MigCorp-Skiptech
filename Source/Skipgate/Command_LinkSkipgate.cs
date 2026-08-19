@@ -26,10 +26,10 @@ namespace MigCorp.Skiptech.Skipgate
                 disabledReason = "Skipgate cannot be used while dispersing heat.";
             }
 
-            action = () => SkipgateTargetingUtil.BeginLinkTargeting(source);
+            action = () => SkipgateLinkTargetingUtil.BeginLinkTargeting(source);
         }
 
         public override IEnumerable<FloatMenuOption> RightClickFloatMenuOptions =>
-            SkipgateTargetingUtil.GetNamedTargetOptions(source);
+            SkipgateLinkTargetingUtil.GetNamedTargetOptions(source);
     }
 }

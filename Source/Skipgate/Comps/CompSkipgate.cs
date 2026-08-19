@@ -309,7 +309,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 defaultLabel: "Emergency Recall",
                 defaultDesc: $"Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, {(linkResearchFinished ? "with a 50% chance of consuming the skip beacon" : "consuming the skip beacon")}.\n\n" +
                     "WARNING: Will cause damage and breakdowns around the map!".Colorize(Color.yellow),
-                action: delegate { SkipgateTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Emergency); },
+                action: delegate { SkipgateRecallTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Emergency); },
                 ignoresCooldown: true
                 );
 
@@ -321,7 +321,7 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Recall",
                 defaultDesc: "Targets a pawn or caravan equipped with a skip beacon and teleports them to this skipgate.",
-                action: delegate { SkipgateTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Normal); }
+                action: delegate { SkipgateRecallTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Normal); }
                 );
 
             return command;

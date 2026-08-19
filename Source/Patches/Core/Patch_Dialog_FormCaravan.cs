@@ -103,7 +103,7 @@ namespace MigCorp.Skiptech.Patches.Core
             }
 
             dialog.Close(doCloseSound: false);
-            SkipgateTargetingUtil.BeginSendTargeting(gate, sendOp);
+            SkipgateSendTargetingUtil.BeginSendTargeting(gate, sendOp);
 
             return true;
         }

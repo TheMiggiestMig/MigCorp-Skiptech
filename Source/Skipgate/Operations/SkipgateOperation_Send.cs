@@ -432,7 +432,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
                     ? $"Currently sending to {DestinationLabel}. Picking a new destination recalculates the charge cost."
                     : "Pick where this skipgate sends its caravan.\n\nThe gate won't start charging until a destination is set.",
                 icon = CompLaunchable.LaunchCommandTex,
-                action = delegate { SkipgateTargetingUtil.BeginSendTargeting(gate, this); }
+                action = delegate { SkipgateSendTargetingUtil.BeginSendTargeting(gate, this); }
             };
         }
 

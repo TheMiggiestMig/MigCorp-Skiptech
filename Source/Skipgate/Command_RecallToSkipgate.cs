@@ -27,10 +27,10 @@ namespace MigCorp.Skiptech.Skipgate
 
             icon = CompLaunchable.LaunchCommandTex;
 
-            action = () => SkipgateTargetingUtil.BeginRecallGateTargeting(beacon, mode);
+            action = () => SkipgateRecallTargetingUtil.BeginRecallGateTargeting(beacon, mode);
         }
 
         public override IEnumerable<FloatMenuOption> RightClickFloatMenuOptions =>
-            SkipgateTargetingUtil.GetRecallGateOptions(beacon, mode);
+            SkipgateRecallTargetingUtil.GetRecallGateOptions(beacon, mode);
     }
 }
