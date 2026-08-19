@@ -1,5 +1,4 @@
-﻿using LudeonTK;
-using RimWorld;
+﻿using RimWorld;
 using System.Text;
 using UnityEngine;
 using Verse;
@@ -8,15 +7,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 {
     public class CompProperties_SkipgateCapacitor : CompProperties
     {
-        [TweakValue("Skiptech", 0f, 3200f)]
-        public static float WattsPerCharge = 1600f;
-        public float wattsPerCharge => CompProperties_SkipgateCapacitor.WattsPerCharge;
-        //public float wattsPerCharge = 1600f; // 1600W = 1 Charge
-        //public float chargingWatts = 1600f; // How much power the capacitor takes from the grid to charge
-        [TweakValue("Skiptech", 0f, 2500f)]
-        public static int ChargeTicks = 2500;
-        public int chargeTicks => CompProperties_SkipgateCapacitor.ChargeTicks;
-        //public int chargeTicks = 2500;
+        public float wattsPerCharge => 1600f;
+        public int chargeTicks => 2500;
         public float decayPercent = 0.01f;
         public float decayPerSecond = 0.25f;
         public float maxCharge = -1f; // -1 for unlimited, specifically once Skipgate Linking has been researched.
@@ -99,6 +91,12 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         }
         public void SetTarget(float cost) => SetTarget(cost, WattsForCost(cost));
 
+        public void ClearTarget()
+        {
+            targetCharge = 0f;
+            requestedChargingWatts = 0f;
+        }
+
         public float WattsForCost(float cost, int ticks)
         {
             return ticks <= 0 ? 0f : cost * Props.wattsPerCharge / (ticks / 60f);
@@ -106,11 +104,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public float WattsForCost(float cost) => WattsForCost(cost, Props.chargeTicks);
 
-        public void ClearTarget()
-        {
-            targetCharge = 0f;
-            requestedChargingWatts = 0f;
-        }
 
         public void SetLoad(float chargePerSecond) => loadPerSecond = Mathf.Max(chargePerSecond, 0f);
 

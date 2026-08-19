@@ -63,7 +63,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
-    <Compile Include="Comps\CompSkipBeacon.cs" />
+    <Compile Include="Skipgate\Comps\CompSkipBeacon.cs" />
     <Compile Include="Patches\Core\Patch_Dialog_FormCaravan.cs" />
     <Compile Include="Patches\Core\Patch_WorldRoutePlanner.cs" />
     <Compile Include="Skipgate\ActiveTransporter_Skip.cs" />
@@ -84,14 +84,14 @@
     <Compile Include="Skipgate\Comps\CompSkipgate.cs" />
     <Compile Include="Skipgate\Comps\CompSkipgateCapacitor.cs" />
     <Compile Include="Skipgate\Operations\SkipgateOperation_Send.cs" />
-    <Compile Include="Skipgate\SkipBeaconUtil.cs" />
-    <Compile Include="Skipgate\SkipgateArrivalUtil.cs" />
-    <Compile Include="Skipgate\SkipgateCaravanUtil.cs" />
-    <Compile Include="Skipgate\SkipgateCostUtil.cs" />
-    <Compile Include="Skipgate\SkipgateLinkTargetingUtil.cs" />
+    <Compile Include="Skipgate\Utils\SkipBeaconUtil.cs" />
+    <Compile Include="Skipgate\Utils\SkipgateArrivalUtil.cs" />
+    <Compile Include="Skipgate\Utils\SkipgateCaravanUtil.cs" />
+    <Compile Include="Skipgate\Utils\SkipgateCostUtil.cs" />
+    <Compile Include="Skipgate\Utils\SkipgateLinkTargetingUtil.cs" />
     <Compile Include="Skipgate\SkipgateRosterHolder.cs" />
-    <Compile Include="Skipgate\SkipgateSendTargetingUtil.cs" />
-    <Compile Include="Skipgate\SkipgateRecallTargetingUtil.cs" />
+    <Compile Include="Skipgate\Utils\SkipgateSendTargetingUtil.cs" />
+    <Compile Include="Skipgate\Utils\SkipgateRecallTargetingUtil.cs" />
     <Compile Include="Skipgate\TransporterArrivalAction_SkipInSpecificCell.cs" />
     <Compile Include="SkipNet\DijkstraSearchStepper.cs" />
     <Compile Include="GameComponent_Skiptech.cs" />

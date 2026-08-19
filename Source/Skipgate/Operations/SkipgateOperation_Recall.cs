@@ -135,16 +135,124 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         protected override void Execute()
         {
-            if (!TrySpendRequiredCharge()) { return; }
+            Map gateMap = gate.parent.Map;
+            IntVec3 gateCell = gate.parent.Position;
+            Caravan caravan = TargetCaravan;
 
-            if (mode == SkipgateRecallMode.Emergency)
+            string broken = ChannelBroken();
+            if (broken != null)
             {
-                Messages.Message($"{gate} successfully performed {Type}. DEV Penalize the player for {emergencyRecallActualCost} units.", MessageTypeDefOf.CautionInput);
-                CompleteOperation(emergencyRecallActualCost);
+                FailOperation(broken);
                 return;
             }
-            Messages.Message($"{gate} successfully performed {Type}.", MessageTypeDefOf.NeutralEvent);
-            CompleteOperation(requiredCharge);
+
+            if (!ChargeReady)
+            {
+                FailOperation("Insufficient charge at execution.");
+                return;
+            }
+
+            // Pawn.DeSpawn calls jobs.StopAll() as its first action which ends the channel job, which fires the driver's finish action,
+            // which cancels this op mid-Execute, because `ending` is not set until CompleteOperation.
+            // Clearing the claim first makes that finish action resolve to nothing.
+            ReleaseBeacon();
+
+            if (!(caravan != null
+                ? ExecuteCaravanArrival(caravan, gateMap, gateCell)
+                : ExecuteMapArrival(gateMap, gateCell)))
+            {
+                return;
+            }
+
+            CompleteOperation(IsEmergency ? emergencyRecallActualCost : requiredCharge);
+        }
+
+        // CaravanEnterMapUtility.Enter is the whole caravan arrival.
+        private bool ExecuteCaravanArrival(Caravan caravan, Map map, IntVec3 cell)
+        {
+            CaravanEnterMapUtility.Enter(
+                caravan,
+                map,
+                (Pawn p) => CellFinder.RandomSpawnCellForPawnNear(cell, map),
+                CaravanDropInventoryMode.DoNotDrop,
+                draftColonists: !map.IsPlayerHome);
+
+            TrySpendRequiredCharge();
+
+            return true;
+        }
+
+        private bool ExecuteMapArrival(Map map, IntVec3 cell)
+        {
+            Map originMap = SkipBeaconUtil.MapOf(beacon);
+            IntVec3 originCell = beacon.PositionHeld;
+
+            List<Thing> yoinked = SkipBeaconUtil.YoinkSet(beacon);
+            if (yoinked.Count == 0)
+            {
+                FailOperation($"{GateLabel} found nothing to recall.");
+                return false;
+            }
+
+            // It's another definitely-not-a-drop-pod!
+            ActiveTransporterInfo info = new ActiveTransporterInfo();
+            info.openDelay = 0;
+
+            for (int i = 0; i < yoinked.Count; i++)
+            {
+                Thing thing = yoinked[i];
+
+                if (thing.Spawned) { thing.DeSpawnOrDeselect(); }
+
+                // TryAddOrTransfer, not TryAdd. A carried pawn already has a holdingOwner.
+                //if (info.innerContainer.TryAdd(thing)) { continue; }
+                if (info.innerContainer.TryAddOrTransfer(thing)) { continue; }
+
+                // Drop everything if it failed to transfer.
+                info.innerContainer.TryDropAll(originCell, originMap, ThingPlaceMode.Near);
+                FailOperation($"{GateLabel} could not take {thing.LabelShortCap} through. The recall was aborted.");
+                return false;
+            }
+
+            TrySpendRequiredCharge();
+
+            List<Thing> arrivals = new List<Thing>(info.innerContainer);
+            SkipgateArrivalUtil.PlaceContents(info, cell, map);
+            NotifyArrived(arrivals, map);
+
+            return true;
+        }
+
+        // Copy what Farskip does after a skip (that PlaceContents doesn't).
+        private void NotifyArrived(List<Thing> arrivals, Map map)
+        {
+            int hostiles = 0;
+
+            for (int i = 0; i < arrivals.Count; i++)
+            {
+                Pawn pawn = arrivals[i] as Pawn;
+
+                // PlaceContents leaves anything it couldn't place still held rather than destroying it.
+                if (pawn == null || !pawn.Spawned) { continue; }
+
+                pawn.Notify_Teleported();
+                CompAbilityEffect_Teleport.SendSkipUsedSignal(pawn, gate.parent);
+
+                if (map.IsPlayerHome && (pawn.IsColonist || pawn.RaceProps.packAnimal || pawn.IsColonyMech))
+                {
+                    pawn.inventory.UnloadEverything = true;
+                }
+
+                if (pawn.HostileTo(Faction.OfPlayer)) { hostiles++; }
+            }
+
+            if (hostiles <= 0) { return; }
+
+            Find.LetterStack.ReceiveLetter(
+                "Recall brought company",
+                $"{GateLabel} pulled {hostiles} hostile{(hostiles == 1 ? "" : "s")} through along with your people. They are loose at the gate.",
+                LetterDefOf.ThreatSmall,
+                new TargetInfo(gate.parent.Position, map));
         }
 
         public override void Start()
