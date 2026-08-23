@@ -11,12 +11,13 @@ namespace MigCorp.Skiptech.Skipgate.Comps
     {
         public CompProperties_Skipgate() => compClass = typeof(CompSkipgate);
 
-        public float heatPerCost = 2.5f;
+        public float heatPerCost = 0.5f;
         public float heatDissipationPerSecond = 1f;
 
         // Dialing time (10/64 glyph dialing phase after charging completes and pawns / load is ready).
         public int dialingTicks = 300; //5s
 
+        /*
         public float linkCostBase = 25f;
         public float linkCostPerTile = 1f;
         public float linkBufferSeconds = 250f;
@@ -29,6 +30,20 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public float recallCostBase = 10f;
         public float recallCostPerKg = 0.05f;
         public float recallCostPerKgPerTile = 0.002f;
+        */
+
+        public float linkCostBase = 25f;
+        public float linkCostPerTile = 3f;
+        public float linkBufferSeconds = 250f;
+        public float linkRebuildWatts = 200f;
+
+        public float sendCostBase = 10f;
+        public float sendCostPerKg = 0.25f;
+        public float sendCostPerKgPerTile = 0.01f;
+
+        public float recallCostBase = 10f;
+        public float recallCostPerKg = 0.25f;
+        public float recallCostPerKgPerTile = 0.01f;
 
         public int emergencyChargeTicks = 180;
         public float emergencyRequiredCharge = 5f;
