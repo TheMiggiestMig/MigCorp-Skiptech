@@ -178,7 +178,7 @@ namespace MigCorp.Skiptech.Skipgate
                     if (comp == null || comp.CurrentOperation != null) { continue; }
                     if (comp.CoolingDown && mode != SkipgateRecallMode.Emergency) { continue; }
 
-                    if (!(mode == SkipgateRecallMode.Emergency ? comp.recallResearchFinished : comp.linkResearchFinished)) { continue; }
+                    if (!(mode == SkipgateRecallMode.Emergency ? comp.EmergencyRecallUnlocked : comp.RecallUnlocked)) { continue; }
 
                     yield return comp;
                 }

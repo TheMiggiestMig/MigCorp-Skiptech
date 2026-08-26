@@ -20,10 +20,13 @@ namespace MigCorp.Skiptech.Skipgate
                 "Right-click to choose a skipgate by name.";
             icon = TexCommand.Install;
 
-            if (source.CoolingDown)
+            if (!source.LinkUnlocked)
             {
-                Disabled = true;
-                disabledReason = "Skipgate cannot be used while dispersing heat.";
+                Disable($"Requires research: {(string)SkiptechDefOf.MigCorp_SkipRift.LabelCap}");
+            }
+            else if (source.CoolingDown)
+            {
+                Disable("Skipgate cannot be used while dispersing heat.");
             }
 
             action = () => SkipgateLinkTargetingUtil.BeginLinkTargeting(source);

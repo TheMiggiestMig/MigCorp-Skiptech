@@ -70,9 +70,9 @@ namespace MigCorp.Skiptech.Skipgate.Operations
 
         public virtual AcceptanceReport CanStart()
         {
-            if (ChecksCapacityPolicy && !gate.Capacitor.IsWithinCapacity(requiredCharge))
+            if (ChecksCapacityPolicy && !gate.IsWithinCapacitorLimit(requiredCharge))
             {
-                return "Charge cost exceeds the capacitor's safe operating limit.";
+                return gate.CapacityRefusal(requiredCharge);
             }
 
             return true;

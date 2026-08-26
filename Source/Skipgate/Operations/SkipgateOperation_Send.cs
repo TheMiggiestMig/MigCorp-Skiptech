@@ -165,7 +165,7 @@ namespace MigCorp.Skiptech.Skipgate.Operations
             float cost = SkipgateCostUtil.CalculateSendCost(gate, PlannedMass(), SkipgateCostUtil.TilesBetween(gate, target));
 
             // Relevant prior to max research.
-            if (!gate.Capacitor.IsWithinCapacity(cost)) { return "Charge cost exceeds the capacitor's safe operating limit."; }
+            if (!gate.IsWithinCapacitorLimit(cost)) { return gate.CapacityRefusal(cost); }
 
             destination = target;
             arrivalAction = action;

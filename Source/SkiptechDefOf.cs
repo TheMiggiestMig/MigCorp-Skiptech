@@ -10,9 +10,17 @@ namespace MigCorp.Skiptech
         public static ThingDef MigCorp_SkipgatePortal;
         public static ThingDef MigCorp_SkipgateSent;
         public static ThingDef MigCorp_SkipBeacon;
+
         public static RulePackDef MigCorp_SkipgateNameMaker;
+
         public static DutyDef MigCorp_SkipgateHold;
+
         public static JobDef MigCorp_ChannelSkipBeacon;
+
+        public static ResearchProjectDef MigCorp_SkipNet;
+        public static ResearchProjectDef MigCorp_SkipField;
+        public static ResearchProjectDef MigCorp_SkipVoid;
+        public static ResearchProjectDef MigCorp_SkipRift;
 
         static SkiptechDefOf() => DefOfHelper.EnsureInitializedInCtor(typeof(SkiptechDefOf));
     }

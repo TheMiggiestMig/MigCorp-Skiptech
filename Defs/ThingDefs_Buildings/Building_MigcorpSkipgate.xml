@@ -52,6 +52,10 @@
 
         <constructionSkillPrerequisite>8</constructionSkillPrerequisite>
 
+        <researchPrerequisites>
+            <li>MigCorp_SkipField</li>
+        </researchPrerequisites>
+
         <building>
             <isEdifice>true</isEdifice>
             <ai_chillDestination>false</ai_chillDestination>

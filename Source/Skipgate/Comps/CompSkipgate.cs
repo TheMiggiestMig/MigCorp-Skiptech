@@ -47,6 +47,9 @@ namespace MigCorp.Skiptech.Skipgate.Comps
 
         public int emergencyChargeTicks = 180;
         public float emergencyRequiredCharge = 5f;
+
+        public float skipFieldMaxCharge = 150f;
+        public float skipVoidMaxCharge = 400f;
     }
 
     [StaticConstructorOnStartup]
@@ -77,16 +80,32 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                                 ? link.OtherGate
                                 : null;
 
-
-        //public bool recallResearchFinished = DefDatabase<ResearchProjectDef>.GetNamed("MigCorpSkipTech_SkipgateRecall").IsFinished;
-        //public bool linkResearchFinished = DefDatabase<ResearchProjectDef>.GetNamed("MigCorpSkipTech_SkipgateLink").IsFinished;
-        public bool recallResearchFinished = true; // true for testing
-        public bool linkResearchFinished = true; // true for testing
+        public bool EmergencyRecallUnlocked => SkiptechDefOf.MigCorp_SkipVoid.IsFinished;
+        public bool RecallUnlocked => SkiptechDefOf.MigCorp_SkipRift.IsFinished;
+        public bool LinkUnlocked => SkiptechDefOf.MigCorp_SkipRift.IsFinished;
 
         private bool postLoadValidationPending;
         private bool autoSend;
         public bool AutoSend => autoSend;
         public void SetAutoSend(bool value) => autoSend = value;
+        public float CapacitorLimit
+        {
+            get
+            {
+                if (SkiptechDefOf.MigCorp_SkipRift.IsFinished) { return -1f; }
+                if (SkiptechDefOf.MigCorp_SkipVoid.IsFinished) { return Props.skipVoidMaxCharge; }
+
+                return Props.skipFieldMaxCharge;
+            }
+        }
+
+        public bool IsWithinCapacitorLimit(float requiredCharge)
+        {
+            return requiredCharge >= 0f && (CapacitorLimit < 0f || requiredCharge <= CapacitorLimit);
+        }
+
+        public string CapacityRefusal(float cost) =>
+            $"Charge cost {cost:F0} exceeds the capacitor's safe limit of {CapacitorLimit:F0}.";
 
         public override void PostExposeData()
         {
@@ -227,17 +246,11 @@ namespace MigCorp.Skiptech.Skipgate.Comps
                 yield return Gizmo_Send();
 
                 // Emergency Recall
-                if (recallResearchFinished)
-                {
-                    yield return Gizmo_EmergencyRecall();
-                }
+                yield return Gizmo_EmergencyRecall();
 
                 // Recall
-                if (linkResearchFinished)
-                {
-                    yield return Gizmo_Recall();
-                    yield return Gizmo_Link();
-                }
+                yield return Gizmo_Recall();
+                yield return Gizmo_Link();
             }
 
             if (DebugSettings.ShowDevGizmos)
@@ -289,9 +302,15 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             };
         }
 
-        private Command_Action Skipgate_Command_Operation(string defaultLabel, string defaultDesc, System.Action action, bool ignoresCooldown = false)
+        private Command_Action Skipgate_Command_Operation(string defaultLabel, string defaultDesc, System.Action action, bool ignoresCooldown = false, ResearchProjectDef requiredResearch = null)
         {
             Command_Action command = new Command_Action();
+
+            if (requiredResearch != null && !requiredResearch.IsFinished)
+            {
+                command.Disable($"Requires research: {(string)requiredResearch.LabelCap}");
+            }
+
             if (CoolingDown && !ignoresCooldown)
             {
                 command.Disabled = true;
@@ -322,10 +341,11 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         {
             Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Emergency Recall",
-                defaultDesc: $"Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, {(linkResearchFinished ? "with a 50% chance of consuming the skip beacon" : "consuming the skip beacon")}.\n\n" +
+                defaultDesc: $"Target a pawn or caravan equipped with a skip beacon and teleport them to this skipgate, {(RecallUnlocked ? "with a 50% chance of consuming the skip beacon" : "consuming the skip beacon")}.\n\n" +
                     "WARNING: Will cause damage and breakdowns around the map!".Colorize(Color.yellow),
                 action: delegate { SkipgateRecallTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Emergency); },
-                ignoresCooldown: true
+                ignoresCooldown: true,
+                requiredResearch: SkiptechDefOf.MigCorp_SkipVoid
                 );
 
             return command;
@@ -336,7 +356,8 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             Command_Action command = Skipgate_Command_Operation(
                 defaultLabel: "Recall",
                 defaultDesc: "Targets a pawn or caravan equipped with a skip beacon and teleports them to this skipgate.",
-                action: delegate { SkipgateRecallTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Normal); }
+                action: delegate { SkipgateRecallTargetingUtil.BeginRecallTargeting(this, SkipgateRecallMode.Normal); },
+                requiredResearch: SkiptechDefOf.MigCorp_SkipRift
                 );
 
             return command;
@@ -359,6 +380,9 @@ namespace MigCorp.Skiptech.Skipgate.Comps
             StringBuilder sb = new StringBuilder();
 
             CurrentOperation?.AppendInspectLines(sb);
+
+            float limit = CapacitorLimit;
+            if (limit >= 0f) { sb.AppendLine($"Capacitor safe limit: {limit:F0} charge"); }
 
             if (CoolingDown) { sb.AppendLine($"Cooling down ({CooldownTicksLeft().ToStringTicksToPeriod()})"); }
 

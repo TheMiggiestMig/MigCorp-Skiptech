@@ -42,7 +42,6 @@ namespace MigCorp.Skiptech.Skipgate.Comps
         public bool Powered => powerComp == null || powerComp.PowerOn;
         public bool WantsToCharge => HasTarget && currentCharge < targetCharge;
         private float ChargePerSecond => Props.wattsPerCharge <= 0f ? 0f : requestedChargingWatts / Props.wattsPerCharge;
-        public bool IsWithinCapacity(float cost) => cost >= 0f && (Props.maxCharge < 0f || cost <= Props.maxCharge);
         public bool HasCharge(float amount) => amount >= 0f && currentCharge >= amount;
         public int ChargeEtaTicks()
         {
