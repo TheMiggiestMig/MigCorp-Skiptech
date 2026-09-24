@@ -12,10 +12,13 @@ namespace MigCorp.Skiptech.SkipNet
         public PathRequest originalPathRequest;
         public PathRequest dummyPathRequest; // We want to control the release timing of the path. Give the pawn a dummy that we will inject the path into once we know what we're doing.
         public int tickCreated; // Needed to kill on timeout. If a pawn can't reasonably resolve a proposal into a useable path in this time, kill it.
+        public SkipNetPlan plan; // Set once the splicer takes the trip on. Dies with the proposal if it's released before the splice lands.
 
         // The pather only still wants this trip while it's holding our latest dummy.
-        public bool IsStillRequired {
-            get {
+        public bool IsStillRequired
+        {
+            get
+            {
                 return dummyPathRequest != null && pawn?.pather != null && pawn.pather.curPathRequest == dummyPathRequest;
             }
         }
@@ -28,8 +31,6 @@ namespace MigCorp.Skiptech.SkipNet
             peMode = originalPathRequest.EndMode;
             tp = originalPathRequest.TraverseParms;
             tickCreated = GenTicks.TicksGame;
-
-            this.originalPathRequest = originalPathRequest;
         }
 
         // Check if a PathRequest has the same details as this proposal's.

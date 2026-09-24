@@ -42,8 +42,8 @@ namespace MigCorp.Skiptech.SkipNet
         public override void MapComponentTick()
         {
             base.MapComponentTick();
-            proposer.ProcessQueue();
             splicer.Run(); // Should run before planner, otherwise we'll get churn from plans that definitely won't be ready.
+            proposer.ProcessQueue();
             planner.Run();
         }
 

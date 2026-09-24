@@ -29,6 +29,8 @@ namespace MigCorp.Skiptech
             // If there isn't a current plan, carry on. GenerateNewPathRequest will make a new proposal for us.
             if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
 
+            if (plan.State != SkipNetPlanState.Installed) { return; }
+
             // If a valid plan already exists, and it's going to the same location, let it.
             if (plan.originalDest == dest && plan.originalPeMode == peMode &&
                 __instance.Moving && __instance.curPath != null)

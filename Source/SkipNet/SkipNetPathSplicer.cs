@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using MigCorp.Skiptech.Utils;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -19,8 +20,7 @@ namespace MigCorp.Skiptech.SkipNet
             AccessTools.FieldRefAccess<PawnPath, int>("curNodeIndex");
 
         // Safety trigger, if something in maintenance isn't working.
-        private const int skipPathTimeoutTicks = 600;
-        private const int MaxConcurrentSplicesHard = 8;
+        private const int MaxConcurrentSplicesHard = 9999;
 
         public enum TeleportStepDecision
         {
@@ -33,9 +33,9 @@ namespace MigCorp.Skiptech.SkipNet
         {
             public Pawn pawn;
             public SkipNetPlan plan;
+            public SkipNetProposal proposal; // Holds the pawn's dummy and the direct path until the splice lands.
             public PathRequest pathToEntry;
             public PathRequest pathToDest;
-            public int tickStarted;
         }
 
         private readonly List<SkipPathPair> pendingPairs = new List<SkipPathPair>();
@@ -47,6 +47,7 @@ namespace MigCorp.Skiptech.SkipNet
             public IntVec3 entryCell;
             public IntVec3 exitCell;
             public bool compsNotified;     // Make sure we only Notify_PawnArrived once
+            public PathRequest pendingRequest; // The dummy the splice was resolved into. Set until the pather claims it. The seam is offline until then.
         }
 
         private readonly Dictionary<Pawn, SeamInfo> seams = new Dictionary<Pawn, SeamInfo>();
@@ -59,22 +60,22 @@ namespace MigCorp.Skiptech.SkipNet
             this.skipNet = skipNet;
         }
 
-        // PawnPathPool throws ErrorOnce once total paths created exceeds 2 * spawnedPawns + 5.
-        // Each pending pair temporarily takes 2 paths on top of the pawn's own, so usage: ~N + 2P must stay under 2N + 5.
-        // Which means processing splices must be <= (N + 5) / 2.
-        // ... Or I can just let it error once and let the pool grow, but I'd rather not have errors.
+        // PawnPathPool throws ErrorOnce once total paths created exceeds 2 * spawnedPawns + 5 (2N + 5).
+        // Each pending pair temporarily takes 3 paths on top of the pawn's own.
+        // Assuming worst case scenario, we can process (N - proposalPawns + 5) / 2.
+        // May still throw the PathPool leak OnceOff error if every animal and every pawn had a path and tried pathing again in the same tick.
+        // ...Very unlikely though.
         public int MaxPendingPairs
         {
             get
             {
-                int poolSafe = (map.mapPawns.AllPawnsSpawnedCount + 5) / 2;
-                return Mathf.Min(MaxConcurrentSplicesHard, poolSafe);
+                return Mathf.FloorToInt(map.mapPawns.AllPawnsSpawnedCount - skipNet.proposer.ProposalCount + 5) / 2;
             }
         }
 
         public bool AtCapacity { get { return pendingPairs.Count >= MaxPendingPairs; } }
 
-        public bool TryBeginSkipPaths(SkipNetPlan plan)
+        public bool TryBeginSkipPaths(SkipNetPlan plan, SkipNetProposal proposal)
         {
             if (AtCapacity) { return false; }
 
@@ -85,7 +86,8 @@ namespace MigCorp.Skiptech.SkipNet
             PathFinderCostTuning? tuning = PathFinderCostTuning.For(pawn);
 
             // Get the exact cell the entry path should start on.
-            IntVec3 start = pawn.pather.nextCell.IsValid ? pawn.pather.nextCell : pawn.Position;
+            // IntVec3 start = pawn.pather.nextCell.IsValid ? pawn.pather.nextCell : pawn.Position;
+            IntVec3 start = proposal.originalPathRequest.Start;
 
             PathRequest skipPathToEntry = pathFinder.CreateRequest(start, new LocalTargetInfo(plan.entry.parent), null, pawn, tuning, PathEndMode.OnCell);
             PathRequest skipPathToDest = pathFinder.CreateRequest(plan.exit.Position, plan.originalDest, null, pawn, tuning, plan.originalPeMode);
@@ -97,9 +99,9 @@ namespace MigCorp.Skiptech.SkipNet
             {
                 pawn = pawn,
                 plan = plan,
+                proposal = proposal,
                 pathToEntry = skipPathToEntry,
-                pathToDest = skipPathToDest,
-                tickStarted = GenTicks.TicksGame
+                pathToDest = skipPathToDest
             });
 
             // The splicer owns this trip now.
@@ -120,6 +122,7 @@ namespace MigCorp.Skiptech.SkipNet
                 SkipPathPair pair = pendingPairs[i];
                 Pawn pawn = pair.pawn;
                 SkipNetPlan plan = pair.plan;
+                SkipNetProposal proposal = pair.proposal;
 
                 // Check for pawn't first.
                 // Paths for "no longer pawn" never finalize or set ResultIsReady, so the path lingers forever unless
@@ -137,20 +140,7 @@ namespace MigCorp.Skiptech.SkipNet
                     continue;
                 }
 
-                Pawn_PathFollower pather = pawn.pather;
-
-                // If there's already another path request for the pawn, the pawn isn't moving or doesn't have a path,
-                // then the plan is already invalid (since we assume it's supposed to be moving on the direct path for now).
-                if (pather.curPathRequest != null || !pather.Moving || pather.curPath == null)
-                {
-                    AbortPair(i, pair);
-                    continue;
-                }
-
-                // If for whatever reason the pawn isn't going to the same destination after we requested the skip paths,
-                // then the plan is invalid.
-                if (SkipNetUtils.PatherDest(pather) != plan.originalDest ||
-                    SkipNetUtils.PatherPeMode(pather) != plan.originalPeMode)
+                if (!proposal.IsStillRequired)
                 {
                     AbortPair(i, pair);
                     continue;
@@ -158,11 +148,7 @@ namespace MigCorp.Skiptech.SkipNet
 
                 if (!pair.pathToEntry.ResultIsReady || !pair.pathToDest.ResultIsReady)
                 {
-                    if (GenTicks.TicksGame - pair.tickStarted > skipPathTimeoutTicks)
-                    {
-                        SkiptechUtil.Warning($"[Splicer] skip paths for {pawn.LabelShort} timed out after {skipPathTimeoutTicks} ticks.");
-                        AbortPair(i, pair);
-                    }
+                    if (GenTicks.TicksGame - proposal.tickCreated > SkipNetProposer.UnprocessedProposalMaxLifetimeTicks) { AbortPair(i, pair); }
                     continue;
                 }
 
@@ -183,7 +169,26 @@ namespace MigCorp.Skiptech.SkipNet
                 PawnPath spliced = BuildSplicedPath(entryPath, destPath);
 
                 // Swap the pawn's direct path with our spliced one.
-                Install(pawn, plan, spliced);
+                //Install(pawn, plan, spliced);
+
+                // Hand the splice over through the pawn's dummy. Vanilla claims it on its next PatherTick.
+                // The seam stays inert until that claim.
+                PathRequest dummy = proposal.dummyPathRequest;
+                if (!skipNet.proposer.TryInstallPath(proposal, spliced))
+                {
+                    spliced.Dispose(); // Nobody took it, so it's still ours to dispose.
+                    plan.DisposeSuperseded();
+                    continue;
+                }
+
+                seams[pawn] = new SeamInfo
+                {
+                    plan = plan,
+                    installedPath = spliced,
+                    entryCell = plan.entry.Position,
+                    exitCell = plan.exit.Position,
+                    pendingRequest = dummy,
+                };
             }
         }
         private static bool HasUsablePath(PathRequest request, out PawnPath path)
@@ -195,6 +200,9 @@ namespace MigCorp.Skiptech.SkipNet
         private void AbortPair(int index, SkipPathPair pair)
         {
             pair.plan?.DisposeSuperseded();
+
+            // Give the pawn its direct path back (or dispose it, if the pather has already moved on).
+            if (pair.proposal != null) { skipNet.proposer.Release(pair.proposal); }
 
             DisposeRequests(pair);
             pendingPairs.RemoveAt(index);
@@ -230,28 +238,13 @@ namespace MigCorp.Skiptech.SkipNet
             pendingPairs.Clear();
             seams.Clear();
         }
-        private void Install(Pawn pawn, SkipNetPlan plan, PawnPath spliced)
-        {
-            Pawn_PathFollower pather = pawn.pather;
-
-            // Blatantly copied from vanilla's path claiming (PatherTick)
-            pather.DisposeAndClearCurPath();
-            pather.curPath = spliced;          // vanilla owns it from here, let it handle disposal. NEVER dispose it here again.
-            pather.curPathJobIsStale = false;  // whoops
-
-            plan.State = SkipNetPlanState.Installed;
-            seams[pawn] = new SeamInfo
-            {
-                plan = plan,
-                installedPath = spliced,
-                entryCell = plan.entry.Position,
-                exitCell = plan.exit.Position,
-            };
-        }
-
         public bool TryGetSeam(Pawn pawn, out SeamInfo seam)
         {
-            return seams.TryGetValue(pawn, out seam);
+            //return seams.TryGetValue(pawn, out seam);
+            // A seam only counts once the spliced path is actually the pawn's path.
+            // Checking curPath as well covers the gap between vanilla claiming it (pawn tick) and maintenance promoting the seam (map component tick).
+            return seams.TryGetValue(pawn, out seam)
+                && (seam.pendingRequest == null || pawn.pather?.curPath == seam.installedPath);
         }
 
         public static void HoldAtSeam(Pawn_PathFollower pather)
@@ -352,6 +345,25 @@ namespace MigCorp.Skiptech.SkipNet
                 {
                     seam.plan?.DisposeSuperseded();
                     tmpSeamCleanup.Add(pawn);
+                    continue;
+                }
+
+                // Waiting for the pather to claim the splice from its dummy.
+                if (seam.pendingRequest != null)
+                {
+                    if (pather.curPath == seam.installedPath)
+                    {
+                        // Claimed. The seam is live from here.
+                        // (Don't resurrect a plan that was disposed while we waited the disposed-plan check below will reset the pawn on the next Run.)
+                        seam.pendingRequest = null;
+                        if (!seam.plan.IsDisposedOrInvalid) { seam.plan.State = SkipNetPlanState.Installed; }
+                    }
+                    else if (pather.curPathRequest != seam.pendingRequest)
+                    {
+                        // Dropped before it was claimed. Vanilla disposed the spliced path along with the dummy.
+                        seam.plan?.DisposeSuperseded();
+                        tmpSeamCleanup.Add(pawn);
+                    }
                     continue;
                 }
 
