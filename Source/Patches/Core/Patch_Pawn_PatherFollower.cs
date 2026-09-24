@@ -59,7 +59,7 @@ namespace MigCorp.Skiptech
         [HarmonyPostfix]
         [HarmonyPatch("GenerateNewPathRequest")]
         static void GenerateNewPathRequest_Postfix(
-            PathRequest __result,
+            ref PathRequest __result,
             Pawn ___pawn,
             LocalTargetInfo ___destination,
             PathEndMode ___peMode)
@@ -71,9 +71,12 @@ namespace MigCorp.Skiptech
             if (skipNet == null) { return; }
 
             // Assuming StartPath was just re-executing an existing plan, now's the time to dispose of it and try again.
-            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { plan.DisposeSuperseded(); }
+            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) && plan.State == SkipNetPlanState.Installed) { plan.DisposeSuperseded(); }
 
-            skipNet.proposer.TryMakeSkipNetProposal(___pawn, ___destination, ___peMode, __result.TraverseParms);
+            if (skipNet.proposer.TryCaptureRequest(___pawn, __result, out PathRequest dummy))
+            {
+                __result = dummy;
+            }
         }
 
         public struct SkipNetPathSeamStepState

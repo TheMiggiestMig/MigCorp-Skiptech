@@ -3,7 +3,6 @@ using MigCorp.Skiptech.Utils;
 using System.Collections.Generic;
 using Verse;
 using Verse.AI;
-using static MigCorp.Skiptech.SkipNet.SkipNetProposer;
 
 namespace MigCorp.Skiptech.SkipNet
 {
