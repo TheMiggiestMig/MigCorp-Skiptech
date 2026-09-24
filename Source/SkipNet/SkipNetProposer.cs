@@ -15,7 +15,7 @@ namespace MigCorp.Skiptech.SkipNet
         private int tickPopCount = 0;
         public bool PopCapReached { get { return tickPopCount >= TickPopCap; } }
 
-        public int ProposalCount { get { return proposalsByPawn.Count;}}
+        public int ProposalCount { get { return proposalsByPawn.Count; } }
 
         private readonly Dictionary<Pawn, SkipNetProposal> proposalsByPawn = new Dictionary<Pawn, SkipNetProposal>();
         private readonly Deque<SkipNetProposal> proposals = new Deque<SkipNetProposal>(); // Queue the proposal itself, so a stale entry can't be mistaken for the pawn's current one.

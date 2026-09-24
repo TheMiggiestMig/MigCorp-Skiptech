@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using MigCorp.Skiptech.Utils;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -19,9 +18,6 @@ namespace MigCorp.Skiptech.SkipNet
         private static readonly AccessTools.FieldRef<PawnPath, int> _pathCurNodeIndexRef =
             AccessTools.FieldRefAccess<PawnPath, int>("curNodeIndex");
 
-        // Safety trigger, if something in maintenance isn't working.
-        private const int MaxConcurrentSplicesHard = 9999;
-
         public enum TeleportStepDecision
         {
             Approved,
@@ -33,7 +29,7 @@ namespace MigCorp.Skiptech.SkipNet
         {
             public Pawn pawn;
             public SkipNetPlan plan;
-            public SkipNetProposal proposal; // Holds the pawn's dummy and the direct path until the splice lands.
+            public SkipNetProposal proposal; // Holds the pawn's dummy PathRequest and the direct path until the splice lands.
             public PathRequest pathToEntry;
             public PathRequest pathToDest;
         }
@@ -50,8 +46,10 @@ namespace MigCorp.Skiptech.SkipNet
             public PathRequest pendingRequest; // The dummy the splice was resolved into. Set until the pather claims it. The seam is offline until then.
         }
 
-        private readonly Dictionary<Pawn, SeamInfo> seams = new Dictionary<Pawn, SeamInfo>();
+        private readonly Dictionary<Pawn, SeamInfo> seams = new Dictionary<Pawn, SeamInfo>();        // Pawn's curPath is the spliced path.
+        private readonly Dictionary<Pawn, SeamInfo> pendingSeams = new Dictionary<Pawn, SeamInfo>(); // Pawn's curPathRequest has the spliced path, but the pawn hasn't claimed it yet.
         private static readonly List<Pawn> tmpSeamCleanup = new List<Pawn>();
+        private static readonly List<Pawn> tmpSeamPromote = new List<Pawn>();
 
         public Map map { get { return skipNet.map; } }
 
@@ -61,10 +59,10 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         // PawnPathPool throws ErrorOnce once total paths created exceeds 2 * spawnedPawns + 5 (2N + 5).
-        // Each pending pair temporarily takes 3 paths on top of the pawn's own.
+        // Each pending pair temporarily takes 3 paths on top of the pawn's own (2 splice legs + 1 direct).
         // Assuming worst case scenario, we can process (N - proposalPawns + 5) / 2.
         // May still throw the PathPool leak OnceOff error if every animal and every pawn had a path and tried pathing again in the same tick.
-        // ...Very unlikely though.
+        // ...Veeery unlikely though.
         public int MaxPendingPairs
         {
             get
@@ -160,6 +158,23 @@ namespace MigCorp.Skiptech.SkipNet
                     continue;
                 }
 
+                // Standing at these same two skipdoors on its current splice (usually waiting on them to open)? Let that one finish.
+                // The new splice would only make the pawn re-take the step it's already lined up for.
+                if (IsStandingAtSameSeam(pawn, plan))
+                {
+                    pawn.pather.DisposeAndClearCurPathRequest(); // Drop the re-path. Release then finds the dummy gone and disposes the direct path.
+                    AbortPair(i, pair);
+                    continue;
+                }
+
+                // Will the spliced pair actually be shorter than the direct path?
+                // We have actual path costs now, so this is the final hurdle.
+                if (!IsWorthSplicing(pawn, proposal, entryPath, destPath))
+                {
+                    AbortPair(i, pair);
+                    continue;
+                }
+
                 // We're good! Claim the paths and dispose the requests.
                 pair.pathToEntry.ClaimCalculatedPath();
                 pair.pathToDest.ClaimCalculatedPath();
@@ -181,7 +196,11 @@ namespace MigCorp.Skiptech.SkipNet
                     continue;
                 }
 
-                seams[pawn] = new SeamInfo
+                // Pending until the pather claims it. The pawn's current splice (if it has one) keeps its live seam until then
+                // since the pawn may still be walking it.
+                if (pendingSeams.TryGetValue(pawn, out SeamInfo stale)) { stale.plan?.DisposeSuperseded(); }
+
+                pendingSeams[pawn] = new SeamInfo
                 {
                     plan = plan,
                     installedPath = spliced,
@@ -197,6 +216,25 @@ namespace MigCorp.Skiptech.SkipNet
             return request.Found == true && request.TryGetPath(out path) && path != null && path.Found;
         }
 
+        // What the spliced path will cost. Both legs as the pathfinder costed them (this pawn's move ticks, terrain, doors, avoid grid etc.), plus the flat skip cost.
+        private static float SplicedCost(PawnPath entryPath, PawnPath destPath)
+        {
+            return entryPath.TotalCost + destPath.TotalCost + MigcorpSkiptechMod.Settings.skipCost;
+        }
+
+        // Same check the searcher uses with real costs instead of octile estimates.
+        // The direct path is still sitting unclaimed in the proposal's original request, so this only peeks at it.
+        private static bool IsWorthSplicing(Pawn pawn, SkipNetProposal proposal, PawnPath entryPath, PawnPath destPath)
+        {
+            if (!proposal.originalPathRequest.TryGetPath(out PawnPath directPath) || directPath == null || !directPath.Found) { return false; }
+
+            float splicedCost = SplicedCost(entryPath, destPath);
+            float targetCost = directPath.TotalCost * MigcorpSkiptechMod.Settings.worthItFactor;
+            if (splicedCost < targetCost) { return true; }
+
+            return false;
+        }
+
         private void AbortPair(int index, SkipPathPair pair)
         {
             pair.plan?.DisposeSuperseded();
@@ -206,6 +244,12 @@ namespace MigCorp.Skiptech.SkipNet
 
             DisposeRequests(pair);
             pendingPairs.RemoveAt(index);
+
+            // A re-path from a pawn still walking a splice. The new plan took that splice's slot in the planner. Hand it back.
+            if (pair.pawn != null && TryPeekLiveSeam(pair.pawn, out SeamInfo live) && live.plan != null && !live.plan.IsDisposedOrInvalid)
+            {
+                skipNet.planner.RegisterPlan(pair.pawn, live.plan);
+            }
         }
 
         private static void DisposeRequests(SkipPathPair pair)
@@ -237,14 +281,75 @@ namespace MigCorp.Skiptech.SkipNet
             for (int i = pendingPairs.Count - 1; i >= 0; i--) { DisposeRequests(pendingPairs[i]); }
             pendingPairs.Clear();
             seams.Clear();
+            pendingSeams.Clear();
         }
         public bool TryGetSeam(Pawn pawn, out SeamInfo seam)
         {
-            //return seams.TryGetValue(pawn, out seam);
-            // A seam only counts once the spliced path is actually the pawn's path.
-            // Checking curPath as well covers the gap between vanilla claiming it (pawn tick) and maintenance promoting the seam (map component tick).
-            return seams.TryGetValue(pawn, out seam)
-                && (seam.pendingRequest == null || pawn.pather?.curPath == seam.installedPath);
+            seam = null;
+            PawnPath curPath = pawn?.pather?.curPath;
+            if (curPath == null) { return false; }
+
+            if (pendingSeams.TryGetValue(pawn, out SeamInfo pending) && pending.installedPath == curPath) { PromotePendingSeam(pawn, pending); }
+
+            if (!seams.TryGetValue(pawn, out seam)) { return false; }
+
+            if (seam.installedPath != curPath)
+            {
+                DropSeam(pawn, seam);
+                seams.Remove(pawn);
+                seam = null;
+                return false;
+            }
+            return true;
+        }
+
+        public bool TryPeekLiveSeam(Pawn pawn, out SeamInfo seam)
+        {
+            return seams.TryGetValue(pawn, out seam) && seam.installedPath == pawn.pather?.curPath;
+        }
+
+        // The pather has claimed a pending splice. It becomes the live seam, and the old one (if any) is retired.
+        private void PromotePendingSeam(Pawn pawn, SeamInfo pending)
+        {
+            pendingSeams.Remove(pawn);
+            if (seams.TryGetValue(pawn, out SeamInfo old)) { DropSeam(pawn, old); }
+
+            pending.pendingRequest = null;
+            if (!pending.plan.IsDisposedOrInvalid) { pending.plan.State = SkipNetPlanState.Installed; }
+            seams[pawn] = pending;
+        }
+
+        // Retires a live seam (the caller removes it from seams). If the pawn was standing at it (on the entry, stepping into the
+        // exit), step it back onto its own cell. Otherwise vanilla finishes that "step" into the exit cell: a teleport with no plan,
+        // no power and no FX. The pawn's new path carries on from where it stands, the same way vanilla handles a new path that
+        // starts a cell behind.
+        private static void DropSeam(Pawn pawn, SeamInfo seam)
+        {
+            seam.plan?.DisposeSuperseded();
+
+            Pawn_PathFollower pather = pawn?.pather;
+            if (pather != null && IsStandingAt(pawn, seam))
+            {
+                pather.nextCell = pawn.Position;
+                pather.nextCellCostLeft = 0f;
+                pather.nextCellCostTotal = 1f;
+            }
+        }
+
+        // On the seam's entry cell, lined up to step into its exit.
+        private static bool IsStandingAt(Pawn pawn, SeamInfo seam)
+        {
+            return pawn.Position == seam.entryCell && pawn.pather?.nextCell == seam.exitCell;
+        }
+
+        // Standing at a live seam that uses the same two skipdoors as this plan.
+        private bool IsStandingAtSameSeam(Pawn pawn, SkipNetPlan plan)
+        {
+            return seams.TryGetValue(pawn, out SeamInfo live)
+                && live.installedPath == pawn.pather?.curPath
+                && live.entryCell == plan.entry.Position
+                && live.exitCell == plan.exit.Position
+                && IsStandingAt(pawn, live);
         }
 
         public static void HoldAtSeam(Pawn_PathFollower pather)
@@ -261,6 +366,15 @@ namespace MigCorp.Skiptech.SkipNet
             // MAke sure the plan and path are still good this tick, otherwise it's an invalid teleport.
             if (plan == null || plan.IsDisposedOrInvalid || pather.curPath != seam.installedPath)
             {
+                pather.ResetToCurrentPosition();
+                seams.Remove(pawn);
+                return TeleportStepDecision.BlockedDead;
+            }
+
+            // Pawn was sent somewhere else since this splice was built, and the new path hasn't landed yet. Don't teleport toward the old destination.
+            if (SkipNetUtils.PatherDest(pather) != plan.originalDest || SkipNetUtils.PatherPeMode(pather) != plan.originalPeMode)
+            {
+                plan.DisposeSuperseded();
                 pather.ResetToCurrentPosition();
                 seams.Remove(pawn);
                 return TeleportStepDecision.BlockedDead;
@@ -324,11 +438,48 @@ namespace MigCorp.Skiptech.SkipNet
             // Tear down the plan and seams.
             plan.DisposeCompleted();
             seams.Remove(pawn);
+
+            // A re-path still pending was asked for from the entry side (one made at the seam starts at the exit cell, and tears the
+            // plan down instead, so it never gets here). The pawn's on the far side now, so drop it and carry on along the splice's
+            // exit leg. If it was one of our dummies, its proposal is released on the next Run.
+            Pawn_PathFollower pather = pawn.pather;
+            if (pather.curPathRequest != null && pather.curPathRequest.Start != seam.exitCell) { pather.DisposeAndClearCurPathRequest(); }
         }
 
         // Cleanup active spliced paths.
         private void RunSeamMaintenance()
         {
+            if (seams.Count == 0 && pendingSeams.Count == 0) { return; }
+
+            // Pending seams first. Once the pather has claimed one, it takes over as the live seam.
+            if (pendingSeams.Count > 0)
+            {
+                tmpSeamCleanup.Clear();
+                tmpSeamPromote.Clear();
+                foreach (KeyValuePair<Pawn, SeamInfo> kv in pendingSeams)
+                {
+                    Pawn pawn = kv.Key;
+                    SeamInfo seam = kv.Value;
+                    Pawn_PathFollower pather = pawn?.pather;
+
+                    // Pawn is pawn't, or the dummy was dropped before it was claimed (vanilla disposed the splice along with it).
+                    if (pawn == null || !pawn.Spawned || pawn.Map != map || pather == null
+                        || (pather.curPath != seam.installedPath && pather.curPathRequest != seam.pendingRequest))
+                    {
+                        seam.plan?.DisposeSuperseded();
+                        tmpSeamCleanup.Add(pawn);
+                        continue;
+                    }
+
+                    if (pather.curPath == seam.installedPath) { tmpSeamPromote.Add(pawn); }
+                }
+
+                for (int i = 0; i < tmpSeamCleanup.Count; i++) { pendingSeams.Remove(tmpSeamCleanup[i]); }
+                for (int i = 0; i < tmpSeamPromote.Count; i++) { PromotePendingSeam(tmpSeamPromote[i], pendingSeams[tmpSeamPromote[i]]); }
+                tmpSeamCleanup.Clear();
+                tmpSeamPromote.Clear();
+            }
+
             if (seams.Count == 0) { return; }
             tmpSeamCleanup.Clear();
 
@@ -348,29 +499,11 @@ namespace MigCorp.Skiptech.SkipNet
                     continue;
                 }
 
-                // Waiting for the pather to claim the splice from its dummy.
-                if (seam.pendingRequest != null)
-                {
-                    if (pather.curPath == seam.installedPath)
-                    {
-                        // Claimed. The seam is live from here.
-                        // (Don't resurrect a plan that was disposed while we waited the disposed-plan check below will reset the pawn on the next Run.)
-                        seam.pendingRequest = null;
-                        if (!seam.plan.IsDisposedOrInvalid) { seam.plan.State = SkipNetPlanState.Installed; }
-                    }
-                    else if (pather.curPathRequest != seam.pendingRequest)
-                    {
-                        // Dropped before it was claimed. Vanilla disposed the spliced path along with the dummy.
-                        seam.plan?.DisposeSuperseded();
-                        tmpSeamCleanup.Add(pawn);
-                    }
-                    continue;
-                }
-
                 // Pawn got a new path from somewhere and replaced our spliced one.
                 if (pather.curPath != seam.installedPath)
                 {
-                    seam.plan?.DisposeSuperseded();
+                    //seam.plan?.DisposeSuperseded();
+                    DropSeam(pawn, seam); // Also steps the pawn back off the seam if it was standing there.
                     tmpSeamCleanup.Add(pawn);
                     continue;
                 }

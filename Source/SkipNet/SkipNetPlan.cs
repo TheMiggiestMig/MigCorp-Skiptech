@@ -58,6 +58,8 @@ namespace MigCorp.Skiptech.SkipNet
 
         public bool IsStillAccessible()
         {
+            if (!entry.parent.Spawned || !exit.parent.Spawned) { return false; }
+
             SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
             return entry.IsEnterableBy(ac) && exit.IsExitableBy(ac);
         }

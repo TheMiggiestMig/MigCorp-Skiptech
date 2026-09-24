@@ -9,40 +9,6 @@ namespace MigCorp.Skiptech
     [HarmonyPatch(typeof(Pawn_PathFollower))]
     static class Pawn_PathFollower_Patch
     {
-        // Nuke any current SkipNetPlan for the pawn since we're doing a whole new StartPath request.
-        [HarmonyPrefix]
-        [HarmonyPatch(nameof(Pawn_PathFollower.StartPath))]
-        static void StartPath_Prefix(
-            LocalTargetInfo dest,
-            PathEndMode peMode,
-            Pawn_PathFollower __instance,
-            Pawn ___pawn)
-        {
-            MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
-
-            if (skipNet == null) { return; }
-
-            // There are some real weird mod decisions out there that specifically try to path
-            // to exacly nowhere. Let vanilla fail it.
-            if (!dest.IsValid || peMode == PathEndMode.None) { return; }
-
-            // If there isn't a current plan, carry on. GenerateNewPathRequest will make a new proposal for us.
-            if (!skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan)) { return; }
-
-            if (plan.State != SkipNetPlanState.Installed) { return; }
-
-            // If a valid plan already exists, and it's going to the same location, let it.
-            if (plan.originalDest == dest && plan.originalPeMode == peMode &&
-                __instance.Moving && __instance.curPath != null)
-            {
-                return;
-            }
-
-            // New StartPath request while there's an ongoing plan.
-            // Dispose or the current plan as superseded so it doesn't fight being overwritten.
-            plan.DisposeSuperseded();
-        }
-
         [HarmonyPrefix]
         [HarmonyPatch(typeof(Pawn_PathFollower), "PatherFailed")]
         static void PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
@@ -72,8 +38,11 @@ namespace MigCorp.Skiptech
             MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
             if (skipNet == null) { return; }
 
-            // Assuming StartPath was just re-executing an existing plan, now's the time to dispose of it and try again.
-            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan) && plan.State == SkipNetPlanState.Installed) { plan.DisposeSuperseded(); }
+            if (skipNet.splicer.TryPeekLiveSeam(___pawn, out SkipNetPathSplicer.SeamInfo seam) && seam.plan != null)
+            {
+                bool sameTrip = seam.plan.originalDest == __result.Target && seam.plan.originalPeMode == __result.EndMode;
+                if (!sameTrip || __result.Start == seam.exitCell) { seam.plan.DisposeSuperseded(); }
+            }
 
             if (skipNet.proposer.TryCaptureRequest(___pawn, __result, out PathRequest dummy))
             {

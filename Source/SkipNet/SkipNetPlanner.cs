@@ -96,7 +96,7 @@ namespace MigCorp.Skiptech.SkipNet
         {
             if (pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan existing))
             {
-                if (existing != plan) { existing.DisposeSuperseded(); }
+                if (existing != plan && existing.State != SkipNetPlanState.Installed) { existing.DisposeSuperseded(); }
                 pawnSkipNetPlans[pawn] = plan;
                 return;
             }
