@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using MigCorp.Skiptech.SkipNet.Comps;
 using MigCorp.Skiptech.Utils;
 using System.Collections.Generic;
 using UnityEngine;
@@ -244,12 +245,23 @@ namespace MigCorp.Skiptech.SkipNet
 
             DisposeRequests(pair);
             pendingPairs.RemoveAt(index);
+        }
 
-            // A re-path from a pawn still walking a splice. The new plan took that splice's slot in the planner. Hand it back.
-            if (pair.pawn != null && TryPeekLiveSeam(pair.pawn, out SeamInfo live) && live.plan != null && !live.plan.IsDisposedOrInvalid)
-            {
-                skipNet.planner.RegisterPlan(pair.pawn, live.plan);
-            }
+
+        /// <summary>
+        /// Cancels every plan in flight that uses <paramref name="skipdoor"/> (typically destroyed, minified, or despawned):
+        /// pairs still being pathed, splices waiting to be claimed, and live seams. Only marks them; the next Run sweeps them up.
+        /// </summary>
+        public void CancelPlansUsingSkipdoor(CompSkipdoor skipdoor)
+        {
+            for (int i = 0; i < pendingPairs.Count; i++) { CancelIfUses(pendingPairs[i].plan, skipdoor); }
+            foreach (SeamInfo seam in pendingSeams.Values) { CancelIfUses(seam.plan, skipdoor); }
+            foreach (SeamInfo seam in seams.Values) { CancelIfUses(seam.plan, skipdoor); }
+        }
+
+        private static void CancelIfUses(SkipNetPlan plan, CompSkipdoor skipdoor)
+        {
+            if (plan != null && (plan.entry == skipdoor || plan.exit == skipdoor)) { plan.DisposeCancelled(); }
         }
 
         private static void DisposeRequests(SkipPathPair pair)
@@ -268,8 +280,7 @@ namespace MigCorp.Skiptech.SkipNet
             List<IntVec3> nodes = destPath.NodesReversed;
             nodes.AddRange(entryPath.NodesReversed);
 
-            _pathTotalCostRef(destPath) = destPath.TotalCost + entryPath.TotalCost
-                                          + MigcorpSkiptechMod.Settings.skipCost;
+            _pathTotalCostRef(destPath) = SplicedCost(entryPath, destPath);
             _pathCurNodeIndexRef(destPath) = nodes.Count - 1;
 
             entryPath.Dispose(); // Only ever call this once! PawnPathPool does not like duplicate Dispose calls on PawnPaths :|
@@ -406,7 +417,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             // Final check before teleporting the pawn.
             if (!plan.IsStillAccessible() ||
-                !plan.IsStillPathableFromExitToDest(map, SkipNetUtils.JankyTraverseParmsFor(pawn)))
+                !plan.IsStillPathableFromExitToDest(map))
             {
                 plan.DisposeCancelled();
                 pather.ResetToCurrentPosition();
@@ -512,6 +523,17 @@ namespace MigCorp.Skiptech.SkipNet
                 // Ditch the seam and get the pawn to resume normal pathing.
                 if (seam.plan == null || seam.plan.IsDisposedOrInvalid)
                 {
+                    pather.ResetToCurrentPosition();
+                    tmpSeamCleanup.Add(pawn);
+                    continue;
+                }
+
+                // Skipdoor rules (power, forbidden, allowed area, faction) can change while the pawn walks to the entry, and vanilla
+                // knows nothing about them. Check now and then, and turn the pawn around early rather than let it walk up to a door
+                // it can't use. (DecideTeleportStep checks again at the door.) Moved here from the planner's ValidatePlan.
+                if (pawn.IsHashIntervalTick(180) && !seam.plan.IsStillAccessible())
+                {
+                    seam.plan.DisposeCancelled();
                     pather.ResetToCurrentPosition();
                     tmpSeamCleanup.Add(pawn);
                     continue;

@@ -94,12 +94,6 @@ namespace MigCorp.Skiptech.SkipNet
             if (pawn.Dead || !pawn.Spawned || pawn.Map != skipNet.map || pawn.pather == null) { return false; }
             if (pawn.Downed && !pawn.health.CanCrawl) { return false; }
 
-            if (SkipNetUtils.PatherDest(pawn.pather) != proposal.dest ||
-                SkipNetUtils.PatherPeMode(pawn.pather) != proposal.peMode)
-            {
-                return false;
-            }
-
             return true;
         }
 

@@ -13,12 +13,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         // Region --> Skipdoor mapping
         private bool regionSkipdoorsDirty = true;
-        private int tickLastRegionSkipdoorRebuild;
         private readonly Dictionary<Region, List<CompSkipdoor>> regionSkipdoors = new Dictionary<Region, List<CompSkipdoor>>();
-
-        // Plan management
-        private readonly Dictionary<Pawn, SkipNetPlan> pawnSkipNetPlans = new Dictionary<Pawn, SkipNetPlan>();
-        private readonly Deque<Pawn> plans = new Deque<Pawn>(); // Stealing this idea from the SkipNetProposer. Trust me, they're plans, not pawns.
 
         public List<CompSkipdoor> skipdoors { get { return skipNet.skipdoors; } }
         public Map map { get { return skipNet.map; } }
@@ -34,7 +29,6 @@ namespace MigCorp.Skiptech.SkipNet
 
         public void Run()
         {
-            CleanupPlans();
             RebuildRegionDoorIndex();
         }
 
@@ -68,128 +62,12 @@ namespace MigCorp.Skiptech.SkipNet
 
             SkiptechUtil.Message("RegionDoorIndex rebuilt.", LogLevel.Verbose);
             regionSkipdoorsDirty = false;
-            tickLastRegionSkipdoorRebuild = GenTicks.TicksGame;
         }
 
         public void MarkRegionDoorIndexDirty() => regionSkipdoorsDirty = true;
         public bool TryGetSkipdoorsInRegion(Region region, out List<CompSkipdoor> doors)
         {
             return regionSkipdoors.TryGetValue(region, out doors);
-        }
-        /// <summary>
-        /// Returns a SkipNetPlan if it exists.
-        /// </summary>
-        /// <returns>Returns <see langword="true"/> if a plan existed or <see langword="false"/> otherwise.</returns>
-        public bool TryGetSkipNetPlan(Pawn pawn, out SkipNetPlan plan)
-        {
-            if (pawn == null ||
-                !pawnSkipNetPlans.TryGetValue(pawn, out plan) || plan.IsDisposed
-                )
-            {
-                plan = default;
-                return false;
-            }
-            return true;
-        }
-
-        public void RegisterPlan(Pawn pawn, SkipNetPlan plan)
-        {
-            if (pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan existing))
-            {
-                if (existing != plan && existing.State != SkipNetPlanState.Installed) { existing.DisposeSuperseded(); }
-                pawnSkipNetPlans[pawn] = plan;
-                return;
-            }
-
-            pawnSkipNetPlans[pawn] = plan;
-            plans.AddLast(pawn);
-        }
-
-        /// <summary>
-        /// Loops through all active plans removes disposed and invalid plans.
-        /// </summary>
-        public void CleanupPlans()
-        {
-            int numPlansToResolve = plans.Count;
-
-            // Doing it like this to avoid the need for SnapshotPawnSkipNetPlans().
-            // Hopefully a minor performance upgrade without breaking anything.
-            while (numPlansToResolve-- > 0 && plans.Count > 0)
-            {
-                Pawn pawn = plans.PopFirst();
-
-                // Check if this is a stale entry (i.e. the plan's been disposed of or cancelled)
-                if (!pawnSkipNetPlans.TryGetValue(pawn, out SkipNetPlan plan)) { continue; }
-
-                // Check if the plan is bad or invalid
-                DisposeBadOrInvalidPlan(pawn, plan);
-
-                // Check if the plan is still able to perform
-                ValidatePlan(pawn, plan);
-
-                // Check if the plan is disposed
-                if (plan.IsDisposed)
-                {
-                    pawnSkipNetPlans.Remove(pawn);
-                    continue;
-                }
-
-                // Not yet disposed, hold onto it.
-                plans.AddLast(pawn);
-            }
-        }
-
-        /// <summary>
-        /// Cancels all active SkipNetPlans that use <see langword="skipdoor"/>
-        /// </summary>
-        /// <param name="skipdoor">The affected skipdoor (typically destroyed, minified, or despawned).</param>
-        public void CancelPlansUsingSkipdoor(CompSkipdoor skipdoor)
-        {
-            // DEBUG In theory, no risk of mutating lists anymore since we're only marking disposals :)
-            foreach (SkipNetPlan plan in pawnSkipNetPlans.Values)
-            {
-                if (plan.entry == skipdoor || plan.exit == skipdoor)
-                {
-                    plan.DisposeCancelled();
-                }
-            }
-        }
-
-        private void DisposeBadOrInvalidPlan(Pawn pawn, SkipNetPlan plan)
-        {
-            if (plan.IsInvalid || pawn?.Map != map || !pawn.Spawned)
-            {
-                plan.DisposeSuperseded(); // Janky, but Superseded should prevent it from retrying.
-            }
-            return;
-        }
-
-        private void ValidatePlan(Pawn pawn, SkipNetPlan plan)
-        {
-            if (!plan.IsDisposedOrInvalid)
-            {
-
-                // Check if the paths are still valid since the regionSkipdoor mapping was dirtied (i.e. The RegionGrid rebuilt).
-                if (pawn.IsHashIntervalTick(60) && plan.tickLastRegionSkipdoorRebuild != tickLastRegionSkipdoorRebuild)
-                {
-                    plan.tickLastRegionSkipdoorRebuild = tickLastRegionSkipdoorRebuild;
-                    TraverseParms tp = SkipNetUtils.JankyTraverseParmsFor(pawn);
-
-                    if (!plan.IsStillPathableFromEntryToExit(map, tp) || !plan.IsStillPathableFromExitToDest(map, tp))
-                    {
-                        plan.DisposeCancelled();
-                        return;
-                    }
-                }
-
-
-                // Check if the skipdoors are still usable.
-                if (pawn.IsHashIntervalTick(180) && !plan.IsStillAccessible())
-                {
-                    plan.DisposeCancelled();
-                }
-            }
-            return;
         }
 
         /// <summary>
@@ -247,7 +125,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             if (found)
             {
-                plan = new SkipNetPlan(skipNet, pawn, dest, peMode, tickLastRegionSkipdoorRebuild);
+                plan = new SkipNetPlan(pawn, dest, peMode, tp);
                 plan.Initialize(entry, exit);
             }
 

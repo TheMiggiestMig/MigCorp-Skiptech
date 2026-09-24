@@ -9,28 +9,12 @@ namespace MigCorp.Skiptech
     [HarmonyPatch(typeof(Pawn_PathFollower))]
     static class Pawn_PathFollower_Patch
     {
-        [HarmonyPrefix]
-        [HarmonyPatch(typeof(Pawn_PathFollower), "PatherFailed")]
-        static void PatherFailed_Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
-        {
-            MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
-            if (skipNet == null) { return; }
-
-            // If we were running on a plan, clean it up and let the PatherFailed notification pass.
-            if (skipNet.planner.TryGetSkipNetPlan(___pawn, out SkipNetPlan plan))
-            {
-                plan.DisposeCancelled();
-            }
-        }
-
         // Now handles the proposing of new plans.
         [HarmonyPostfix]
         [HarmonyPatch("GenerateNewPathRequest")]
         static void GenerateNewPathRequest_Postfix(
             ref PathRequest __result,
-            Pawn ___pawn,
-            LocalTargetInfo ___destination,
-            PathEndMode ___peMode)
+            Pawn ___pawn)
         {
             // Just in case another mod kills GenerateNewPathRequest.
             if (__result == null) { return; }

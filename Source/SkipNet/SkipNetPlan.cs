@@ -15,12 +15,11 @@ namespace MigCorp.Skiptech.SkipNet
     public class SkipNetPlan
     {
         public Pawn pawn;
-        public MapComponent_SkipNet skipNet;
         public CompSkipdoor entry, exit;
-        public int tickLastRegionSkipdoorRebuild;
 
         public LocalTargetInfo originalDest;
         public PathEndMode originalPeMode;
+        public TraverseParms tp;
 
         private SkipNetPlanState state = SkipNetPlanState.None;
         public SkipNetPlanState State { get { return state; } set { state = value; } }
@@ -29,20 +28,18 @@ namespace MigCorp.Skiptech.SkipNet
         public bool IsDisposed { get { return state == SkipNetPlanState.Disposed; } }
         public bool IsDisposedOrInvalid { get { return IsDisposed || IsInvalid; } }
 
-        public SkipNetPlan(MapComponent_SkipNet skipNet, Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, int tickLastRegionSkipdoorRebuild)
+        public SkipNetPlan(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, TraverseParms tp)
         {
             this.pawn = pawn;
-            this.skipNet = skipNet;
             originalDest = dest;
             originalPeMode = peMode;
-            this.tickLastRegionSkipdoorRebuild = tickLastRegionSkipdoorRebuild; // To throttle the reachability checks.
+            this.tp = tp;
         }
 
         public void Initialize(CompSkipdoor entry, CompSkipdoor exit)
         {
             this.entry = entry;
             this.exit = exit;
-            skipNet.planner.RegisterPlan(pawn, this);
         }
 
         private void Dispose()
@@ -64,14 +61,7 @@ namespace MigCorp.Skiptech.SkipNet
             return entry.IsEnterableBy(ac) && exit.IsExitableBy(ac);
         }
 
-        // Fast check. Regular pathing handles whether Pawn->Entry still works,
-        // and the pawn already re-evaluates when it reaches the Exit for Exit->Dest.
-        public bool IsStillPathableFromEntryToExit(Map map, TraverseParms tp)
-        {
-            return map.reachability.CanReach(entry.Position, new LocalTargetInfo(exit.parent), originalPeMode, tp);
-        }
-
-        public bool IsStillPathableFromExitToDest(Map map, TraverseParms tp)
+        public bool IsStillPathableFromExitToDest(Map map)
         {
             return map.reachability.CanReach(exit.Position, originalDest, originalPeMode, tp);
         }

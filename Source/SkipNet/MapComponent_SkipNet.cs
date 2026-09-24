@@ -79,7 +79,6 @@ namespace MigCorp.Skiptech.SkipNet
         {
             skipdoors.Remove(skipdoor);
             planner.MarkRegionDoorIndexDirty();
-            planner.CancelPlansUsingSkipdoor(skipdoor);
         }
     }
 }
