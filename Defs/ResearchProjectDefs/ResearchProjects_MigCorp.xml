@@ -32,7 +32,7 @@
     <ResearchProjectDef>
         <defName>MigCorp_SkipField</defName>
         <label>SkipField</label>
-        <description>Scale skipfield technology beyond local space, allowing large skipgates to send matter across vast distances.</description>
+        <description>[Under Development - Not yet available]\nLong distance skipping with Skipgates.</description>
 
         <baseCost>2500</baseCost>
         <techLevel>Spacer</techLevel>
@@ -57,7 +57,7 @@
     <ResearchProjectDef>
         <defName>MigCorp_SkipVoid</defName>
         <label>SkipVoid</label>
-        <description>Push skipfields beyond their normal stability limits, allowing distant skip anchors to be forcibly pulled back through folded space.</description>
+        <description>[Under Development - Not yet available]\nPull distant targets to Skipgates with skip beacons.</description>
 
         <baseCost>3500</baseCost>
         <techLevel>Spacer</techLevel>
@@ -73,7 +73,7 @@
         <researchViewY>2.5</researchViewY>
 
         <customUnlockTexts>
-            <li>Enables Skipgate Emergency Recall operations.</li>
+			<li>Enables Skipgate Recall operations.</li>
             <li>Increases Skipgate capacitor safe capacity to 400 charge.</li>
         </customUnlockTexts>
     </ResearchProjectDef>
@@ -82,7 +82,7 @@
     <ResearchProjectDef>
         <defName>MigCorp_SkipRift</defName>
         <label>SkipRift</label>
-        <description>Master stable large-scale skipfields, allowing matter to be recalled safely and persistent spatial links to be maintained between distant skipgates.</description>
+        <description>[Under Development - Not yet available]\nSkipgate-to-skipgate linking.</description>
 
         <baseCost>5000</baseCost>
         <techLevel>Spacer</techLevel>
