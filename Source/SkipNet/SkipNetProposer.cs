@@ -8,29 +8,17 @@ namespace MigCorp.Skiptech.SkipNet
 {
     public class SkipNetProposer
     {
+        public const int UnprocessedProposalMaxLifetimeTicks = 20;
+
         public MapComponent_SkipNet skipNet;
         public int TickPopCap = 150; // Might make this an advanced option in settings.
         private int tickPopCount = 0;
         public bool PopCapReached { get { return tickPopCount >= TickPopCap; } }
 
+        public int ProposalCount { get { return proposalsByPawn.Count; } }
+
         private readonly Dictionary<Pawn, SkipNetProposal> proposalsByPawn = new Dictionary<Pawn, SkipNetProposal>();
-        private readonly Deque<Pawn> proposals = new Deque<Pawn>(); // Actually a list of pawns used as keys for proposals, but whatever.
-
-        public struct SkipNetProposal
-        {
-            public Pawn pawn;
-            public LocalTargetInfo dest;
-            public PathEndMode peMode;
-            public TraverseParms tp;
-
-            public SkipNetProposal(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, TraverseParms tp)
-            {
-                this.pawn = pawn;
-                this.dest = dest;
-                this.peMode = peMode;
-                this.tp = tp;
-            }
-        }
+        private readonly Deque<SkipNetProposal> proposals = new Deque<SkipNetProposal>(); // Queue the proposal itself, so a stale entry can't be mistaken for the pawn's current one.
 
         public SkipNetProposer(MapComponent_SkipNet skipNet)
         {
@@ -44,52 +32,53 @@ namespace MigCorp.Skiptech.SkipNet
 
             while (numProposalsToProcess-- > 0 && proposals.Count > 0)
             {
-                Pawn pawn = proposals.PopFirst();
+                SkipNetProposal proposal = proposals.PopFirst();
 
-                // Check for a stale order entry (proposal was culled, replaced, or already handled).
-                if (!proposalsByPawn.TryGetValue(pawn, out SkipNetProposal proposal)) { continue; }
+                // Check for a stale order entry.
+                // Stale entry: released, or superseded by a newer proposal for the same pawn.
+                if (!proposalsByPawn.TryGetValue(proposal.pawn, out SkipNetProposal current) || current != proposal) { continue; }
 
-                // Check if the plan still describes what the pawn is doing.
-                if (!IsProposalPlannable(proposal))
+
+                if (!proposal.IsStillRequired || !IsProposalPlannable(proposal))
                 {
-                    proposalsByPawn.Remove(pawn);
+                    Release(proposal);
                     continue;
                 }
 
-                Pawn_PathFollower pather = pawn.pather;
-
-                // If the pawn has no path and they're not waiting on one,
-                // why are they here?
-                if (pather.curPath == null && pather.curPathRequest == null)
+                // Out of time. Give the pawn its direct path.
+                if (GenTicks.TicksGame - proposal.tickCreated > UnprocessedProposalMaxLifetimeTicks)
                 {
-                    proposalsByPawn.Remove(pawn);
+                    Release(proposal);
                     continue;
                 }
 
-                // Check of the pawn is still waiting on the direct path to resolve.
-                // Push it to the back of the queue if so.
-                if (pather.curPathRequest != null)
+                // Still waiting on the direct path. Back of the queue.
+                if (!proposal.originalPathRequest.ResultIsReady)
                 {
-                    proposals.AddLast(pawn);
+                    proposals.AddLast(proposal);
                     continue;
                 }
 
-                // If we've reached the budgeted pop cap, put it back at the start of the
-                // queue to be processed next tick, and stop processing this tick.
-                if (PopCapReached && !pawn.Drafted)
+                // No direct path at all. Hand it back so vanilla fails it the normal way (PatherFailed).
+                if (proposal.originalPathRequest.Found != true)
                 {
-                    proposals.AddFirst(pawn);
-                    break;
+                    Release(proposal);
+                    continue;
                 }
 
-                // If the splicer is at capacity, give it another tick to free up.
-                if (skipNet.splicer.AtCapacity)
+                // Over this tick's search budget, or the splicer is full? Wait a tick (the deadline still applies).
+                if ((PopCapReached && !proposal.pawn.Drafted) || skipNet.splicer.AtCapacity)
                 {
-                    proposals.AddFirst(pawn);
-                    break;
+                    proposals.AddLast(proposal);
+                    continue;
                 }
 
-                TryConvertSkipNetProposalIntoSkipNetPlan(pawn, proposal);
+                // No eligible skipdoor pair (or the splicer refused it): the direct path is the answer.
+                // Otherwise the splicer drives the trip from here, and the proposal stays registered until it's fulfilled or released.
+                if (!TryConvertSkipNetProposalIntoSkipNetPlan(proposal.pawn, proposal))
+                {
+                    Release(proposal);
+                }
             }
 
             ResetPopBudget();
@@ -105,36 +94,101 @@ namespace MigCorp.Skiptech.SkipNet
             if (pawn.Dead || !pawn.Spawned || pawn.Map != skipNet.map || pawn.pather == null) { return false; }
             if (pawn.Downed && !pawn.health.CanCrawl) { return false; }
 
-            if (SkipNetUtils.PatherDest(pawn.pather) != proposal.dest ||
-                SkipNetUtils.PatherPeMode(pawn.pather) != proposal.peMode)
+            return true;
+        }
+
+        /// <summary>
+        /// Called from the GenerateNewPathRequest postfix. Takes ownership of <paramref name="request"/> and hands
+        /// back a dummy for the pather to hold, or returns false and leaves vanilla's request alone.
+        /// </summary>
+        public bool TryCaptureRequest(Pawn pawn, PathRequest request, out PathRequest dummy)
+        {
+            dummy = null;
+            proposalsByPawn.TryGetValue(pawn, out SkipNetProposal existing);
+
+            // Check if this is a request for the same path parameters e.g. NeedNewPath and it's 30 tick interval.
+            // If it's the same parameters, keep working on the proposal we have and drop the new request.
+            if (existing != null && existing.Matches(request))
             {
+                request.Dispose(); // Cancelled, so the pathfinder drops it before computing it.
+                dummy = existing.MakeDummyPathRequest();
+                return true;
+            }
+
+            // If there's an existing proposal, but it has different path paramenters, nuke it. We'll make a fresh one.
+            if (existing != null) { Release(existing); }
+
+            LocalTargetInfo dest = request.Target;
+            if (!IsValidProposal(pawn, ref dest, request.EndMode)) { return false; } // Not ours. Vanilla keeps its request.
+
+            SkipNetProposal proposal = new SkipNetProposal(pawn, request);
+            proposalsByPawn[pawn] = proposal;
+
+            if (pawn.Drafted) { proposals.AddFirst(proposal); } // Drafted pawns have priority.
+            else { proposals.AddLast(proposal); }
+
+            dummy = proposal.MakeDummyPathRequest();
+            return true;
+        }
+
+        /// <summary>
+        /// The single exit for every proposal. If the pather still holds our dummy, it gets the real request back
+        /// (vanilla claims it when ready; Found == false becomes a normal PatherFailed). If not, nobody wants it: dispose.
+        /// Either way we never touch the original again.
+        /// </summary>
+        public void Release(SkipNetProposal proposal)
+        {
+            if (proposalsByPawn.TryGetValue(proposal.pawn, out SkipNetProposal current) && current == proposal)
+            {
+                proposalsByPawn.Remove(proposal.pawn);
+            }
+
+            if (proposal.originalPathRequest == null) { return; }
+
+            // A skip pair still in flight dies with its proposal. The splicer disposes it on its next Run sweep.
+            proposal.plan?.DisposeSuperseded();
+
+            if (proposal.IsStillRequired)
+            {
+                proposal.pawn.pather.curPathRequest = proposal.originalPathRequest;
+            }
+            else
+            {
+                proposal.originalPathRequest.Dispose();
+            }
+
+            proposal.originalPathRequest = null;
+            proposal.dummyPathRequest = null;
+        }
+
+        /// <summary>
+        /// Resolves the pather's dummy with <paramref name="path"/> (vanilla claims it on its next PatherTick,
+        /// with all its usual claim bookkeeping) and disposes the direct path we were holding.
+        /// Returns false if the pather no longer wants it, in which case the caller still owns <paramref name="path"/>.
+        /// </summary>
+        public bool TryInstallPath(SkipNetProposal proposal, PawnPath path)
+        {
+            if (proposal.originalPathRequest == null) { return false; }
+
+            if (!proposal.IsStillRequired)
+            {
+                Release(proposal);
                 return false;
             }
 
-            return true;
-        }
-
-        public bool TryMakeSkipNetProposal(Pawn pawn, LocalTargetInfo dest, PathEndMode peMode, TraverseParms tp)
-        {
-            if (!IsValidProposal(pawn, ref dest, peMode)) { return false; }
-
-            bool isNewProposal = !proposalsByPawn.ContainsKey(pawn);
-            proposalsByPawn[pawn] = new SkipNetProposal(pawn, dest, peMode, tp);
-
-            if (isNewProposal)
+            if (proposalsByPawn.TryGetValue(proposal.pawn, out SkipNetProposal current) && current == proposal)
             {
-                if (pawn.Drafted) // Drafted pawns have priority.
-                {
-                    proposals.AddFirst(pawn);
-                }
-                else
-                {
-                    proposals.AddLast(pawn);
-                }
+                proposalsByPawn.Remove(proposal.pawn);
             }
 
+            proposal.originalPathRequest.Dispose(); // Returns the unclaimed direct path to the pool.
+            proposal.dummyPathRequest.Resolve(path); // The dummy owns the path now. If vanilla drops the dummy unclaimed, Dispose() pools it.
+
+            proposal.originalPathRequest = null;
+            proposal.dummyPathRequest = null;
             return true;
         }
+
         public bool IsValidProposal(Pawn pawn, ref LocalTargetInfo dest, PathEndMode peMode)
         {
             if (pawn == null || !dest.IsValid || peMode == PathEndMode.None) { return false; }
@@ -150,45 +204,26 @@ namespace MigCorp.Skiptech.SkipNet
             return IsValidProposal(proposal.pawn, ref proposal.dest, proposal.peMode);
         }
 
-        public bool TryProcessSkipNetProposalNow(Pawn pawn)
-        {
-            if (pawn == null || !proposalsByPawn.TryGetValue(pawn, out SkipNetProposal proposal)) { return false; }
-            if (PopCapReached && !pawn.Drafted) { return false; }
-            if (skipNet.splicer.AtCapacity) { return false; }
-            if (!IsValidProposal(proposal))
-            {
-                proposalsByPawn.Remove(pawn);
-                return false;
-            }
-
-            return TryConvertSkipNetProposalIntoSkipNetPlan(pawn, proposal);
-        }
-
         private bool TryConvertSkipNetProposalIntoSkipNetPlan(Pawn pawn, SkipNetProposal proposal)
         {
-            proposalsByPawn.Remove(pawn);
+            //proposalsByPawn.Remove(pawn);
 
-            if (!TryExtractPawnPath(pawn, out PawnPath directPath)) { return false; }
+            //if (!TryExtractPawnPath(pawn, out PawnPath directPath)) { return false; }
+            // Read-only peek at the direct path. The original request keeps ownership of it (no ClaimCalculatedPath).
+            if (!proposal.originalPathRequest.TryGetPath(out PawnPath directPath) || directPath == null) { return false; }
 
             if (skipNet.planner.TryFindEligibleSkipNetPlan(proposal, directPath, out SkipNetPlan plan))
             {
-                if (skipNet.splicer.TryBeginSkipPaths(plan)) { return true; }
+                //if (skipNet.splicer.TryBeginSkipPaths(plan)) { return true; }
+                if (skipNet.splicer.TryBeginSkipPaths(plan, proposal))
+                {
+                    proposal.plan = plan;
+                    return true;
+                }
 
                 plan.DisposeSuperseded(); // Make sure the (failed) generated plan isn't accidentally used.
             }
             return false;
-        }
-
-        private bool TryExtractPawnPath(Pawn pawn, out PawnPath directPath)
-        {
-            directPath = null;
-
-            if (!(pawn?.pather?.curPathRequest?.TryGetPath(out directPath) ?? false) || directPath?.Found != true)
-            {
-                directPath = pawn?.pather?.curPath;
-            }
-
-            return directPath != null;
         }
 
         public bool TryFilterSettings(Pawn pawn)

@@ -19,17 +19,6 @@ namespace MigCorp.Skiptech.SkipNet
         public static LocalTargetInfo PatherDest(Pawn_PathFollower pather) => _patherDestRef(pather);
         public static PathEndMode PatherPeMode(Pawn_PathFollower pather) => _patherPeModeRef(pather);
 
-        // Might as well try and give pawns the correctish TPs for pathing.
-        public static TraverseParms JankyTraverseParmsFor(Pawn pawn, Danger danger = Danger.Deadly)
-        {
-            return TraverseParms.For(pawn,
-                                    danger,
-                                    TraverseMode.ByPawn,
-                                    pawn.CurJob?.canBashDoors ?? false,
-                                    false,
-                                    pawn.CurJob?.canBashFences ?? false);
-        }
-
         public static int OctileDistance(IntVec3 start, IntVec3 end)
         {
             IntVec3 d = start - end;
