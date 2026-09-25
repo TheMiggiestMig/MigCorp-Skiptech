@@ -2,7 +2,7 @@
 using MigCorp.Skiptech.SkipNet;
 using Verse;
 using Verse.AI;
-using static MigCorp.Skiptech.SkipNet.SkipNetPathSplicer;
+using static MigCorp.Skiptech.SkipNet.SkipNetSeam;
 
 namespace MigCorp.Skiptech
 {
@@ -22,13 +22,7 @@ namespace MigCorp.Skiptech
             MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
             if (skipNet == null) { return; }
 
-            if (skipNet.splicer.TryPeekLiveSeam(___pawn, out SkipNetPathSplicer.SeamInfo seam) && seam.plan != null)
-            {
-                bool sameTrip = seam.plan.originalDest == __result.Target && seam.plan.originalPeMode == __result.EndMode;
-                if (!sameTrip || __result.Start == seam.exitCell) { seam.plan.DisposeSuperseded(); }
-            }
-
-            if (skipNet.proposer.TryCaptureRequest(___pawn, __result, out PathRequest dummy))
+            if (skipNet.manager.TryCapturePathRequest(___pawn, __result, out PathRequest dummy))
             {
                 __result = dummy;
             }
@@ -36,8 +30,8 @@ namespace MigCorp.Skiptech
 
         public struct SkipNetPathSeamStepState
         {
-            public SkipNetPathSplicer splicer;
-            public SkipNetPathSplicer.SeamInfo seam;
+            public SkipNetManager manager;
+            public SkipNetPlan plan;
             public bool approved;
         }
 
@@ -52,22 +46,22 @@ namespace MigCorp.Skiptech
 
             MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
             if (skipNet == null) { return true; }
-            if (!skipNet.splicer.TryGetSeam(___pawn, out SkipNetPathSplicer.SeamInfo seam)) { return true; }
+            if (!skipNet.manager.TryGetLivePlan(___pawn, out SkipNetPlan plan)) { return true; }
 
-            __state.splicer = skipNet.splicer;
-            __state.seam = seam;
+            __state.manager = skipNet.manager;
+            __state.plan = plan;
 
             // Still walking the entry path. Ignore.
-            if (___pawn.Position != seam.entryCell || __instance.nextCell != seam.exitCell) { return true; }
+            if (!plan.IsPawnAtSeam) { return true; }
 
             // If the exit skipdoor has pawns standing on it blocking it, freeze the pawn's sprite at the spot (to stop tweening).
             if (__instance.WillCollideNextCell)
             {
-                SkipNetPathSplicer.HoldAtSeam(__instance);
+                HoldAtSeam(__instance);
                 return true;
             }
 
-            switch (skipNet.splicer.DecideTeleportStep(___pawn, seam))
+            switch (skipNet.manager.DecideTeleportStep(___pawn, plan))
             {
                 case TeleportStepDecision.Approved:
                     __state.approved = true;
@@ -84,19 +78,22 @@ namespace MigCorp.Skiptech
         [HarmonyPatch("TryEnterNextPathCell")]
         static void TryEnterNextPathCell_Postfix(Pawn ___pawn, SkipNetPathSeamStepState __state)
         {
-            if (__state.seam == null) { return; }
+            if (__state.approved) { __state.manager.CompleteTeleportStep(___pawn, __state.plan); }
+        }
 
-            if (__state.approved)
-            {
-                __state.splicer.CompleteTeleportStep(___pawn, __state.seam);
-                return;
-            }
+        // Holds the pawn at the entry while waiting for the teleporter to be ready.
+        // Patched here rather than TryEnterNextPathCell because it gets called even if the pawn is already standing on the entry.
+        [HarmonyPostfix]
+        [HarmonyPatch("SetupMoveIntoNextCell")]
+        static void SetupMoveIntoNextCell_Postfix(Pawn_PathFollower __instance, Pawn ___pawn)
+        {
+            MapComponent_SkipNet skipNet = MapComponent_SkipNet.For(___pawn?.Map);
+            if (skipNet == null) { return; }
+            if (!skipNet.manager.TryGetLivePlan(___pawn, out SkipNetPlan plan)) { return; } // Also promotes a just-claimed splice to live.
 
-            // If the seam is still waiting, freeze the pawn's sprite at the spot (to stop tweening).
-            Pawn_PathFollower pather = ___pawn.pather;
-            if (___pawn.Position == __state.seam.entryCell && pather.nextCell == __state.seam.exitCell)
+            if (plan.IsPawnAtSeam)
             {
-                SkipNetPathSplicer.HoldAtSeam(pather);
+                HoldAtSeam(__instance);
             }
         }
     }

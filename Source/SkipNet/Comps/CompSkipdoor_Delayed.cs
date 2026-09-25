@@ -66,14 +66,14 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             return true;
         }
 
-        public override void Notify_PawnArrived(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
+        public override void Notify_PawnArrived(Pawn pawn, SkipdoorType type)
         {
             if (open) { curRemainOpenTick = 0; }
             if (Props.restrictEntry && type == SkipdoorType.Entry && !open) { opening = true; }
             if (Props.restrictExit && type == SkipdoorType.Exit && !open) { opening = true; }
         }
 
-        public override void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
+        public override void Notify_PawnTeleported(Pawn pawn, SkipdoorType type)
         {
             return;
         }

@@ -55,7 +55,7 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             return UsableGivenPowerAndShock(in ac);
         }
 
-        public override void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
+        public override void Notify_PawnTeleported(Pawn pawn, SkipdoorType type)
         {
             // If the skipdoor is not powered and it should be, they'll have a 40% chance of getting sick (for each unpowered skipdoor in the jump, so ~64% chance if both are unpowered).
             if (powerTrader.Off)

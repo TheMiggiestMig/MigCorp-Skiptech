@@ -6,7 +6,7 @@ using Verse.AI;
 
 namespace MigCorp.Skiptech.SkipNet
 {
-    public class SkipNetPlanner
+    public class SkipNetCandidateFinder
     {
         public readonly MapComponent_SkipNet skipNet;
         private readonly SkipNetSearcher searcher;
@@ -18,17 +18,12 @@ namespace MigCorp.Skiptech.SkipNet
         public List<CompSkipdoor> skipdoors { get { return skipNet.skipdoors; } }
         public Map map { get { return skipNet.map; } }
 
-        public SkipNetPlanner(MapComponent_SkipNet skipNet)
+        public SkipNetCandidateFinder(MapComponent_SkipNet skipNet)
         {
             this.skipNet = skipNet;
             searcher = new SkipNetSearcherDijkstra(this);
 
             map.events.RegionsRoomsChanged += MarkRegionDoorIndexDirty;
-            RebuildRegionDoorIndex();
-        }
-
-        public void Run()
-        {
             RebuildRegionDoorIndex();
         }
 
@@ -74,13 +69,10 @@ namespace MigCorp.Skiptech.SkipNet
         /// Performs some initial validation to make sure the plan can be generated, then initializes the
         /// search.
         /// </summary>
-        public bool TryInitializePlanner(Pawn pawn, LocalTargetInfo dest, TraverseParms tp, PawnPath directPath, out Region pawnRegion, out Region destRegion)
+        public bool TryGetSearchRegions(Pawn pawn, LocalTargetInfo dest, TraverseParms tp, PawnPath directPath, out Region pawnRegion, out Region destRegion)
         {
             pawnRegion = null;
             destRegion = null;
-
-            // We can only create a plan if there are actually 2 or more skipdoors present.
-            if (skipNet.skipdoors.Count < 2) { return false; }
 
             // Make sure the pawn is actually in a valid region.
             // Thing.Spawned and Map.InBounds(Thing) are both covered by this.
@@ -102,36 +94,39 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         /// <summary>
-        /// Performs a search for a skipdoor pairing that reduces the pawn's current trip.
+        /// Searches for a skipdoor pair that shortens the plan's trip. Read-only on the plan: the caller decides what to do with the answer.
         /// </summary>
-        /// <param name="proposal">The SkipNetProposal to convert into a SkipNetPlan</param>
+        /// <param name="plan">The plan to search for (pawn, dest and traverse parms are read from it)</param>
         /// <param name="directPath">The pawn's current direct path to the destination</param>
-        /// <returns></returns>
-        public bool TryFindEligibleSkipNetPlan(SkipNetProposal proposal, PawnPath directPath, out SkipNetPlan plan)
+        /// <param name="popCost">Search effort spent (region pops), for the caller's per-tick budget. Zero if the search never started.</param>
+        //public bool TryFindEligibleSkipNetPlan(SkipNetPlan plan, PawnPath directPath)
+        public bool TryFindSkipdoorPair(SkipNetPlan plan, PawnPath directPath, out CompSkipdoor entry, out CompSkipdoor exit, out int popCost)
         {
-            Pawn pawn = proposal.pawn;
-            LocalTargetInfo dest = proposal.dest;
-            PathEndMode peMode = proposal.peMode;
-            TraverseParms tp = proposal.tp;
+            Pawn pawn = plan.pawn;
+            LocalTargetInfo dest = plan.dest;
+            //PathEndMode peMode = plan.peMode;
+            TraverseParms tp = plan.tp;
 
-            plan = null;
+            entry = null;
+            exit = null;
+            popCost = 0;
 
             // Make sure we meet the minimum requirements for a SkipNetPlan.
-            if (!TryInitializePlanner(pawn, dest, tp, directPath, out Region pawnRegion, out Region destRegion)) { return false; }
+            if (!TryGetSearchRegions(pawn, dest, tp, directPath, out Region pawnRegion, out Region destRegion)) { return false; }
 
             SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
 
-            bool found = searcher.TrySearchForSkipdoorPair(pawn, pawnRegion, destRegion, directPath, tp, ac, out CompSkipdoor entry, out CompSkipdoor exit, out int popCost);
-
-            if (found)
-            {
-                plan = new SkipNetPlan(pawn, dest, peMode, tp);
-                plan.Initialize(entry, exit);
-            }
-
-            skipNet.proposer.ConsumePopBudget(popCost);
-
-            return found;
+            //bool found = searcher.TrySearchForSkipdoorPair(pawn, pawnRegion, destRegion, directPath, tp, ac, out CompSkipdoor entry, out CompSkipdoor exit, out int popCost);
+            //
+            //if (found)
+            //{
+            //    plan.AssignCandidates(entry, exit);
+            //}
+            //
+            //skipNet.proposer.ConsumePopBudget(popCost);
+            //
+            //return found;
+            return searcher.TrySearchForSkipdoorPair(pawn, pawnRegion, destRegion, directPath, tp, ac, out entry, out exit, out popCost);
         }
     }
 }

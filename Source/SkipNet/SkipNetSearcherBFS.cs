@@ -31,7 +31,7 @@ namespace MigCorp.Skiptech.SkipNet
             public bool canEnter;
             public bool canExit;
         }
-        public SkipNetSearcherBFS(SkipNetPlanner planner) : base(planner) { }
+        public SkipNetSearcherBFS(SkipNetCandidateFinder finder) : base(finder) { }
 
         public override void Reset()
         {
@@ -80,7 +80,7 @@ namespace MigCorp.Skiptech.SkipNet
             // Checks a region for skipdoors it can use, and sets the best if found.
             bool CheckSkipdoorAccess(Region region, int regionCost, bool entering = true)
             {
-                if (!planner.TryGetSkipdoorsInRegion(region, out List<CompSkipdoor> candidateSkipdoors)) { return false; }
+                if (!finder.TryGetSkipdoorsInRegion(region, out List<CompSkipdoor> candidateSkipdoors)) { return false; }
 
                 bool usableSkipdoorFound = false;
                 IntVec3 targetCell = entering ? pawn.Position : directPath.LastNode;

@@ -104,7 +104,7 @@ namespace MigCorp.Skiptech.SkipNet
         private float entryCostFloor, exitCostFloor;
         private SkipNetAccessContext ac;
 
-        public SkipNetSearcherDijkstra(SkipNetPlanner planner) : base(planner)
+        public SkipNetSearcherDijkstra(SkipNetCandidateFinder finder) : base(finder)
         {
             scoreEntryDoors = (region, from, g) => ScoreDoorsInRegion(region, from, g, entrySide: true);
             scoreExitDoors = (region, from, g) => ScoreDoorsInRegion(region, from, g, entrySide: false);
@@ -221,9 +221,9 @@ namespace MigCorp.Skiptech.SkipNet
             BestTwoSkipdoors optimisticExits = BestTwoSkipdoors.Empty;
 
             // Check the optimistic (direct octile) distance from every skipdoor on the map.
-            foreach (CompSkipdoor door in planner.skipdoors)
+            foreach (CompSkipdoor door in finder.skipdoors)
             {
-                if (door == null || !door.parent.Spawned || door.parent.Map != planner.map) { continue; }
+                if (door == null || !door.parent.Spawned || door.parent.Map != finder.map) { continue; }
 
                 if (candidateCount == candidates.Length) { Array.Resize(ref candidates, candidates.Length * 2); }
                 ref CandidateSkipdoor candidate = ref candidates[candidateCount++];
@@ -329,7 +329,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         private void ScoreDoorsInRegion(Region region, IntVec3 from, float g, bool entrySide)
         {
-            if (!planner.TryGetSkipdoorsInRegion(region, out List<CompSkipdoor> doors)) { return; }
+            if (!finder.TryGetSkipdoorsInRegion(region, out List<CompSkipdoor> doors)) { return; }
 
             foreach (CompSkipdoor door in doors)
             {

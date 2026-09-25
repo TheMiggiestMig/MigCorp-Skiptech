@@ -99,10 +99,11 @@
     <Compile Include="MigcorpSkiptechSettings.cs" />
     <Compile Include="SkipNet\SkipdoorCustomPower.cs" />
     <Compile Include="SkipNet\SkipNetPathSplicer.cs" />
-    <Compile Include="SkipNet\SkipNetProposal.cs" />
+    <Compile Include="SkipNet\SkipNetPlan.cs" />
+    <Compile Include="SkipNet\SkipNetSeam.cs" />
     <Compile Include="SkipNet\SkipNetSearcher.cs" />
     <Compile Include="SkipNet\SkipNetSearcherBFS.cs" />
-    <Compile Include="SkipNet\SkipNetProposer.cs" />
+    <Compile Include="SkipNet\SkipNetManager.cs" />
     <Compile Include="SkipNet\SkipNetSearcherDijkstra.cs" />
     <Compile Include="SkiptechDefOf.cs" />
     <Compile Include="Utils\SkiptechUtil.cs" />
@@ -113,8 +114,7 @@
     <Compile Include="SkipNet\ISkipdoorAccessible.cs" />
     <Compile Include="Patches\Core\Patch_Pawn_PatherFollower.cs" />
     <Compile Include="SkipNet\SkipNetAccessContext.cs" />
-    <Compile Include="SkipNet\SkipNetPlan.cs" />
-    <Compile Include="SkipNet\SkipNetPlanner.cs" />
+    <Compile Include="SkipNet\SkipNetCandidateFinder.cs" />
     <Compile Include="Utils\FxUtil.cs" />
     <Compile Include="SkipNet\MapComponent_SkipNet.cs" />
     <Compile Include="MigcorpSkiptechMod.cs" />
