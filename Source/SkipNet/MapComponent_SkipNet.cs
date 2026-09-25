@@ -26,25 +26,19 @@ namespace MigCorp.Skiptech.SkipNet
         public List<CompSkipdoor> skipdoors;
 
         // SkipNetPlans
-        public SkipNetProposer proposer;
-        public SkipNetPlanner planner;
-        public SkipNetPathSplicer splicer;
+        public SkipNetManager manager;
 
         public MapComponent_SkipNet(Map map) : base(map)
         {
             skipdoors = new List<CompSkipdoor>();
 
-            proposer = new SkipNetProposer(this);
-            splicer = new SkipNetPathSplicer(this);
-            planner = new SkipNetPlanner(this);
+            manager = new SkipNetManager(this);
         }
 
         public override void MapComponentTick()
         {
             base.MapComponentTick();
-            splicer.Run(); // Should run before planner, otherwise we'll get churn from plans that definitely won't be ready.
-            proposer.ProcessQueue();
-            planner.Run();
+            manager.Tick();
         }
 
         public override void MapRemoved()
@@ -54,7 +48,7 @@ namespace MigCorp.Skiptech.SkipNet
                 cachedMap = null;
                 cachedComp = null;
             }
-            splicer.DropAll();
+            manager.DropAll();
             base.MapRemoved();
         }
 
@@ -69,7 +63,7 @@ namespace MigCorp.Skiptech.SkipNet
                 return;
             }
             skipdoors.Add(skipdoor);
-            planner.MarkRegionDoorIndexDirty();
+            manager.Notify_SkipdoorRegistered(skipdoor);
         }
 
         /// <summary>
@@ -78,7 +72,7 @@ namespace MigCorp.Skiptech.SkipNet
         public void UnregisterSkipdoor(CompSkipdoor skipdoor)
         {
             skipdoors.Remove(skipdoor);
-            planner.MarkRegionDoorIndexDirty();
+            manager.Notify_SkipdoorUnregistered(skipdoor);
         }
     }
 }

@@ -6,13 +6,13 @@ namespace MigCorp.Skiptech.SkipNet
 {
     public abstract class SkipNetSearcher
     {
-        public readonly SkipNetPlanner planner;
+        public readonly SkipNetCandidateFinder finder;
         public readonly MapComponent_SkipNet skipNet;
 
-        public SkipNetSearcher(SkipNetPlanner planner)
+        public SkipNetSearcher(SkipNetCandidateFinder finder)
         {
-            this.planner = planner;
-            this.skipNet = planner.skipNet;
+            this.finder = finder;
+            this.skipNet = finder.skipNet;
         }
         public abstract void Reset();
 

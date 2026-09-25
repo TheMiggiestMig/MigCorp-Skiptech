@@ -133,29 +133,34 @@ namespace MigCorp.Skiptech.SkipNet.Comps
         {
             return GetAccess(in ac);
         }
+
         public bool CanExit(in SkipNetAccessContext ac)
         {
             return GetAccess(in ac);
         }
 
         public int TicksUntilEnterable(Pawn pawn) { return 0; }
+
         public int TicksUntilExitable(Pawn pawn) { return 0; }
 
-        public void Notify_PawnArrived(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
+
+        public void Notify_PawnArrived(Pawn pawn, SkipdoorType type)
         {
             foreach (ISkipdoorAccessible comp in accessibilityComps)
             {
                 if (comp == this) continue;
-                comp.Notify_PawnArrived(pawn, skipNetPlan, type);
+                //comp.Notify_PawnArrived(pawn, skipNetPlan, type);
+                comp.Notify_PawnArrived(pawn, type);
             }
         }
 
-        public void Notify_PawnTeleported(Pawn pawn, SkipNetPlan skipNetPlan, SkipdoorType type)
+        public void Notify_PawnTeleported(Pawn pawn, SkipdoorType type)
         {
             foreach (ISkipdoorAccessible comp in accessibilityComps)
             {
                 if (comp == this) continue;
-                comp.Notify_PawnTeleported(pawn, skipNetPlan, type);
+                //comp.Notify_PawnTeleported(pawn, skipNetPlan, type);
+                comp.Notify_PawnTeleported(pawn, type);
             }
         }
     }
