@@ -36,6 +36,27 @@
         <techLevel>Ultra</techLevel>
         <resourceReadoutPriority>Last</resourceReadoutPriority>
 
+        <recipeMaker>
+            <researchPrerequisite>MigCorp_SkipRift</researchPrerequisite>
+            <workAmount>30000</workAmount>
+            <workSkill>Crafting</workSkill>
+            <workSpeedStat>GeneralLaborSpeed</workSpeedStat>
+
+            <skillRequirements>
+                <Crafting>10</Crafting>
+            </skillRequirements>
+
+            <recipeUsers>
+                <li>FabricationBench</li>
+            </recipeUsers>
+        </recipeMaker>
+
+        <costList>
+            <Plasteel>30</Plasteel>
+            <Gold>10</Gold>
+            <ComponentSpacer>3</ComponentSpacer>
+        </costList>
+
         <smeltable>false</smeltable>
         <apparel>
             <countsAsClothingForNudity>false</countsAsClothingForNudity>
@@ -45,7 +66,7 @@
             <bodyPartGroups>
                 <li>Waist</li>
             </bodyPartGroups>
-                    <layers>
+            <layers>
                 <li>Belt</li>
             </layers>
 
