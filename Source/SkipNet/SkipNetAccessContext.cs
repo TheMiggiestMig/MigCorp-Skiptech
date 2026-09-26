@@ -15,7 +15,7 @@ namespace MigCorp.Skiptech.SkipNet
 
         // A lot of these checks are done many times during path searching.
         // A lot of these checks only need to be done once per search.
-        public SkipNetAccessContext(Pawn pawn)
+        public SkipNetAccessContext(Pawn pawn, bool forced = false)
         {
             this.pawn = pawn;
             allowedArea = PathUtility.GetAllowedArea(pawn);
@@ -26,6 +26,7 @@ namespace MigCorp.Skiptech.SkipNet
                 || settings.disableSkipShock
                 || !settings.enableSkipShockAvoidance
                 || pawn.Drafted
+                || forced
                 || (pawn.CurJob?.playerForced ?? false);
         }
     }

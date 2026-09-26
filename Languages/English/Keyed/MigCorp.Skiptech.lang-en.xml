@@ -48,6 +48,17 @@
 	
 	<!-- General Text-->
 	<MigCorp.Skiptech.Text.Skipshock>Skip-shock</MigCorp.Skiptech.Text.Skipshock>
-	 
+	<MigCorp.Skiptech.Text.ID>ID: {0}</MigCorp.Skiptech.Text.ID>
+	<MigCorp.Skiptech.Skipdoor.SetID>Set SkipNet ID</MigCorp.Skiptech.Skipdoor.SetID>
+	<MigCorp.Skiptech.Skipdoor.Rename.Desc>Set this skipdoor's SkipNet ID. Leave it blank to clear it.</MigCorp.Skiptech.Skipdoor.Rename.Desc>
+	<MigCorp.Skiptech.Skipdoor.SkipLocallyTo>Skip locally to {0}</MigCorp.Skiptech.Skipdoor.SkipLocallyTo>
+	<MigCorp.Skiptech.Skipdoor.CannotSkip>Cannot skip locally ({0})</MigCorp.Skiptech.Skipdoor.CannotSkip>
+	<MigCorp.Skiptech.Skipdoor.PawnCannotSkip>{0} cannot skip locally ({1})</MigCorp.Skiptech.Skipdoor.PawnCannotSkip>
+	<MigCorp.Skiptech.Skipdoor.CannotSkipNoPath>no path</MigCorp.Skiptech.Skipdoor.CannotSkipNoPath>
+	<MigCorp.Skiptech.Skipdoor.CannotSkipNoEntry>cannot enter chosen skipdoor</MigCorp.Skiptech.Skipdoor.CannotSkipNoEntry>
+	<MigCorp.Skiptech.Skipdoor.CannotSkipNoExit>cannot exit chosen skipdoor</MigCorp.Skiptech.Skipdoor.CannotSkipNoExit>
+	<MigCorp.Skiptech.Skipdoor.CannotSkipNoExits>no valid exits with IDs</MigCorp.Skiptech.Skipdoor.CannotSkipNoExits>
+	<MigCorp.Skiptech.Skipdoor.SkipLocallyReport>skipping locally to {0}.</MigCorp.Skiptech.Skipdoor.SkipLocallyReport>
+
 
 </LanguageData>

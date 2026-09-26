@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <JobDef>
+    <defName>MigCorp_SkipLocally</defName>
+    <driverClass>MigCorp.Skiptech.SkipNet.JobDriver_SkipLocally</driverClass>
+    <reportString>skipping locally.</reportString>
+    <casualInterruptible>false</casualInterruptible>
+    <carryThingAfterJob>true</carryThingAfterJob>
+    <dropThingBeforeJob>false</dropThingBeforeJob>
+  </JobDef>
+</Defs>

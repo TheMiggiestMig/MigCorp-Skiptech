@@ -63,9 +63,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bootstrap.cs" />
+    <Compile Include="SkipNet\Dialog_RenameSkipdoor.cs" />
     <Compile Include="SkipNet\DijkstraSearchStepper.cs" />
     <Compile Include="GameComponent_Skiptech.cs" />
     <Compile Include="MigcorpSkiptechSettings.cs" />
+    <Compile Include="SkipNet\JobDriver_SkipLocally.cs" />
     <Compile Include="SkipNet\SkipdoorCustomPower.cs" />
     <Compile Include="SkipNet\SkipNetPathSplicer.cs" />
     <Compile Include="SkipNet\SkipNetPlan.cs" />
@@ -74,6 +76,7 @@
     <Compile Include="SkipNet\SkipNetSearcherBFS.cs" />
     <Compile Include="SkipNet\SkipNetManager.cs" />
     <Compile Include="SkipNet\SkipNetSearcherDijkstra.cs" />
+    <Compile Include="SkiptechDefOf.cs" />
     <Compile Include="Utils\SkiptechUtil.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_Delayed.cs" />
     <Compile Include="SkipNet\Comps\CompSkipdoor_IndicatorOverlay.cs" />
