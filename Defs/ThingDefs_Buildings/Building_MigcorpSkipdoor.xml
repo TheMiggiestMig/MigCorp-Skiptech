@@ -67,27 +67,21 @@
         <powered>
           <texPath>Things/Building/Misc/effects/migcorp_MigcorpSkipdoor_IndicatorOverlay_powered</texPath>
           <graphicClass>Graphic_Single</graphicClass>
-          <shaderType>Cutout</shaderType>
+          <shaderType>TransparentPostLight</shaderType>
           <drawSize>(1.1,1.1)</drawSize>
         </powered>
         <charging>
           <texPath>Things/Building/Misc/effects/migcorp_MigcorpSkipdoor_IndicatorOverlay_charging</texPath>
           <graphicClass>Graphic_Single</graphicClass>
-          <shaderType>Cutout</shaderType>
+          <shaderType>TransparentPostLight</shaderType>
           <drawSize>(1.1,1.1)</drawSize>
         </charging>
         <charged>
           <texPath>Things/Building/Misc/effects/migcorp_MigcorpSkipdoor_IndicatorOverlay_charged</texPath>
           <graphicClass>Graphic_Single</graphicClass>
-          <shaderType>Cutout</shaderType>
+          <shaderType>TransparentPostLight</shaderType>
           <drawSize>(1.1,1.1)</drawSize>
         </charged>
-        <unpowered>
-          <texPath>Things/Building/Misc/effects/migcorp_MigcorpSkipdoor_IndicatorOverlay_unpowered</texPath>
-          <graphicClass>Graphic_Single</graphicClass>
-          <shaderType>Cutout</shaderType>
-          <drawSize>(1.1,1.1)</drawSize>
-        </unpowered>
       </li>
     </comps>
     <researchPrerequisites>

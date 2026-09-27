@@ -10,7 +10,7 @@
         <thingClass>Apparel</thingClass>
 
         <graphicData>
-            <texPath>Things/Item/Special/AIPersonaCore</texPath>
+            <texPath>Things/Item/migcorp_SkipBeacon</texPath>
             <graphicClass>Graphic_Single</graphicClass>
         </graphicData>
 

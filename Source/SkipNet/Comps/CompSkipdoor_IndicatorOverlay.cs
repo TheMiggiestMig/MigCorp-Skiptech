@@ -9,7 +9,6 @@ namespace MigCorp.Skiptech.SkipNet.Comps
         public GraphicData powered;
         public GraphicData charging;
         public GraphicData charged;
-        public GraphicData unpowered;
         public CompProperties_Skipdoor_IndicatorOverlay()
         {
             compClass = typeof(CompSkipdoor_IndicatorOverlay);
@@ -89,7 +88,7 @@ namespace MigCorp.Skiptech.SkipNet.Comps
                 case SkipdoorState.Powered: return Props.powered;
                 case SkipdoorState.Charging: return Props.charging;
                 case SkipdoorState.Charged: return Props.charged;
-                default: return Props.unpowered;
+                default: return null;
             }
         }
 
@@ -98,6 +97,8 @@ namespace MigCorp.Skiptech.SkipNet.Comps
             base.PostPrintOnto(layer);
 
             GraphicData graphicData = GetGraphicData();
+            if (graphicData == null) return;
+
             Material material = graphicData.Graphic.MatAt(parent.Rotation);
             Vector3 position = parent.DrawPos;
             position.y += 0.01f;
