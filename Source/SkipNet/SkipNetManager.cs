@@ -433,7 +433,12 @@ namespace MigCorp.Skiptech.SkipNet
 
             if (MigcorpSkiptechMod.Settings.accessMode != AccessMode.Everyone && pawn.HostileTo(Faction.OfPlayer)) { return false; }
 
-            if (!MigcorpSkiptechMod.Settings.animalsCanUse && pawn.IsAnimal && !(pawn.jobs?.curJob?.def == JobDefOf.FollowRoper)) { return false; }
+            // Possible fix for roped animal thrashing.
+            // The FollowRoper job tries to follow the roper's path, but a few cells back. This causes issues with the gaps SkipNet creates.
+            // Instead, just yeet them when the roper is ready to teleport. idc.
+            if (pawn.roping?.IsRopedByPawn == true || pawn.jobs?.curJob?.def == JobDefOf.FollowRoper) { return false; }
+
+            if (!MigcorpSkiptechMod.Settings.animalsCanUse && pawn.IsAnimal) { return false; }
 
             return true;
         }

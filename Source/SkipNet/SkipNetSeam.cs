@@ -105,6 +105,9 @@ namespace MigCorp.Skiptech.SkipNet
             // Move was probably blocked this tick.
             if (pawn.Position != plan.exitCell) { return false; }
 
+            // Fix for roped animals. Teleport them first.
+            TeleportRopees(pawn, plan);
+
             // Do the thing.
             // Teleport, cancel the tween, fire the effects, and notify the skipdoors that the pawn teleported.
             pawn.Drawer.tweener.Notify_Teleported();
@@ -124,6 +127,32 @@ namespace MigCorp.Skiptech.SkipNet
             if (pather.curPathRequest != null && pather.curPathRequest.Start != plan.exitCell) { pather.DisposeAndClearCurPathRequest(); }
 
             return true;
+        }
+
+        // If the pawn has roped animals following them, teleport the animals first and reset their pathing.
+        // The FollowRoper job causes them to try and follow their roper's path, but a few cells back... which can be
+        // far enough away to trigger them to teleport back. Which makes them far enough away to trigger them to come close... repeat...
+        private static void TeleportRopees(Pawn roper, SkipNetPlan plan)
+        {
+            if (roper.roping?.IsRopingOthers != true) { return; }
+
+            var ropees = roper.roping.Ropees;
+
+            for (int i = 0; i < ropees.Count; i++)
+            {
+                Pawn ropee = ropees[i];
+
+                if (ropee == null || !ropee.Spawned || ropee.Map != plan.map) { continue; }
+
+                ropee.Position = plan.exitCell; // Pile them all up on the skipdoor. I know some of you crazies put these in 1x1 cell rooms.
+
+                ropee.Notify_Teleported(endCurrentJob: false);
+
+                // The ropee physically passed through both Skipdoors, so let Skipdoor
+                // comps apply teleport side effects such as Skipshock to it too.
+                plan.entry.Notify_PawnTeleported(ropee, SkipdoorType.Entry);
+                plan.exit.Notify_PawnTeleported(ropee, SkipdoorType.Exit);
+            }
         }
     }
 }
