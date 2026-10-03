@@ -1,0 +1,24 @@
+<Analyzer>
+  <SkipNet>
+    <Types>
+      <li>MigCorp.Skiptech.SkipNet.MapComponent_SkipNet</li>
+      <li>MigCorp.Skiptech.SkipNet.SkipNetManager</li>
+      <li>MigCorp.Skiptech.SkipNet.SkipNetCandidateFinder</li>
+      <li>MigCorp.Skiptech.SkipNet.SkipNetPathSplicer</li>
+      <li>MigCorp.Skiptech.SkipNet.SkipNetPlan</li>
+    </Types>
+  </SkipNet>
+
+  <SkipNetSearch>
+    <Types>
+      <li>MigCorp.Skiptech.SkipNet.SkipNetSearcherDijkstra</li>
+      <li>MigCorp.Skiptech.SkipNet.DijkstraSearchStepper</li>
+    </Types>
+  </SkipNetSearch>
+
+  <SkipNetPatches>
+    <Types>
+      <li>MigCorp.Skiptech.Pawn_PathFollower_Patch</li>
+    </Types>
+  </SkipNetPatches>
+</Analyzer>

@@ -1,4 +1,5 @@
-﻿using MigCorp.Skiptech.Utils;
+﻿using LudeonTK;
+using MigCorp.Skiptech.Utils;
 using UnityEngine;
 using Verse;
 using Verse.AI;
@@ -12,6 +13,8 @@ namespace MigCorp.Skiptech.SkipNet
     /// </summary>
     public static class SkipNetSeam
     {
+        [TweakValue("MigCorp Performance Test", 0, 1)]
+        public static int DEBUG_TurnFXOff = 0;
         public enum TeleportStepDecision
         {
             Approved,
@@ -106,8 +109,10 @@ namespace MigCorp.Skiptech.SkipNet
             // Teleport, cancel the tween, fire the effects, and notify the skipdoors that the pawn teleported.
             pawn.Drawer.tweener.Notify_Teleported();
 
-            FxUtil.PlaySkip(plan.entryCell, plan.map, false);
-            FxUtil.PlaySkip(plan.exitCell, plan.map, false);
+            if (DEBUG_TurnFXOff <= 0) {
+                FxUtil.PlaySkip(plan.entryCell, plan.map, false);
+                FxUtil.PlaySkip(plan.exitCell, plan.map, false);
+            }
 
             plan.entry.Notify_PawnTeleported(pawn, SkipdoorType.Entry);
             plan.exit.Notify_PawnTeleported(pawn, SkipdoorType.Exit);

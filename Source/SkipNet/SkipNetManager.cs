@@ -1,4 +1,5 @@
-﻿using MigCorp.Skiptech.SkipNet.Comps;
+﻿using LudeonTK;
+using MigCorp.Skiptech.SkipNet.Comps;
 using MigCorp.Skiptech.Utils;
 using RimWorld;
 using System.Collections.Generic;
@@ -9,6 +10,9 @@ namespace MigCorp.Skiptech.SkipNet
 {
     public class SkipNetManager
     {
+        [TweakValue("MigCorp Performance Test", 0, 1)]
+        public static int DEBUG_AlwaysInstallDirectPath = 0;
+
         private const int PendingPlanMaxLifetimeTicks = 20;
 
         private readonly MapComponent_SkipNet skipNet;
@@ -197,7 +201,7 @@ namespace MigCorp.Skiptech.SkipNet
         {
             if (plan.originalPathRequest == null) { return false; }
 
-            if (!plan.IsStillRequired)
+            if (!plan.IsStillRequired || DEBUG_AlwaysInstallDirectPath > 0)
             {
                 Release(plan);
                 return false;
