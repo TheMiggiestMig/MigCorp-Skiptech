@@ -421,7 +421,23 @@ namespace MigCorp.Skiptech.SkipNet
         // Called from the TryEnterNextPathCell postfix after an approved step.
         public void CompleteTeleportStep(Pawn pawn, SkipNetPlan plan)
         {
-            if (SkipNetSeam.CompleteTeleportStep(pawn, plan)) { EndLive(plan); }
+            if (!SkipNetSeam.CompleteTeleportStep(pawn, plan)) { return; }
+
+            EndLive(plan);
+
+            if (pawn.Spawned && pawn.pather != null && ShouldRepathAfterTeleport(pawn, plan))
+            {
+                pawn.pather.ResetToCurrentPosition();
+            }
+        }
+
+        // Should the pawn repath after teleporting?
+        // In a separate method so you other modders can patch in your own reasons :)
+        public bool ShouldRepathAfterTeleport(Pawn pawn, SkipNetPlan plan)
+        {
+            if(pawn.roping?.IsRopingOthers == true) {  return true; }
+
+            return false;
         }
 
         public bool TryFilterSettings(Pawn pawn)
