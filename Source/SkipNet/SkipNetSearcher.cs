@@ -4,6 +4,7 @@ using Verse.AI;
 
 namespace MigCorp.Skiptech.SkipNet
 {
+    // I'll probably keep this in case I come up with other ways to search / experimental search options.
     public abstract class SkipNetSearcher
     {
         public readonly SkipNetCandidateFinder finder;

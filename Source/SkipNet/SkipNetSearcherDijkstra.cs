@@ -9,11 +9,9 @@ namespace MigCorp.Skiptech.SkipNet
 {
     public class SkipNetSearcherDijkstra : SkipNetSearcher
     {
-        private static float skipCost => MigcorpSkiptechMod.Settings.skipCost; // TODO Make Mod Settinsg for it.
-        private static float worthItFactor => MigcorpSkiptechMod.Settings.worthItFactor; // TODO Make Mod Settinsg for it.
-        //private static float skipCost => 60;
-        //private static float worthItFactor => 0.85f;
-
+        private static float skipCost => MigcorpSkiptechMod.Settings.skipCost;
+        private static float worthItFactor => MigcorpSkiptechMod.Settings.worthItFactor;
+        
         // Stores info about a skipdoor being considered by the search.
         // Access checks can be fairly expensive.
         private struct CandidateSkipdoor
@@ -133,8 +131,6 @@ namespace MigCorp.Skiptech.SkipNet
             // If none of the candidates can produce a shorter pair, bail.
             if (!TryBuildCandidates(pawn.Position, destCell)) { return false; }
 
-            //ScoreDoorsInRegion(pawnRegion, pawn.Position, 0f, entrySide: true);
-            //ScoreDoorsInRegion(destRegion, destCell, 0f, entrySide: false);
             pawnStepper.Initialize(pawnRegion, pawn.Position, maxRouteCost - exitCostFloor, tp, scoreEntryDoors);
             destStepper.Initialize(destRegion, destCell, maxRouteCost - entryCostFloor, tp, scoreExitDoors);
 
@@ -147,9 +143,10 @@ namespace MigCorp.Skiptech.SkipNet
                 bool exitDone = destStepper.CheapestCost >= exitCostLimit;
                 if (entryDone && exitDone) { break; }
 
-                // Bail... even the most optimistic pair can't beat walking.
                 float entryLowerBound = Mathf.Max(entryCostFloor, Mathf.Min(bestEntries.firstCost, pawnStepper.CheapestCost));
                 float exitLowerBound = Mathf.Max(exitCostFloor, Mathf.Min(bestExits.firstCost, destStepper.CheapestCost));
+
+                // Bail... even the most optimistic pair can't beat walking.
                 if (entryLowerBound + exitLowerBound >= maxRouteCost) { return false; }
 
                 // Step the lowest costing stepper (pawn vs dest).
@@ -184,6 +181,8 @@ namespace MigCorp.Skiptech.SkipNet
 
             // Both sides have the same best skipdoor, and just one door is not a shortcut.
             // Keep digging for each side's runner-up, but no deeper than the budget left over after the other side's best.
+            // NOTE: I'm gonna look at removing the whole 'runner-up' situation. If the same skipdoor is the closest to both ends,
+            // that's just a single path, and not a shortcut. There's nothing shorter in that case.
             entryCostLimit = Mathf.Min(bestEntries.secondCost, maxRouteCost - bestExits.firstCost);
             exitCostLimit = Mathf.Min(bestExits.secondCost, maxRouteCost - bestEntries.firstCost);
         }

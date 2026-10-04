@@ -112,7 +112,8 @@ namespace MigCorp.Skiptech.SkipNet
             // Teleport, cancel the tween, fire the effects, and notify the skipdoors that the pawn teleported.
             pawn.Drawer.tweener.Notify_Teleported();
 
-            if (DEBUG_TurnFXOff <= 0) {
+            if (DEBUG_TurnFXOff <= 0)
+            {
                 FxUtil.PlaySkip(plan.entryCell, plan.map, false);
                 FxUtil.PlaySkip(plan.exitCell, plan.map, false);
             }

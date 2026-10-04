@@ -6,6 +6,8 @@ using Verse.AI;
 
 namespace MigCorp.Skiptech.SkipNet
 {
+    // Legacy search method.
+    // Also, janky AF.
     public class SkipNetSearcherBFS : SkipNetSearcher
     {
         // BFS

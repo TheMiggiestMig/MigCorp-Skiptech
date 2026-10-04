@@ -27,7 +27,6 @@ namespace MigCorp.Skiptech.SkipNet
         private static CompProperties_Power PowerProps =>
             ThingDef.Named("MigcorpSkipdoor")?.GetCompProperties<CompProperties_Power>();
 
-        // TODO: Grab xml value via Bootstrap before it gets modified.
         public static void CaptureXmlDefault()
         {
             CompProperties_Power props = PowerProps;

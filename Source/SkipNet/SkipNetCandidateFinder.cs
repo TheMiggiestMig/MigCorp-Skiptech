@@ -27,12 +27,6 @@ namespace MigCorp.Skiptech.SkipNet
             RebuildRegionDoorIndex();
         }
 
-        /// <summary>
-        /// Rebuilds the Region --> Skipdoor lookup if marked as dirty.
-        /// </summary>
-        /// <remarks>
-        /// The regionSkipdoors lookup is for quickly identifying which skipdoors are in a given region.
-        /// </remarks>
         private void RebuildRegionDoorIndex()
         {
             if (!regionSkipdoorsDirty) { return; }
@@ -99,12 +93,10 @@ namespace MigCorp.Skiptech.SkipNet
         /// <param name="plan">The plan to search for (pawn, dest and traverse parms are read from it)</param>
         /// <param name="directPath">The pawn's current direct path to the destination</param>
         /// <param name="popCost">Search effort spent (region pops), for the caller's per-tick budget. Zero if the search never started.</param>
-        //public bool TryFindEligibleSkipNetPlan(SkipNetPlan plan, PawnPath directPath)
         public bool TryFindSkipdoorPair(SkipNetPlan plan, PawnPath directPath, out CompSkipdoor entry, out CompSkipdoor exit, out int popCost)
         {
             Pawn pawn = plan.pawn;
             LocalTargetInfo dest = plan.dest;
-            //PathEndMode peMode = plan.peMode;
             TraverseParms tp = plan.tp;
 
             entry = null;
@@ -116,16 +108,6 @@ namespace MigCorp.Skiptech.SkipNet
 
             SkipNetAccessContext ac = new SkipNetAccessContext(pawn);
 
-            //bool found = searcher.TrySearchForSkipdoorPair(pawn, pawnRegion, destRegion, directPath, tp, ac, out CompSkipdoor entry, out CompSkipdoor exit, out int popCost);
-            //
-            //if (found)
-            //{
-            //    plan.AssignCandidates(entry, exit);
-            //}
-            //
-            //skipNet.proposer.ConsumePopBudget(popCost);
-            //
-            //return found;
             return searcher.TrySearchForSkipdoorPair(pawn, pawnRegion, destRegion, directPath, tp, ac, out entry, out exit, out popCost);
         }
     }

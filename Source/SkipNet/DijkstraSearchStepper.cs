@@ -4,6 +4,7 @@ using Verse;
 
 namespace MigCorp.Skiptech.SkipNet
 {
+    // Not really Dijkstra since I intentionally butchered the re-entry checking. But it *was* Dijkstra early on.
     public class DijkstraSearchStepper
     {
         private TraverseParms tp;
@@ -115,17 +116,6 @@ namespace MigCorp.Skiptech.SkipNet
                 return;
             }
         }
-
-        /*
-        // Figure out where the middle of a RegionLink is. Good enough as the link's "position".
-        private static IntVec3 LinkAnchor(RegionLink link)
-        {
-            EdgeSpan span = link.span;
-            return span.dir == SpanDirection.North
-                ? new IntVec3(span.root.x, 0, span.root.z + span.length / 2)
-                : new IntVec3(span.root.x + span.length / 2, 0, span.root.z);
-        }
-        */
 
         //Figure out where the closest point of a RegionLink is to the entry anchor of a region.
         private static IntVec3 LinkAnchor(EdgeSpan span, IntVec3 from)

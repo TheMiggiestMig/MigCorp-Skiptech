@@ -41,7 +41,7 @@ namespace MigCorp.Skiptech
 
             // Features
             Scribe_Values.Look(ref disableSkipShock, "disableSkipShock", false);
-            Scribe_Values.Look(ref enableSkipShockAvoidance, "enableSkipShockAvoidance", false);
+            Scribe_Values.Look(ref enableSkipShockAvoidance, "enableSkipShockAvoidance", true);
             Scribe_Values.Look(ref disableUnpoweredSkipdoors, "disableUnpoweredSkipdoors", false);
 
             // Skipdoor power

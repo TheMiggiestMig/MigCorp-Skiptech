@@ -74,6 +74,7 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         // Same rules the menu used, re-checked every tick (automatic travel does its final check at the seam).
+        // Might make this happen on a hashed tick rather than every tick if performance is bad.
         private bool CanStillSkip()
         {
             CompSkipdoor entry = Entry;
@@ -92,7 +93,7 @@ namespace MigCorp.Skiptech.SkipNet
             IntVec3 entryCell = entry.Position;
             IntVec3 exitCell = exit.Position;
 
-            // The charge cooldown can outlast the doors by a tick; don't carry it to the far side.
+            // The charge cooldown can outlast the doors by a tick. Don't carry it to the far side.
             pawn.stances.CancelBusyStanceHard();
 
             // Same move as vanilla's skip psycast (CompAbilityEffect_Teleport), including unfogging an unseen destination.

@@ -154,7 +154,7 @@ namespace MigCorp.Skiptech.SkipNet
 
             plansByPawn.TryGetValue(pawn, out SkipNetPlan existingPlan);
 
-            // Check if this is a request for the same path parameters e.g. NeedNewPath and it's 30 tick interval.
+            // Check if this is a request for the same path parameters e.g. NeedNewPath and its 30 tick interval.
             // If it's the same parameters, keep working on the proposal we have and drop the new request.
             if (existingPlan != null && existingPlan.OriginalPathRequestMatches(request))
             {
@@ -237,7 +237,6 @@ namespace MigCorp.Skiptech.SkipNet
                 return;
             }
 
-            //skipNet.splicer.AddPendingSeam(plan, spliced, dummy);
             plans.AddLast(plan); // Waits in the queue for the pather's claim (see TickPendingClaim).
         }
 
@@ -250,7 +249,6 @@ namespace MigCorp.Skiptech.SkipNet
                 if (plan.entry == skipdoor || plan.exit == skipdoor) { plan.Dispose(); }
             }
 
-            //skipNet.splicer.CancelPlansUsingSkipdoor(skipdoor);
             foreach (SkipNetPlan plan in live.Values)
             {
                 if (plan.entry == skipdoor || plan.exit == skipdoor) { plan.Dispose(); }
@@ -265,12 +263,11 @@ namespace MigCorp.Skiptech.SkipNet
             plans.Clear();
             pendingPairCount = 0;
 
-            //skipNet.splicer.DropAll();
             live.Clear();
         }
 
-        // Installed and waiting for the pather to claim the splice. Parity with the old pending seams: a cancelled (IsDisposed) plan
-        // still gets claimed, and the live sweep resets the pawn on the next tick.
+        // Installed and waiting for the pather to claim the splice.
+        // Parity with the old pending seams: a cancelled (IsDisposed) plan still gets claimed, and the live sweep resets the pawn on the next tick.
         private void TickPendingClaim(SkipNetPlan plan)
         {
             Pawn pawn = plan.pawn;
@@ -357,8 +354,8 @@ namespace MigCorp.Skiptech.SkipNet
             Finish(plan);
         }
 
-        // Upkeep for the splices being walked. Removals are collected and applied after the loop: ResetToCurrentPosition re-enters
-        // TryCapturePathRequest, which only ever reads live.
+        // Upkeep for the splices being walked. Removals are collected and applied after the loop.
+        // ResetToCurrentPosition re-enters TryCapturePathRequest, which only ever reads live.
         private void TickLive()
         {
             if (live.Count == 0) { return; }
@@ -449,7 +446,6 @@ namespace MigCorp.Skiptech.SkipNet
 
         private static bool IsTimedOut(SkipNetPlan plan) { return GenTicks.TicksGame - plan.tickCreated > PendingPlanMaxLifetimeTicks; }
 
-        // The only writer of plan.state.
         private void SetState(SkipNetPlan plan, SkipNetPlanState state)
         {
             if (plan.state == SkipNetPlanState.PendingSplicePair) { pendingPairCount--; }

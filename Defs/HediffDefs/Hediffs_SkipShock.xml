@@ -8,7 +8,7 @@
     <isBad>false</isBad>
     <tendable>false</tendable>
     <initialSeverity>1</initialSeverity>
-    <description>Your insides are still "inside". But as a result of an unstable skip, for the moment... they're not quite where they should be.</description>
+    <description>The internal organs are still "internal". But for the moment, as a result of an unstable skip, ... they're not quite where they should be.</description>
     <stages>
       <li>
         <vomitMtbDays>0.02</vomitMtbDays>

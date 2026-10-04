@@ -142,7 +142,7 @@ namespace MigCorp.Skiptech.SkipNet
         public bool IsPawnAtSeam { get { return pawn.Position == entryCell && pawn.pather?.nextCell == exitCell; } }
 
         // A fresh dummy for every GenerateNewPathRequest call. Vanilla may have already disposed the previous one by then.
-        // Steals all the details from the original so anything reading pather.
+        // Steals all the details from the original.
         // Never PushRequest it... we don't need it to make a path, and we want to control when it Resolves().
         public PathRequest GenerateDummyPathRequest()
         {

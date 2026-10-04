@@ -29,7 +29,7 @@
   <ThingDef ParentName="SkipdoorBuildingBase">
     <defName>MigcorpSkipdoor</defName>
     <label>migcorp skipdoor</label>
-    <description>A stationary skip generator that can grant access to the local SkipNet. While it can run with its internal power cell, an external supply of power removes delay and prevents skip-shock.</description>
+    <description>A skip generator that can grant access to the local skipfield, allowing teleporting to other skipdoors. While it has it's own internal power cell, powered use is advised to avoid skip-shock.</description>
     <size>(1,1)</size>
     <tickerType>Normal</tickerType>
     <graphicData>
@@ -92,7 +92,7 @@
   <ThingDef ParentName="SkipdoorBuildingBase">
     <defName>ArchotechSkipdoor</defName>
     <label>archotech skipdoor</label>
-    <description>An ancient archotech device that allows instant access to the SkipNet without any side-effects.</description>
+    <description>An ancient archotech device that connects directly to the local skipfield, granting the ability to teleport to other skipdoors.</description>
     <size>(1,1)</size>
     <tickerType>Normal</tickerType>
     <graphicData>

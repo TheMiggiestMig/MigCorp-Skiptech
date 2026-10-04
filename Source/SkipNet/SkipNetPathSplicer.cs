@@ -8,8 +8,6 @@ namespace MigCorp.Skiptech.SkipNet
     public static class SkipNetPathSplicer
     {
 
-        // The only PawnPath internals the splice needs. inUse is already set by
-        // the pathfinder's EmitPath on both skip paths, so we never touch it.
         private static readonly AccessTools.FieldRef<PawnPath, float> _pathTotalCostRef =
             AccessTools.FieldRefAccess<PawnPath, float>("totalCostInt");
         private static readonly AccessTools.FieldRef<PawnPath, int> _pathCurNodeIndexRef =

@@ -22,16 +22,11 @@ namespace MigCorp.Skiptech.SkipNet
             return cachedComp;
         }
 
-        // Skipdoors and Regions
         public List<CompSkipdoor> skipdoors;
-
-        // SkipNetPlans
         public SkipNetManager manager;
-
         public MapComponent_SkipNet(Map map) : base(map)
         {
             skipdoors = new List<CompSkipdoor>();
-
             manager = new SkipNetManager(this);
         }
 
@@ -53,7 +48,7 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         /// <summary>
-        /// Registers a skipdoor to the SkipNet.
+        /// Registers a skipdoor to the map's SkipNet.
         /// </summary>
         public void RegisterSkipdoor(CompSkipdoor skipdoor)
         {
@@ -67,7 +62,7 @@ namespace MigCorp.Skiptech.SkipNet
         }
 
         /// <summary>
-        /// Unregisters a skipdoor from the SkipNet.
+        /// Unregisters a skipdoor from the map's SkipNet.
         /// </summary>
         public void UnregisterSkipdoor(CompSkipdoor skipdoor)
         {

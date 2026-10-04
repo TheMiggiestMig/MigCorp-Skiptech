@@ -5,7 +5,7 @@
         <defName>MigCorp_SkipBeacon</defName>
         <label>skip beacon</label>
         <!--<description>A portable skipfield anchor. Carried into the field, it holds a fixed point in folded space precisely enough for a distant skipgate to reach out and pull it home - along with anything unlucky enough to be standing near it.\n\nThe beacon cannot skip anything on its own. It only tells a gate where to aim.</description>-->
-        <description>[Under Development - Not yet available]\nA skipfield anchor worn at the belt. While it is worn and running, it holds a fixed point in folded space precisely enough for a distant skipgate to reach out and pull it home - along with anything unlucky enough to be standing near it.\n\nThe beacon cannot skip anything on its own. It only tells a gate where to aim.</description>
+        <description>The core of the skipfield generators and a vital component for building Skiptech products.\n\n[Under Development - Not yet available]\nIt also serves as a skipfield anchor worn at the belt. When used, it holds a fixed point in folded space precisely enough for a distant skipgate to reach out and pull it home - along with anything unlucky enough to be standing near it.</description>
 
         <thingClass>Apparel</thingClass>
 

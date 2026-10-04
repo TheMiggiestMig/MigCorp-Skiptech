@@ -12,7 +12,7 @@
     <ResearchProjectDef>
         <defName>MigCorp_SkipNet</defName>
         <label>SkipNet</label>
-        <description>Develop localized skipfields capable of briefly folding nearby space, allowing compatible skipdoors to act as shortcuts through otherwise traversable space.</description>
+        <description>Develop localized skipfield technology capable of briefly folding nearby space, allowing compatible skipdoors to act as spacial shortcuts.</description>
 
         <baseCost>2000</baseCost>
         <techLevel>Spacer</techLevel>

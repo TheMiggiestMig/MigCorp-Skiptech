@@ -76,6 +76,8 @@ namespace MigCorp.Skiptech
             string fallback = (inGame ? SkipdoorCustomPower.DefaultWatts
                                       : SkipdoorCustomPower.XmlWatts).ToString("F0");
 
+            float resetValue = inGame ? SkipdoorCustomPower.DefaultWatts
+                                      : SkipdoorCustomPower.Unset;
 
             float powerSlider = SliderRow(ls,
                 key.Translate(shownWatts.ToString("F0")),
@@ -83,7 +85,7 @@ namespace MigCorp.Skiptech
                 shownWatts, SkipdoorCustomPower.MinWatts, SkipdoorCustomPower.MaxWatts,
                 roundTo: SkipdoorCustomPower.StepWatts,
                 showReset: isCustom,
-                resetTo: SkipdoorCustomPower.Unset,
+                resetTo: resetValue,
                 resetTip: $"{keyPrefix}.Power.Reset".Translate());
 
             int watts = Mathf.RoundToInt(powerSlider);

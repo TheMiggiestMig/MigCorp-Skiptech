@@ -32,14 +32,14 @@
 	<!-- Advanced pathtuning settings -->
 	<MigCorp.Skiptech.Settings.SkipNetTuning>Pathfinding Tuning (Advanced):</MigCorp.Skiptech.Settings.SkipNetTuning>
 	<MigCorp.Skiptech.Settings.SkipNetTuning.SkipCost>Skip cost: {0} ticks</MigCorp.Skiptech.Settings.SkipNetTuning.SkipCost>
-	<MigCorp.Skiptech.Settings.SkipNetTuning.SkipCost.Tip>Flat travel-time cost (in ticks) added to any route that uses a skipdoor pair. Higher values make pawns skip the skipdoors on short trips. Default: 60.</MigCorp.Skiptech.Settings.SkipNetTuning.SkipCost.Tip>
+	<MigCorp.Skiptech.Settings.SkipNetTuning.SkipCost.Tip>Flat travel-time cost (in ticks) added to any route that uses a skipdoor pair. Higher values make pawns avoid the skipdoors on short trips. Default: 60.</MigCorp.Skiptech.Settings.SkipNetTuning.SkipCost.Tip>
 
 	<MigCorp.Skiptech.Settings.SkipNetTuning.WorthItFactor>Improvement requirement: {0}</MigCorp.Skiptech.Settings.SkipNetTuning.WorthItFactor>
-	<MigCorp.Skiptech.Settings.SkipNetTuning.WorthItFactor.Tip>How much better a skipdoor route must be to replace the direct path. At 85%, the walk to the entry plus the walk from the exit must total at most 85% of the direct path. Lower = pickier pawns, fewer teleports. Default: 85%.</MigCorp.Skiptech.Settings.SkipNetTuning.WorthItFactor.Tip>
+	<MigCorp.Skiptech.Settings.SkipNetTuning.WorthItFactor.Tip>How much better a skipdoor route must be to replace the direct path. At 85%, the walk to the entry plus the walk from the exit (plus Skip cost) must total at most 85% of the direct path. Lower = pickier pawns, fewer teleports. Default: 85%.</MigCorp.Skiptech.Settings.SkipNetTuning.WorthItFactor.Tip>
 	
 	<!-- Accessibility Settings -->
 	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect>Disable teleport visuals</MigCorp.Skiptech.Settings.Accessibility.FlashEffect>
-	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>Turns off the teleport-flash visual effect</MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>
+	<MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>Turns off the teleport visual effect</MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>
 
 	<!-- Debug Settings -->
 	<MigCorp.Skiptech.Settings.Debug>DEBUG</MigCorp.Skiptech.Settings.Debug>

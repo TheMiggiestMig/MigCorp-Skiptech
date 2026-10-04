@@ -1,5 +1,6 @@
 ﻿using MigCorp.Skiptech.SkipNet.Comps;
 using RimWorld;
+using System.Collections.Generic;
 using System.Linq;
 using Verse;
 
@@ -8,32 +9,29 @@ namespace MigCorp.Skiptech.SkipNet
     public class PlaceWorker_SkipdoorMinSpacing : PlaceWorker
     {
         public override AcceptanceReport AllowsPlacing(
-            BuildableDef checkingDef, IntVec3 loc, Rot4 rot, Map map,
+            BuildableDef checkingDef, IntVec3 location, Rot4 rotation, Map map,
             Thing thingToIgnore = null, Thing thing = null)
         {
             // Check the 8 adjacent cells (1-tile spacing like traps)
-            foreach (var c in GenAdj.CellsAdjacent8Way(new TargetInfo(loc, map)))
+            foreach (IntVec3 cell in GenAdj.CellsAdjacent8Way(new TargetInfo(location, map)))
             {
-                if (!c.InBounds(map)) continue;
+                if (!cell.InBounds(map)) { continue; }
 
-                var things = c.GetThingList(map);
+                List<Thing> things = cell.GetThingList(map);
                 for (int i = 0; i < things.Count; i++)
                 {
-                    var t = things[i];
-                    if (t == thingToIgnore) continue;
+                    Thing t = things[i];
+                    if (t == thingToIgnore) { continue; }
 
                     // Existing built skipdoor?
-                    if (t.TryGetComp<CompSkipdoor>() != null)
-                        return "Skipdoors must be at least one cell apart.";
+                    if (t.TryGetComp<CompSkipdoor>() != null) { return "Skipdoors must be at least one cell apart."; }
 
                     // Existing blueprint that *will become* a skipdoor?
-                    if (t is Blueprint bp)
+                    if (t is Blueprint blueprint)
                     {
-                        if (bp.def.entityDefToBuild is ThingDef buildTd && buildTd.comps != null)
+                        if (blueprint.def.entityDefToBuild is ThingDef buildTd && buildTd.comps != null)
                         {
-                            // Avoid LINQ allocs if you want; this is fine for dev:
-                            if (buildTd.comps.Any(cp => cp.compClass == typeof(CompSkipdoor)))
-                                return "Skipdoors must be at least one cell apart.";
+                            if (buildTd.comps.Any(cp => cp.compClass == typeof(CompSkipdoor))) { return "Skipdoors must be at least one cell apart."; }
                         }
                     }
                 }
