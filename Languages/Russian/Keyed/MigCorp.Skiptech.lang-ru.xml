@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <MigCorp.Skiptech.Settings>MigCorp - Skiptech</MigCorp.Skiptech.Settings>
+  <!-- Gameplay Settings -->
+  <MigCorp.Skiptech.Settings.Allowed>Режим доступа к скип-двери:</MigCorp.Skiptech.Settings.Allowed>
+
+  <MigCorp.Skiptech.Settings.Allowed.Everyone>Кто угодно</MigCorp.Skiptech.Settings.Allowed.Everyone>
+  <MigCorp.Skiptech.Settings.Allowed.Everyone.Tip>Все могут пользоваться скип-дверьми</MigCorp.Skiptech.Settings.Allowed.Everyone.Tip>
+  <MigCorp.Skiptech.Settings.Allowed.NonHostile>Не враги</MigCorp.Skiptech.Settings.Allowed.NonHostile>
+  <MigCorp.Skiptech.Settings.Allowed.NonHostile.Tip>Только не враждебные пешки могут пользоваться скип-дверьми</MigCorp.Skiptech.Settings.Allowed.NonHostile.Tip>
+  <MigCorp.Skiptech.Settings.Allowed.Colonists>Колонисты</MigCorp.Skiptech.Settings.Allowed.Colonists>
+  <MigCorp.Skiptech.Settings.Allowed.Colonists.Tip>Только ваши колонисты могут использовать скип-двери</MigCorp.Skiptech.Settings.Allowed.Colonists.Tip>
+
+  <MigCorp.Skiptech.Settings.Allowed.Animals>Разрешить животным</MigCorp.Skiptech.Settings.Allowed.Animals>
+  <MigCorp.Skiptech.Settings.Allowed.Animals.Tip>Животные могут использовать скип-двери</MigCorp.Skiptech.Settings.Allowed.Animals.Tip>
+
+  <MigCorp.Skiptech.Settings.Features.Skipshock>Отключить скип-шок</MigCorp.Skiptech.Settings.Features.Skipshock>
+  <MigCorp.Skiptech.Settings.Features.Skipshock.Tip>Не накладывать скип-шок при использовании скип-двери без внешнего источника питания</MigCorp.Skiptech.Settings.Features.Skipshock.Tip>
+
+  <MigCorp.Skiptech.Settings.Features.SkipshockAvoidance>Включить избегание скип-шока</MigCorp.Skiptech.Settings.Features.SkipshockAvoidance>
+  <MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip>Пешки будут стараться избегать использование незапитанных скип-дверей если они не в режиме призыва или не совешают принудительное действие</MigCorp.Skiptech.Settings.Features.SkipshockAvoidance.Tip>
+
+  <!-- Accessibility Settings -->
+  <MigCorp.Skiptech.Settings.Accessibility.FlashEffect>Отключить визуальный эффект телепортации</MigCorp.Skiptech.Settings.Accessibility.FlashEffect>
+  <MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>Отключает вспышку при использовании скип-двери</MigCorp.Skiptech.Settings.Accessibility.FlashEffect.Tip>
+
+  <!-- Debug Settings -->
+  <MigCorp.Skiptech.Settings.Debug>ДЕБАГ</MigCorp.Skiptech.Settings.Debug>
+  <MigCorp.Skiptech.Settings.Debug.Enable>Включите режим разработчика для доступа к дебаг настройкам.</MigCorp.Skiptech.Settings.Debug.Enable>
+  <MigCorp.Skiptech.Settings.Debug.Verbose>Подробный лог</MigCorp.Skiptech.Settings.Debug.Verbose>
+
+  <!-- General Text-->
+  <MigCorp.Skiptech.Text.Skipshock>Скип-шок</MigCorp.Skiptech.Text.Skipshock>
+
+
+</LanguageData>
