@@ -75,6 +75,7 @@ namespace MigCorp.Skiptech.SkipNet.Comps
 
         private SkipdoorState CurrentState()
         {
+            if (skipdoorPower?.powerTrader == null || skipdoorDelayer == null) { return SkipdoorState.None; }
             if (!skipdoorPower.powerTrader.Off) { return SkipdoorState.Powered; }
             if (skipdoorDelayer.Opening) { return SkipdoorState.Charging; }
             if (skipdoorDelayer.Open) { return SkipdoorState.Charged; }
